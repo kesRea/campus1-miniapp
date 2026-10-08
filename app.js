@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V10 */
+/* CAMPUS_GITHUB_UI_V11_AI */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '10.0.0';
+const APP_VERSION = '11.0.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -9,7 +9,7 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const state = {
   initData:'', user:null, dashboard:null, analytics:null, rooms:[],
   currentPage:'home', renderSeq:0, roomData:null, studentLists:{}, studentMap:new Map(),
-  cache:new Map(), inflight:new Map(), aiMessages:[], theme:'light'
+  cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false, theme:'light'
 };
 
 const ICONS = {
@@ -33,7 +33,9 @@ const ICONS = {
   logout:'<svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/></svg>',
   book:'<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>',
   clipboard:'<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 9h6M9 13h6M9 17h4"/></svg>',
-  council:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="7" r="2"/><path d="M2 21v-2a6 6 0 0 1 12 0v2M14 15a5 5 0 0 1 8 4v2"/></svg>'
+  council:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="7" r="2"/><path d="M2 21v-2a6 6 0 0 1 12 0v2M14 15a5 5 0 0 1 8 4v2"/></svg>',
+  copy:'<svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg>'
 };
 
 function icon(name){ return ICONS[name] || ICONS.grid; }
@@ -300,24 +302,208 @@ async function renderCouncil(kind,seq){
 }
 
 function renderAI(){
-  if(!state.aiMessages.length) state.aiMessages=[{role:'bot',text:'Привет. Я Campus AI. Могу искать по базе, показывать свободные комнаты, анализировать заселение и помогать с текстами.',source:'campus'}];
-  $('#view').innerHTML=`${pageHead('Campus AI','home')}<div class="chat-shell"><div class="ai-header"><span class="action-icon">${icon('spark')}</span><span class="ai-header-copy"><b>Помощник Campus №1</b><small>Данные базы + генерация текстов</small></span><span class="ai-status">ONLINE</span></div><div class="quick-prompts"><button class="prompt-chip" onclick="askQuick('Кто проживает в комнате 145?')">Комната 145</button><button class="prompt-chip" onclick="askQuick('Какие комнаты сейчас свободны?')">Свободные комнаты</button><button class="prompt-chip" onclick="askQuick('Сколько сейчас заселено студентов?')">Статистика</button><button class="prompt-chip" onclick="askQuick('Составь короткое объявление студентам о ремонтных работах на русском и казахском')">Объявление</button></div><div id="chat" class="chat">${state.aiMessages.map(renderBubble).join('')}</div><div class="chat-compose"><div class="compose"><textarea id="aiInput" rows="1" placeholder="Напишите вопрос…" oninput="autoGrow(this)" onkeydown="aiKeydown(event)"></textarea><button class="send-btn" onclick="sendAI()">↑</button></div></div></div>`;
+  if(!state.aiMessages.length){
+    state.aiMessages=[{
+      role:'bot',
+      text:'Привет. Я Campus AI. Могу быстро проверить комнаты и студентов по базе, показать статистику, а с подключённым OpenAI — составлять объявления, отчёты и документы.',
+      source:'campus'
+    }];
+  }
+
+  const st=state.aiStatus;
+  const configured=!!st?.configured;
+  const statusText=st ? (configured ? (st.model || 'OpenAI') : 'Локальный режим') : 'Проверяем…';
+  const statusClass=st ? (configured?'online':'local') : 'checking';
+
+  $('#view').innerHTML=`${pageHead('Campus AI','home')}
+    <div class="ai-v11-shell">
+      <div class="ai-v11-top">
+        <div class="ai-v11-identity">
+          <span class="ai-v11-orb">${icon('spark')}</span>
+          <span class="ai-v11-title"><b>Campus AI</b><small>Помощник по Campus №1</small></span>
+        </div>
+        <div class="ai-v11-tools">
+          <span id="aiModeBadge" class="ai-mode ${statusClass}">${esc(statusText)}</span>
+          ${state.user?.isOwner?`<button class="ai-config" type="button" onclick="openAISetup()">Настроить</button>`:''}
+          <button class="ai-clear" type="button" onclick="confirmClearAI()">Очистить</button>
+        </div>
+      </div>
+
+      <div class="ai-safety-note">
+        <span class="ai-safety-dot"></span>
+        <span>ИИ работает с базой только на чтение. ИИН и паспорт модели не передаются.</span>
+      </div>
+
+      <div class="ai-suggestions">
+        <button type="button" onclick="askQuick('Кто проживает в комнате 145?')"><b>Комната</b><small>Кто живёт в 145?</small></button>
+        <button type="button" onclick="askQuick('Какие комнаты сейчас свободны?')"><b>Свободные</b><small>Показать список</small></button>
+        <button type="button" onclick="askQuick('Кратко проанализируй текущее заселение Campus №1')"><b>Анализ</b><small>Что происходит сейчас</small></button>
+        <button type="button" onclick="askQuick('Составь аккуратное объявление студентам о ремонтных работах на русском и казахском')"><b>Текст</b><small>Составить объявление</small></button>
+      </div>
+
+      <div id="chat" class="ai-v11-chat">${state.aiMessages.map((m,i)=>renderBubble(m,i)).join('')}</div>
+    </div>
+
+    <div class="ai-v11-compose-wrap">
+      <div class="ai-v11-compose">
+        <textarea id="aiInput" rows="1" maxlength="4000" placeholder="Спросите Campus AI…" oninput="autoGrow(this)" onkeydown="aiKeydown(event)"></textarea>
+        <button id="aiSendBtn" class="ai-v11-send" type="button" onclick="sendAI()" ${state.aiBusy?'disabled':''}>${state.aiBusy?'<span class="send-spinner"></span>':'↑'}</button>
+      </div>
+      <div class="ai-v11-compose-meta"><span>Enter — отправить · Shift+Enter — новая строка</span><span id="aiCounter">0 / 4000</span></div>
+    </div>`;
+
+  const input=$('#aiInput');
+  if(input){ input.addEventListener('input',()=>{const c=$('#aiCounter');if(c)c.textContent=`${input.value.length} / 4000`;}); }
+  loadAIStatus();
   setTimeout(()=>scrollChat(false),0);
 }
-function renderBubble(m){ return `<div class="bubble ${m.role==='user'?'user':'bot'}">${esc(m.text)}${m.source?`<span class="bubble-meta">${m.source==='openai'?'OpenAI':'Campus'}</span>`:''}</div>`; }
-function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px'}
+
+async function loadAIStatus(force=false){
+  if(state.aiStatus && !force){ updateAIStatusBadge(); return state.aiStatus; }
+  try{
+    state.aiStatus=await apiRequest('appAIStatus',[state.initData],{ttl:60000,force});
+  }catch(e){
+    state.aiStatus={configured:false,provider:'Campus Local',model:'local',mode:'local',error:e?.message||String(e)};
+  }
+  updateAIStatusBadge();
+  return state.aiStatus;
+}
+
+function updateAIStatusBadge(){
+  const el=$('#aiModeBadge'); if(!el)return;
+  const st=state.aiStatus;
+  el.className='ai-mode '+(st?.configured?'online':'local');
+  el.textContent=st?.configured ? (st.model||'OpenAI') : 'Локальный режим';
+}
+
+
+async function secretApiRequest(method,args=[]){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),22000);
+  try{
+    const response=await fetch(CAMPUS_API_URL,{
+      method:'POST',redirect:'follow',signal:controller.signal,
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({method,args})
+    });
+    const text=await response.text();
+    let data;
+    try{data=JSON.parse(text)}catch(e){throw new Error('Campus API вернул не JSON.')}
+    if(!response.ok||!data.ok)throw new Error(data?.error||'Ошибка Campus API.');
+    return data.result;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error('Сервер отвечает слишком долго.');
+    throw e;
+  }finally{clearTimeout(timer)}
+}
+
+function openAISetup(){
+  if(!state.user?.isOwner)return toast('Настройки доступны только владельцу');
+  const current=state.aiStatus?.model||'gpt-6-luna';
+  const configured=!!state.aiStatus?.configured;
+  showModal(`<div class="sheet-handle"></div><h3>Настройки Campus AI</h3>
+    <p style="color:var(--muted);font-size:12px;line-height:1.5;margin-top:-2px">Ключ хранится только в Script Properties Apps Script и не сохраняется в GitHub.</p>
+    <div class="field"><label>OpenAI API key</label><input id="ai_api_key" type="password" autocomplete="off" placeholder="sk-…"></div>
+    <div class="field"><label>Модель</label><select id="ai_model"><option value="gpt-6-luna" ${current==='gpt-6-luna'?'selected':''}>GPT-6 Luna — быстро и недорого</option><option value="gpt-6-sol" ${current==='gpt-6-sol'?'selected':''}>GPT-6 Sol — умнее</option><option value="gpt-5.6-sol" ${current==='gpt-5.6-sol'?'selected':''}>GPT-5.6 Sol</option></select></div>
+    <button class="btn btn-primary btn-wide" onclick="saveAISetup()">${configured?'Обновить настройки':'Подключить OpenAI'}</button>
+    ${configured?'<button class="btn btn-danger btn-wide" onclick="disconnectAI()">Отключить OpenAI</button>':''}
+    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+}
+
+async function saveAISetup(){
+  const input=$('#ai_api_key'); const key=input?.value.trim()||''; const model=$('#ai_model')?.value||'gpt-6-luna';
+  if(!key)return toast('Вставьте OpenAI API key');
+  try{
+    const btn=$('.sheet .btn-primary'); if(btn){btn.disabled=true;btn.textContent='Сохраняем…'}
+    const result=await secretApiRequest('appSetAIConfig',[state.initData,key,model]);
+    if(input)input.value='';
+    state.aiStatus=result; state.cache.clear(); closeModal(); updateAIStatusBadge(); toast('OpenAI подключён');
+    if(state.currentPage==='ai')renderAI();
+  }catch(e){toast(e?.message||String(e))}
+}
+
+async function disconnectAI(){
+  try{
+    const result=await secretApiRequest('appClearAIConfig',[state.initData]);
+    state.aiStatus=result;state.cache.clear();closeModal();toast('OpenAI отключён');if(state.currentPage==='ai')renderAI();
+  }catch(e){toast(e?.message||String(e))}
+}
+
+function renderBubble(m,index){
+  if(m.pending){
+    return `<div class="ai-message bot"><div class="ai-avatar">${icon('spark')}</div><div class="ai-message-body"><div class="ai-bubble typing"><i></i><i></i><i></i></div></div></div>`;
+  }
+  const isUser=m.role==='user';
+  const source=m.source==='openai' ? (m.model||'OpenAI') : (m.source==='campus'?'Campus data':'');
+  return `<div class="ai-message ${isUser?'user':'bot'}">
+    ${isUser?'':`<div class="ai-avatar">${icon('spark')}</div>`}
+    <div class="ai-message-body">
+      <div class="ai-bubble">${esc(m.text)}</div>
+      <div class="ai-message-meta">
+        ${source?`<span>${esc(source)}</span>`:'<span></span>'}
+        ${isUser?'':`<button type="button" onclick="copyAIMessage(${index})">Копировать</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function copyAIMessage(index){
+  const text=state.aiMessages[index]?.text||''; if(!text)return;
+  const done=()=>{toast('Ответ скопирован');try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}};
+  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopyAI(text,done)); }
+  else fallbackCopyAI(text,done);
+}
+
+function fallbackCopyAI(text,done){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done();}catch(e){toast('Не удалось скопировать');}
+  ta.remove();
+}
+
+function confirmClearAI(){
+  showModal(`<div class="sheet-handle"></div><h3>Очистить диалог?</h3><p style="color:var(--muted);font-size:12px;line-height:1.5">История Campus AI удалится только на этом устройстве.</p><button class="btn btn-danger btn-wide" onclick="clearAIChat()">Очистить</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
+}
+function clearAIChat(){ state.aiMessages=[]; closeModal(); renderAI(); toast('Диалог очищен'); }
+
+function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px'}
 function aiKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI()}}
-function askQuick(text){ const el=$('#aiInput'); if(el){el.value=text;sendAI();} }
+function askQuick(text){ const el=$('#aiInput'); if(el){el.value=text;el.dispatchEvent(new Event('input'));sendAI();} }
+
 async function sendAI(){
+  if(state.aiBusy)return;
   const inp=$('#aiInput'); const text=inp?.value.trim(); if(!text)return;
-  state.aiMessages.push({role:'user',text}); inp.value=''; inp.style.height='auto';
-  state.aiMessages.push({role:'bot',text:'Думаю…',source:''}); renderAI(); scrollChat(true);
+
+  const history=state.aiMessages
+    .filter(m=>!m.pending && m.text && (m.role==='user'||m.role==='bot'))
+    .slice(-8)
+    .map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}));
+
+  state.aiMessages.push({role:'user',text});
+  state.aiMessages.push({role:'bot',text:'',pending:true,source:''});
+  state.aiBusy=true;
+  renderAI();
+  scrollChat(true);
   const waitIndex=state.aiMessages.length-1;
-  try{ const r=await apiRequest('appAskAI',[state.initData,text],{ttl:0,force:true}); state.aiMessages[waitIndex]={role:'bot',text:r.text||'Ответ не получен.',source:r.source||'campus'}; }
-  catch(e){ state.aiMessages[waitIndex]={role:'bot',text:e.message||String(e),source:'campus'}; }
+
+  try{
+    const r=await apiRequest('appAskAI',[state.initData,text,history],{ttl:0,force:true});
+    state.aiMessages[waitIndex]={role:'bot',text:r.text||'Ответ не получен.',source:r.source||'campus',model:r.model||''};
+    if(r.source==='openai') state.aiStatus={...(state.aiStatus||{}),configured:true,model:r.model||state.aiStatus?.model||'OpenAI'};
+  }catch(e){
+    state.aiMessages[waitIndex]={role:'bot',text:e?.message||String(e),source:'campus'};
+  }finally{
+    state.aiBusy=false;
+  }
+
   if(state.currentPage==='ai'){renderAI();scrollChat(true)}
 }
-function scrollChat(smooth){ setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:smooth?'smooth':'auto'}),0); }
+
+function scrollChat(smooth){
+  setTimeout(()=>{
+    const chat=$('#chat');
+    if(chat) window.scrollTo({top:document.body.scrollHeight,behavior:smooth?'smooth':'auto'});
+  },20);
+}
 
 function roomOptions(selected){ return (state.rooms||[]).map(r=>`<option value="${esc(r)}" ${String(r)===String(selected)?'selected':''}>${esc(r)}</option>`).join(''); }
 function openAddStudent(room=''){
