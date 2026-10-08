@@ -782,3 +782,298 @@ html[data-theme="dark"] .ai-promo{background:linear-gradient(135deg,#142131,#162
   .hero-copy h1{font-size:24px}
   .hero-leaves{right:12px;bottom:10px}
 }
+
+
+/* ===== Campus UI V13.7 / Seasons Reborn ===== */
+
+.season-owner-button{position:relative}
+.season-btn-glyph{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  font-size:18px;
+  line-height:1;
+  filter:saturate(.92);
+}
+
+/* Seasonal layer stays behind the interface and never blocks touches */
+.season-layer-v137{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+  contain:layout paint;
+}
+.app{position:relative;z-index:1}
+.splash{position:relative;z-index:2}
+
+/* Keep the liked autumn leaves from V13.6; just make them truly seasonal */
+.hero-leaves{display:none}
+html[data-season="autumn"] .hero-leaves{display:flex}
+
+/* Clean seasonal hero tints */
+html[data-season="autumn"] .hero-panel{
+  background:
+    radial-gradient(circle at 88% 82%,rgba(214,151,55,.13),transparent 30%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface) 94%,#fff9ef),color-mix(in srgb,var(--surface-2) 84%,#fff0d8));
+}
+html[data-season="winter"] .hero-panel{
+  background:
+    radial-gradient(circle at 88% 76%,rgba(90,164,255,.13),transparent 32%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface) 95%,#eef7ff),color-mix(in srgb,var(--surface-2) 84%,#e8f3ff));
+}
+html[data-season="spring"] .hero-panel{
+  background:
+    radial-gradient(circle at 90% 78%,rgba(237,137,181,.12),transparent 31%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface) 95%,#fff5fa),color-mix(in srgb,var(--surface-2) 87%,#f2fbf5));
+}
+html[data-season="summer"] .hero-panel{
+  background:
+    radial-gradient(circle at 90% 10%,rgba(255,194,65,.18),transparent 32%),
+    linear-gradient(145deg,color-mix(in srgb,var(--surface) 95%,#fffaf0),color-mix(in srgb,var(--surface-2) 86%,#fff6d9));
+}
+html[data-theme="dark"][data-season="autumn"] .hero-panel{
+  background:radial-gradient(circle at 88% 82%,rgba(193,123,48,.12),transparent 34%),linear-gradient(145deg,#151d28,#1b2230);
+}
+html[data-theme="dark"][data-season="winter"] .hero-panel{
+  background:radial-gradient(circle at 88% 72%,rgba(77,151,255,.16),transparent 34%),linear-gradient(145deg,#111b29,#15263a);
+}
+html[data-theme="dark"][data-season="spring"] .hero-panel{
+  background:radial-gradient(circle at 88% 76%,rgba(230,123,171,.12),transparent 34%),linear-gradient(145deg,#171b28,#1b2530);
+}
+html[data-theme="dark"][data-season="summer"] .hero-panel{
+  background:radial-gradient(circle at 90% 8%,rgba(255,184,55,.14),transparent 34%),linear-gradient(145deg,#171d27,#202536);
+}
+
+.season-fx{
+  position:absolute;
+  left:calc(var(--sx) * 1%);
+  top:-42px;
+  width:var(--ss);
+  height:var(--ss);
+  animation-delay:var(--sd);
+  animation-duration:var(--sdu);
+  animation-iteration-count:infinite;
+  will-change:transform;
+}
+
+/* Autumn — actual leaf silhouettes, yellow + brown only */
+.season-leaf-v137{
+  width:calc(var(--ss) * 1.55);
+  height:calc(var(--ss) * 1.55);
+  color:#d49a38;
+  opacity:.34;
+  filter:drop-shadow(0 2px 2px rgba(75,43,16,.08));
+  animation-name:seasonLeafFallV137;
+  animation-timing-function:cubic-bezier(.38,.04,.62,.98);
+}
+.season-leaf-v137.leaf-tone-0{color:#d8a33f}
+.season-leaf-v137.leaf-tone-1{color:#9d672e}
+.season-leaf-v137.leaf-tone-2{color:#c88732}
+.season-leaf-v137 svg{width:100%;height:100%;display:block}
+.season-leaf-fill{fill:currentColor;stroke:color-mix(in srgb,currentColor 75%,#6b431d);stroke-width:.55}
+.season-leaf-vein{fill:none;stroke:rgba(92,55,21,.45);stroke-width:.7;stroke-linecap:round}
+.season-leaf-v137:nth-child(2n){opacity:.46}
+.season-leaf-v137:nth-child(2n) svg{transform:scaleX(-1)}
+
+@keyframes seasonLeafFallV137{
+  0%{transform:translate3d(0,-42px,0) rotate(-10deg)}
+  28%{transform:translate3d(calc(var(--sdrift) * .7),28vh,0) rotate(80deg)}
+  58%{transform:translate3d(calc(var(--sdrift) * -.45),60vh,0) rotate(190deg)}
+  100%{transform:translate3d(calc(var(--sdrift) * .2),108vh,0) rotate(330deg)}
+}
+
+/* Winter */
+.season-snow-v137{
+  display:grid;
+  place-items:center;
+  color:rgba(125,178,231,.55);
+  font-size:var(--ss);
+  opacity:.68;
+  animation-name:seasonSnowFallV137;
+  animation-timing-function:linear;
+}
+html[data-theme="dark"] .season-snow-v137{color:rgba(222,239,255,.68)}
+@keyframes seasonSnowFallV137{
+  0%{transform:translate3d(0,-30px,0) rotate(0)}
+  50%{transform:translate3d(var(--sdrift),52vh,0) rotate(90deg)}
+  100%{transform:translate3d(calc(var(--sdrift) * -.3),108vh,0) rotate(180deg)}
+}
+
+/* Spring */
+.season-petal-v137{
+  width:calc(var(--ss) * 1.3);
+  height:var(--ss);
+  border-radius:70% 30% 68% 32%;
+  background:#efacc8;
+  opacity:.36;
+  animation-name:seasonPetalFallV137;
+  animation-timing-function:ease-in-out;
+}
+.season-petal-v137.petal-tone-1{background:#f5c6d9}
+.season-petal-v137.petal-tone-2{background:#dba3cf}
+@keyframes seasonPetalFallV137{
+  0%{transform:translate3d(0,-35px,0) rotate(10deg)}
+  45%{transform:translate3d(var(--sdrift),47vh,0) rotate(160deg)}
+  100%{transform:translate3d(calc(var(--sdrift) * -.35),108vh,0) rotate(300deg)}
+}
+
+/* Summer */
+.summer-glow-v137{
+  position:absolute;
+  top:-120px;
+  right:-100px;
+  width:310px;
+  height:310px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,190,66,.13),rgba(255,190,66,0) 68%);
+}
+.season-mote-v137{
+  width:5px;height:5px;border-radius:50%;
+  background:rgba(244,176,51,.5);
+  box-shadow:0 0 14px rgba(244,176,51,.32);
+  animation:seasonMoteFloatV137 var(--sdu) ease-in-out var(--sd) infinite alternate;
+}
+@keyframes seasonMoteFloatV137{
+  from{transform:translate3d(-8px,12vh,0);opacity:.2}
+  to{transform:translate3d(13px,89vh,0);opacity:.62}
+}
+
+/* New winter garland — integrated into the hero, no separate black banner */
+.winter-garland-v137{
+  position:absolute;
+  left:0;right:0;top:0;
+  height:58px;
+  z-index:1;
+  pointer-events:none;
+  overflow:hidden;
+}
+.winter-wire-v137{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:58px;
+  overflow:visible;
+}
+.winter-wire-v137 path{
+  fill:none;
+  stroke:rgba(69,85,108,.50);
+  stroke-width:2;
+  vector-effect:non-scaling-stroke;
+}
+html[data-theme="dark"] .winter-wire-v137 path{stroke:rgba(153,175,207,.42)}
+.winter-bulbs-v137{position:absolute;inset:0}
+.winter-bulb-v137{
+  position:absolute;
+  left:var(--bx);
+  top:var(--by);
+  width:10px;
+  height:15px;
+  transform:translateX(-50%);
+  animation:bulbGlowV137 2.4s ease-in-out var(--bd) infinite;
+}
+.winter-bulb-v137::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-4px;
+  width:6px;
+  height:5px;
+  transform:translateX(-50%);
+  border-radius:3px 3px 1px 1px;
+  background:#667289;
+}
+.winter-bulb-v137::after{
+  content:"";
+  position:absolute;
+  inset:1px 0 0;
+  border-radius:6px 6px 8px 8px;
+  background:var(--bc);
+  box-shadow:
+    0 0 5px color-mix(in srgb,var(--bc) 75%,transparent),
+    0 0 12px color-mix(in srgb,var(--bc) 46%,transparent);
+}
+@keyframes bulbGlowV137{
+  0%,100%{opacity:.75;transform:translateX(-50%) scale(.94)}
+  50%{opacity:1;transform:translateX(-50%) scale(1.05)}
+}
+
+/* Owner-only season selector */
+.owner-season-setting-row{
+  background:linear-gradient(145deg,color-mix(in srgb,var(--blue-soft) 42%,var(--surface)),var(--surface));
+}
+.season-settings-glyph{
+  width:32px;height:32px;border-radius:11px;
+  display:grid;place-items:center;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  font-size:17px;
+}
+.season-owner-head{margin-bottom:12px}
+.season-owner-badge{
+  display:inline-flex;
+  padding:5px 8px;
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  font-size:8px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.season-owner-head h3{margin:8px 0 5px}
+.season-owner-head p{margin:0;color:var(--muted);font-size:10px;line-height:1.5}
+.season-owner-current{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin:0 0 10px;padding:10px 12px;
+  border:1px solid var(--border);border-radius:14px;background:var(--surface-2);
+}
+.season-owner-current span{font-size:9px;color:var(--muted)}
+.season-owner-current b{font-size:10px;color:var(--blue)}
+.season-choice-grid-v137{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.season-choice-v137{
+  position:relative;
+  min-height:72px;
+  display:flex;align-items:center;gap:10px;
+  text-align:left;
+  border:1px solid var(--border);
+  border-radius:17px;
+  background:var(--surface);
+  color:var(--text);
+  padding:10px;
+}
+.season-choice-v137.active{
+  border-color:color-mix(in srgb,var(--blue) 38%,var(--border));
+  background:color-mix(in srgb,var(--blue-soft) 45%,var(--surface));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 7%,transparent);
+}
+.season-choice-glyph{
+  width:34px;height:34px;flex:0 0 auto;
+  display:grid;place-items:center;
+  border-radius:12px;
+  background:var(--surface-2);
+  font-size:18px;
+}
+.season-choice-copy{display:flex;flex-direction:column;min-width:0}
+.season-choice-copy b{font-size:10.5px}
+.season-choice-copy small{margin-top:3px;color:var(--muted);font-size:8px;line-height:1.35}
+.season-choice-check-v137{
+  position:absolute;right:8px;top:8px;
+  width:18px;height:18px;border-radius:50%;
+  display:none;place-items:center;
+  background:var(--blue);color:#fff;font-size:9px;font-weight:900;
+}
+.season-choice-v137.active .season-choice-check-v137{display:grid}
+
+@media(max-width:390px){
+  .season-choice-grid-v137{grid-template-columns:1fr}
+  .season-choice-v137{min-height:62px}
+}
+@media(prefers-reduced-motion:reduce){
+  .season-fx,.winter-bulb-v137{animation:none!important}
+  .season-fx{display:none!important}
+}

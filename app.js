@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_6_UI_CLEAN_AUTUMN */
+/* CAMPUS_GITHUB_UI_V13_7_SEASONS_REBORN */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.6.0';
+const APP_VERSION = '13.7.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -12,19 +12,33 @@ const state = {
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
-  roomFilterMode:'all', remoteManifest:null, updateCheckTime:0
+  roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.6.0';
+const UPDATE_CENTER_VERSION = '13.7.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
 
 {
+  version:'13.7',
+  date:'9 октября 2026',
+  title:'Seasons Reborn',
+  latest:true,
+  items:[
+    'Вернулась приватная кнопка смены сезонов только для владельца.',
+    'Осень сохранена с понравившимися жёлто-коричневыми листьями.',
+    'Зима получила новую аккуратную гирлянду без отдельного тёмного баннера.',
+    'Весна и лето полностью переоформлены в лёгком стиле.',
+    'Сезоны автоматически меняются по времени года, а владелец может переключать их вручную.'
+  ]
+},
+
+{
   version:'13.6',
   date:'9 октября 2026',
   title:'UI Clean Autumn',
-  latest:true,
+  latest:false,
   items:[
     'Исправлена кнопка обновлений и проверка версии.',
     'Исправлена прокрутка экранов и более стабильная навигация.',
@@ -214,6 +228,232 @@ function initTheme(){
 }
 function toggleTheme(){ applyTheme(state.theme==='dark'?'light':'dark'); }
 
+
+const CAMPUS_SEASONS = {
+  auto:{label:'Авто',glyph:'✨'},
+  off:{label:'Выкл',glyph:'○'},
+  autumn:{label:'Осень',glyph:'🍂'},
+  winter:{label:'Зима',glyph:'❄️'},
+  spring:{label:'Весна',glyph:'🌸'},
+  summer:{label:'Лето',glyph:'☀️'}
+};
+
+function resolveAutoSeason(){
+  const m=new Date().getMonth()+1;
+  if(m===12 || m<=2)return 'winter';
+  if(m>=3 && m<=5)return 'spring';
+  if(m>=6 && m<=8)return 'summer';
+  return 'autumn';
+}
+
+function resolveSeasonMode(mode){
+  if(mode==='off')return 'none';
+  if(mode==='auto')return resolveAutoSeason();
+  return ['autumn','winter','spring','summer'].includes(mode)?mode:resolveAutoSeason();
+}
+
+function seasonLabel(){
+  const resolved=state.seasonResolved||resolveAutoSeason();
+  const base=CAMPUS_SEASONS[resolved]?.label||'Сезон';
+  return state.seasonMode==='auto' ? `${base} · Авто` : base;
+}
+
+function initSeasonTheme(){
+  let mode='auto';
+  if(state.user?.isOwner){
+    try{mode=localStorage.getItem('campus-owner-season')||'auto'}catch(e){}
+  }
+  setSeasonMode(mode,false,false);
+}
+
+function setSeasonMode(mode,persist=true,rerender=true){
+  const allowed=['auto','off','autumn','winter','spring','summer'];
+  if(!allowed.includes(mode))mode='auto';
+
+  if(!state.user?.isOwner && mode!=='auto')mode='auto';
+
+  state.seasonMode=mode;
+  state.seasonResolved=resolveSeasonMode(mode);
+
+  document.documentElement.dataset.season=state.seasonResolved;
+
+  if(persist && state.user?.isOwner){
+    try{localStorage.setItem('campus-owner-season',mode)}catch(e){}
+  }
+
+  renderSeasonLayer();
+  updateOwnerSeasonButton();
+
+  const badge=$('#ownerSeasonBadge');
+  if(badge)badge.textContent=seasonLabel();
+
+  $$('.season-choice-v137').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.mode===state.seasonMode);
+  });
+
+  if(rerender && state.currentPage==='home')renderHome();
+}
+
+function updateOwnerSeasonButton(){
+  const btn=$('#seasonBtn');
+  const glyph=$('#seasonBtnGlyph');
+  if(!btn)return;
+
+  if(state.user?.isOwner){
+    btn.classList.remove('hidden');
+    const key=state.seasonResolved==='none'?'off':state.seasonResolved;
+    if(glyph)glyph.textContent=CAMPUS_SEASONS[key]?.glyph||'🍂';
+  }else{
+    btn.classList.add('hidden');
+  }
+}
+
+function ensureSeasonLayer(){
+  let layer=$('#seasonLayer');
+  if(layer)return layer;
+
+  layer=document.createElement('div');
+  layer.id='seasonLayer';
+  layer.className='season-layer-v137';
+  layer.setAttribute('aria-hidden','true');
+  document.body.prepend(layer);
+  return layer;
+}
+
+function seasonParticleStyle(i,kind){
+  const x=((i*31+13)%94)+3;
+  const delay=-(i*1.37)%12;
+  const duration=(kind==='snow'?9:11)+(i%5)*1.15;
+  const size=(kind==='snow'?5:10)+(i%4)*2;
+  const drift=(i%2?1:-1)*(14+(i%5)*6);
+  return `--sx:${x};--sd:${delay}s;--sdu:${duration}s;--ss:${size}px;--sdrift:${drift}px`;
+}
+
+function autumnLeafSvg(i){
+  if(i%3===0){
+    return `<svg viewBox="0 0 36 36"><path class="season-leaf-fill" d="M31 5C19 5.5 9.2 10.4 6.1 19.2c-2.4 6.7 2.2 11.2 8.6 9.5C23.8 26.3 29.2 16.8 31 5Z"/><path class="season-leaf-vein" d="M8.7 26.5C15 20.5 20.3 15.4 28.8 8.1M14.2 21.2l-1.1-6.1M18.4 17.4l6.1.2"/></svg>`;
+  }
+  if(i%3===1){
+    return `<svg viewBox="0 0 36 36"><path class="season-leaf-fill" d="M18 3.5c1.6 4.1 3.5 6.2 7 8.7l-2.8 1.5c2.4 2.1 4.6 3.2 8.1 3.8l-3.7 2.4c1.2 2.4 2 4.7 2.1 8.2-4.4-.7-7.1-1.8-9.5-4.4l-1.2 8.7-1.2-8.7c-2.4 2.6-5.1 3.7-9.5 4.4.1-3.5.9-5.8 2.1-8.2l-3.7-2.4c3.5-.6 5.7-1.7 8.1-3.8L11 12.2c3.5-2.5 5.4-4.6 7-8.7Z"/><path class="season-leaf-vein" d="M18 7.6v21.9M18 18.3l-5.1-3.4M18 21.3l5.4-3.4"/></svg>`;
+  }
+  return `<svg viewBox="0 0 36 36"><path class="season-leaf-fill" d="M29.8 7.1C22 7 15 10.1 10.8 15.2c-4.5 5.4-3.2 11.4 2.2 13.8 5.8 2.5 12.9-.9 15.1-8.3 1.2-4.1 1.5-8.8 1.7-13.6Z"/><path class="season-leaf-vein" d="M10.7 27.6C16 22 21.1 16.9 28.1 9.3M16.3 21.9l-1-6M20.7 17.6l5.7.7"/></svg>`;
+}
+
+function renderSeasonLayer(){
+  const layer=ensureSeasonLayer();
+  const season=state.seasonResolved||'none';
+  layer.className=`season-layer-v137 season-${season}`;
+  layer.innerHTML='';
+
+  if(season==='none')return;
+
+  let reduce=false;
+  try{reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches}catch(e){}
+  if(reduce)return;
+
+  if(season==='autumn'){
+    for(let i=0;i<7;i++){
+      const p=document.createElement('span');
+      p.className=`season-fx season-leaf-v137 leaf-tone-${i%3}`;
+      p.style.cssText=seasonParticleStyle(i,'leaf');
+      p.innerHTML=autumnLeafSvg(i);
+      layer.appendChild(p);
+    }
+    return;
+  }
+
+  if(season==='winter'){
+    for(let i=0;i<18;i++){
+      const p=document.createElement('span');
+      p.className=`season-fx season-snow-v137 snow-type-${i%3}`;
+      p.style.cssText=seasonParticleStyle(i,'snow');
+      p.textContent=i%3===0?'✦':'•';
+      layer.appendChild(p);
+    }
+    return;
+  }
+
+  if(season==='spring'){
+    for(let i=0;i<9;i++){
+      const p=document.createElement('span');
+      p.className=`season-fx season-petal-v137 petal-tone-${i%3}`;
+      p.style.cssText=seasonParticleStyle(i,'petal');
+      layer.appendChild(p);
+    }
+    return;
+  }
+
+  if(season==='summer'){
+    const glow=document.createElement('span');
+    glow.className='summer-glow-v137';
+    layer.appendChild(glow);
+    for(let i=0;i<7;i++){
+      const p=document.createElement('span');
+      p.className='season-fx season-mote-v137';
+      p.style.cssText=seasonParticleStyle(i,'mote');
+      layer.appendChild(p);
+    }
+  }
+}
+
+function winterGarlandBulbs(){
+  const bulbs=[
+    ['5%','16px','#ff625f'],['13%','29px','#ffd34e'],['21%','19px','#55c7ff'],
+    ['29%','31px','#5ed99c'],['37%','18px','#e986ff'],['45%','33px','#ff9f55'],
+    ['54%','18px','#ffd34e'],['63%','31px','#55c7ff'],['72%','19px','#5ed99c'],
+    ['81%','30px','#ff625f'],['89%','18px','#e986ff'],['96%','27px','#ff9f55']
+  ];
+  return bulbs.map(([x,y,c],i)=>`<span class="winter-bulb-v137" style="--bx:${x};--by:${y};--bc:${c};--bd:${i*.11}s"></span>`).join('');
+}
+
+function winterGarlandHtml(){
+  if(state.seasonResolved!=='winter')return '';
+  return `<div class="winter-garland-v137" aria-hidden="true">
+    <svg class="winter-wire-v137" viewBox="0 0 1000 90" preserveAspectRatio="none">
+      <path d="M-30 5 C220 72 390 58 520 40 C690 16 810 73 1030 9"/>
+    </svg>
+    <div class="winter-bulbs-v137">${winterGarlandBulbs()}</div>
+  </div>`;
+}
+
+function openOwnerSeasonSettings(){
+  if(!state.user?.isOwner)return toast('Эта кнопка доступна только владельцу');
+
+  showModal(`
+    <div class="sheet-handle"></div>
+    <div class="season-owner-head">
+      <span class="season-owner-badge">Только владелец</span>
+      <h3>Смена сезона</h3>
+      <p>Переключение сохраняется только на твоём устройстве. У остальных пользователей работает автоматический сезон.</p>
+    </div>
+
+    <div class="season-owner-current">
+      <span>Сейчас</span>
+      <b id="ownerSeasonBadge">${esc(seasonLabel())}</b>
+    </div>
+
+    <div class="season-choice-grid-v137">
+      ${ownerSeasonChoice('auto','✨','Авто','По времени года')}
+      ${ownerSeasonChoice('autumn','🍂','Осень','Жёлтые и коричневые листья')}
+      ${ownerSeasonChoice('winter','❄️','Зима','Снег и новая гирлянда')}
+      ${ownerSeasonChoice('spring','🌸','Весна','Лёгкие лепестки')}
+      ${ownerSeasonChoice('summer','☀️','Лето','Солнечное свечение')}
+      ${ownerSeasonChoice('off','○','Выкл','Без сезонных эффектов')}
+    </div>
+
+    <button class="btn btn-secondary btn-wide" type="button" onclick="closeModal()">Готово</button>
+  `);
+}
+
+function ownerSeasonChoice(mode,glyph,title,sub){
+  return `<button class="season-choice-v137 ${state.seasonMode===mode?'active':''}" data-mode="${mode}" type="button" onclick="setSeasonMode('${mode}')">
+    <span class="season-choice-glyph">${glyph}</span>
+    <span class="season-choice-copy"><b>${esc(title)}</b><small>${esc(sub)}</small></span>
+    <span class="season-choice-check-v137">✓</span>
+  </button>`;
+}
+
+
 async function apiRequest(method,args=[],options={}){
   const readOnly = !/^app(Add|Update|Move|Evict)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
@@ -272,7 +512,7 @@ async function boot(){
     restoreAIChat();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
-    injectIcons(); applyTheme(state.theme,false); updateUpdatesBadge(); render('home');
+    injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
     idle(()=>{prefetchCore();checkRemoteUpdate(true);});
   }catch(e){
@@ -331,6 +571,7 @@ function renderHome(){
   const occupancy=d.totalRooms ? Math.round((d.occupiedRooms||0)/d.totalRooms*100) : 0;
   $('#view').innerHTML=`
     <section class="hero-panel fade-in">
+      ${winterGarlandHtml()}
       <div class="hero-copy">
         <small>Добро пожаловать,</small>
         <h1>${esc(state.user?.firstName || 'Пользователь')}</h1>
@@ -670,7 +911,38 @@ function renderAnalytics(){
 }
 
 function renderMore(){
-  $('#view').innerHTML=`${pageHead('Ещё','home')}<div class="more-grid">${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}${moreCard('council','Студсовет','Состав и сектора',"render('council')")}${moreCard('users','Активисты','Список активистов',"render('activists')")}${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}${moreCard('clipboard','Журнал','История действий',"render('journal')")}${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}</div><div class="section-heading"><h2>Настройки</h2></div><div class="settings-card"><div class="setting-row"><div class="setting-copy"><b>Тёмная тема</b><small>Сохраняется на этом устройстве</small></div><button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button></div><button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()"><div class="setting-copy"><b>Обновления системы</b><small>GitHub Cloud Update · проверка без компьютера</small></div><span class="badge blue">v${APP_VERSION}</span></button></div>`;
+  const seasonOwnerRow=state.user?.isOwner
+    ? `<button class="setting-row setting-row-button owner-season-setting-row" type="button" onclick="openOwnerSeasonSettings()">
+         <div class="setting-copy">
+           <b>Смена сезона</b>
+           <small>Только для владельца · ${esc(seasonLabel())}</small>
+         </div>
+         <span class="season-settings-glyph">${CAMPUS_SEASONS[state.seasonResolved==='none'?'off':state.seasonResolved]?.glyph||'🍂'}</span>
+       </button>`
+    : '';
+
+  $('#view').innerHTML=`${pageHead('Ещё','home')}
+    <div class="more-grid">
+      ${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}
+      ${moreCard('council','Студсовет','Состав и сектора',"render('council')")}
+      ${moreCard('users','Активисты','Список активистов',"render('activists')")}
+      ${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}
+      ${moreCard('clipboard','Журнал','История действий',"render('journal')")}
+      ${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}
+      ${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}
+    </div>
+    <div class="section-heading"><h2>Настройки</h2></div>
+    <div class="settings-card">
+      <div class="setting-row">
+        <div class="setting-copy"><b>Тёмная тема</b><small>Сохраняется на этом устройстве</small></div>
+        <button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button>
+      </div>
+      ${seasonOwnerRow}
+      <button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()">
+        <div class="setting-copy"><b>Обновления системы</b><small>GitHub Cloud Update · проверка без компьютера</small></div>
+        <span class="badge blue">v${APP_VERSION}</span>
+      </button>
+    </div>`;
 }
 function moreCard(iconName,title,sub,onclick){ return `<button class="more-item" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(sub)}</small></button>`; }
 
@@ -1021,6 +1293,7 @@ function bindGlobalEvents(){
     render(page);
   }));
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
+  $('#seasonBtn')?.addEventListener('click',()=>{haptic('light');openOwnerSeasonSettings()});
   $('#updatesBtn')?.addEventListener('click',showWhatsNew);
   $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
