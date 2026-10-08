@@ -1147,3 +1147,248 @@ html[data-theme="dark"] .ai-v11-compose{box-shadow:0 12px 36px rgba(0,0,0,.28)}
   .student-filter-row{grid-template-columns:1fr}
   .student-row-end .badge{font-size:8px}
 }
+
+/* ===== Campus UI V13.6 / Personalization ===== */
+html[data-season="autumn"] body{
+  background:
+    radial-gradient(circle at 12% 0%,rgba(210,132,54,.055),transparent 34%),
+    var(--bg);
+}
+html[data-season="winter"] body{
+  background:
+    radial-gradient(circle at 90% 2%,rgba(92,161,255,.065),transparent 32%),
+    var(--bg);
+}
+html[data-season="spring"] body{
+  background:
+    radial-gradient(circle at 10% 0%,rgba(238,126,174,.055),transparent 34%),
+    var(--bg);
+}
+html[data-season="summer"] body{
+  background:
+    radial-gradient(circle at 88% 0%,rgba(255,190,65,.07),transparent 34%),
+    var(--bg);
+}
+
+.season-layer{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+  contain:layout paint;
+}
+.app,.bottom-nav,.modal,.toast,.splash{position:relative;z-index:2}
+.topbar{z-index:30}
+.bottom-nav{z-index:40}
+.modal{z-index:100}
+.toast{z-index:120}
+
+.season-particle{
+  position:absolute;
+  top:-34px;
+  left:calc(var(--x) * 1%);
+  width:var(--size);
+  height:var(--size);
+  opacity:.52;
+  animation:seasonFall var(--dur) linear infinite;
+  animation-delay:var(--delay);
+  will-change:transform;
+}
+.season-leaf{
+  width:calc(var(--size) * 1.2);
+  height:var(--size);
+  border-radius:80% 15% 80% 15%;
+  background:#c67b32;
+  box-shadow:inset -2px -1px 0 rgba(105,61,20,.15);
+}
+.season-leaf:nth-child(3n){background:#d79a3d}
+.season-leaf:nth-child(3n+1){background:#aa6231}
+.season-leaf:nth-child(4n){opacity:.34}
+.season-snow{
+  border-radius:50%;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 0 8px rgba(188,220,255,.44);
+  opacity:.76;
+}
+[data-theme="light"] .season-snow{
+  background:rgba(133,183,236,.72);
+  box-shadow:none;
+}
+.season-petal{
+  width:calc(var(--size) * 1.25);
+  height:var(--size);
+  border-radius:75% 25% 70% 30%;
+  background:rgba(237,144,181,.62);
+  transform:rotate(28deg);
+}
+.season-petal:nth-child(2n){background:rgba(247,185,207,.66)}
+.season-spark{
+  width:5px;height:5px;
+  border-radius:50%;
+  background:rgba(255,189,59,.66);
+  box-shadow:0 0 14px rgba(255,189,59,.46);
+  animation:seasonFloat var(--dur) ease-in-out infinite alternate;
+}
+.summer-glow{
+  position:absolute;
+  top:-110px;
+  right:-90px;
+  width:270px;
+  height:270px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,195,69,.10),rgba(255,195,69,0) 68%);
+}
+.winter-lights{
+  position:absolute;
+  top:4px;
+  left:3%;
+  right:3%;
+  height:22px;
+  display:flex;
+  justify-content:space-around;
+  align-items:flex-start;
+  opacity:.65;
+}
+.winter-lights:before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:1px;
+  height:1px;
+  background:color-mix(in srgb,var(--muted) 35%,transparent);
+}
+.winter-lights span{
+  position:relative;
+  width:7px;height:9px;
+  border-radius:50% 50% 55% 55%;
+  background:hsl(calc(var(--i) * 43deg),78%,62%);
+  box-shadow:0 0 8px currentColor;
+  animation:winterTwinkle 1.8s ease-in-out infinite alternate;
+  animation-delay:calc(var(--i) * -.13s);
+}
+.winter-lights span:before{
+  content:"";
+  position:absolute;
+  left:2px;right:2px;top:-4px;
+  height:4px;
+  border-radius:2px 2px 0 0;
+  background:color-mix(in srgb,var(--muted) 55%,transparent);
+}
+
+@keyframes seasonFall{
+  0%{transform:translate3d(0,-25px,0) rotate(0deg)}
+  50%{transform:translate3d(var(--drift),52vh,0) rotate(180deg)}
+  100%{transform:translate3d(calc(var(--drift) * -0.35),108vh,0) rotate(365deg)}
+}
+@keyframes seasonFloat{
+  from{transform:translate3d(-8px,8vh,0);opacity:.25}
+  to{transform:translate3d(12px,88vh,0);opacity:.72}
+}
+@keyframes winterTwinkle{
+  from{opacity:.36;transform:scale(.88)}
+  to{opacity:.92;transform:scale(1.05)}
+}
+
+.season-settings-head small{
+  color:var(--blue);
+  font-size:8.5px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-weight:850;
+}
+.season-settings-head h3{margin:3px 0 5px}
+.season-settings-head p{
+  margin:0 0 13px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+.season-choice-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-bottom:11px;
+}
+.season-choice{
+  position:relative;
+  min-height:78px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--surface-2);
+  color:var(--text);
+  padding:10px;
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  text-align:left;
+}
+.season-choice.active{
+  border-color:color-mix(in srgb,var(--blue) 34%,var(--border));
+  background:linear-gradient(145deg,color-mix(in srgb,var(--blue-soft) 60%,var(--surface)),var(--surface));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 7%,transparent);
+}
+.season-choice-icon{
+  width:30px;height:30px;
+  flex:0 0 auto;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  background:var(--blue-soft);
+  color:var(--blue);
+}
+.season-choice-icon svg{
+  width:15px;height:15px;
+  stroke:currentColor;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round
+}
+.season-choice>span:nth-child(2){
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.season-choice b{font-size:10px}
+.season-choice small{
+  margin-top:3px;
+  color:var(--muted);
+  font-size:8px;
+  line-height:1.35;
+}
+.season-choice-check{
+  position:absolute;
+  top:7px;right:8px;
+  width:18px;height:18px;
+  border-radius:50%;
+  display:none;
+  place-items:center;
+  background:var(--blue);
+  color:#fff;
+  font-size:9px;
+  font-weight:900;
+}
+.season-choice.active .season-choice-check{display:grid}
+.season-settings-note{
+  margin:0 0 12px;
+  padding:9px 10px;
+  border-radius:13px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-size:8.5px;
+  line-height:1.45;
+}
+
+.faculty-group-note{
+  color:var(--muted);
+  font-size:8px;
+  margin:5px 2px 0;
+}
+
+@media(max-width:380px){
+  .season-choice-grid{grid-template-columns:1fr}
+  .season-choice{min-height:64px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .season-layer .season-particle,
+  .winter-lights span{display:none!important}
+}
