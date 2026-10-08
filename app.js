@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_2_AI_DEV */
+/* CAMPUS_GITHUB_UI_V13_3_ROOMS_PLUS */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.2.0';
+const APP_VERSION = '13.3.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -11,16 +11,29 @@ const state = {
   currentPage:'home', renderSeq:0, roomData:null, roomDataTime:0,
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
-  aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0
+  aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
+  roomFilterMode:'all'
 };
 
-const UPDATE_CENTER_VERSION = '13.2.0';
+const UPDATE_CENTER_VERSION = '13.3.0';
 const CAMPUS_UPDATES = [
+  {
+    version:'13.3',
+    date:'9 октября 2026',
+    title:'Rooms+',
+    latest:true,
+    items:[
+      'Раздел комнат получил компактную сводку по заселению.',
+      'Добавлены фильтры: все, свободные, занятые и комнаты с 3+ проживающими.',
+      'Недавно открытые комнаты теперь доступны в один тап.',
+      'Карточки комнат стали информативнее и быстрее фильтруются без запросов к серверу.'
+    ]
+  },
   {
     version:'13.2',
     date:'9 октября 2026',
     title:'Campus AI — режим разработки',
-    latest:true,
+    latest:false,
     items:[
       'Campus AI временно отключён от рабочего интерфейса.',
       'Вкладка ИИ сохранена и теперь показывает статус «В разработке».',
@@ -428,34 +441,188 @@ async function openStudent(row){
   }catch(e){toast(e.message)}
 }
 
+
+function getRecentRooms(){
+  try{
+    const arr=JSON.parse(localStorage.getItem('campus-recent-rooms')||'[]');
+    return Array.isArray(arr)?arr.slice(0,6):[];
+  }catch(e){return []}
+}
+function rememberRoom(room){
+  try{
+    const value=String(room);
+    const arr=[value,...getRecentRooms().filter(x=>String(x)!==value)].slice(0,6);
+    localStorage.setItem('campus-recent-rooms',JSON.stringify(arr));
+  }catch(e){}
+}
+function roomStats(list){
+  const rows=list||[];
+  const total=rows.length;
+  const occupied=rows.filter(r=>Number(r.occupants||0)>0).length;
+  const free=total-occupied;
+  const crowded=rows.filter(r=>Number(r.occupants||0)>=3).length;
+  return {total,occupied,free,crowded};
+}
+function renderRoomSummary(list){
+  const el=$('#roomSummary'); if(!el)return;
+  const s=roomStats(list);
+  el.innerHTML=`
+    <div class="room-summary-item"><b>${s.total}</b><span>Всего</span></div>
+    <div class="room-summary-item free"><b>${s.free}</b><span>Свободно</span></div>
+    <div class="room-summary-item busy"><b>${s.occupied}</b><span>Занято</span></div>
+    <div class="room-summary-item crowded"><b>${s.crowded}</b><span>3+ чел.</span></div>`;
+}
+function renderRecentRooms(){
+  const wrap=$('#recentRoomsWrap');
+  const el=$('#recentRooms');
+  if(!wrap||!el)return;
+  const recent=getRecentRooms().filter(r=>(state.rooms||[]).map(String).includes(String(r)));
+  wrap.classList.toggle('hidden',!recent.length);
+  el.innerHTML=recent.map(r=>`<button type="button" class="recent-room-chip" onclick="openRoom('${esc(r)}')">№${esc(r)}</button>`).join('');
+}
+function setRoomFilter(mode){
+  state.roomFilterMode=mode||'all';
+  $$('.room-filter-chip').forEach(b=>b.classList.toggle('active',b.dataset.filter===state.roomFilterMode));
+  filterRooms();
+}
+function filteredRooms(){
+  const q=$('#roomFilter')?.value.trim()||'';
+  const mode=state.roomFilterMode||'all';
+  return (state.roomData||[]).filter(r=>{
+    const n=Number(r.occupants||0);
+    const textOk=!q||String(r.room).includes(q);
+    if(!textOk)return false;
+    if(mode==='free')return n===0;
+    if(mode==='busy')return n>0;
+    if(mode==='crowded')return n>=3;
+    return true;
+  });
+}
+
 async function renderRooms(seq=state.renderSeq){
-  $('#view').innerHTML=`${pageHead('Комнаты','home')}<div class="global-search"><span class="mini-icon">${icon('search')}</span><input id="roomFilter" autocomplete="off" placeholder="Номер комнаты" oninput="filterRooms()"></div><div class="page-sub" style="margin:10px 2px 14px">13, 14, 23, 30–117, 119–125, 128–162</div><div id="roomsGrid" class="rooms-grid">${roomSkeletons()}</div>`;
+  $('#view').innerHTML=`${pageHead('Комнаты','home')}
+    <div id="roomSummary" class="room-summary">
+      <div class="room-summary-item skeleton-card"></div>
+      <div class="room-summary-item skeleton-card"></div>
+      <div class="room-summary-item skeleton-card"></div>
+      <div class="room-summary-item skeleton-card"></div>
+    </div>
+
+    <div class="room-toolbar">
+      <div class="global-search room-search">
+        <span class="mini-icon">${icon('search')}</span>
+        <input id="roomFilter" autocomplete="off" inputmode="numeric" placeholder="Номер комнаты" oninput="filterRooms()">
+        <span id="roomResultCount" class="room-result-count"></span>
+      </div>
+
+      <div class="room-filter-row">
+        <button class="room-filter-chip ${state.roomFilterMode==='all'?'active':''}" data-filter="all" onclick="setRoomFilter('all')">Все</button>
+        <button class="room-filter-chip ${state.roomFilterMode==='free'?'active':''}" data-filter="free" onclick="setRoomFilter('free')">Свободные</button>
+        <button class="room-filter-chip ${state.roomFilterMode==='busy'?'active':''}" data-filter="busy" onclick="setRoomFilter('busy')">Занятые</button>
+        <button class="room-filter-chip ${state.roomFilterMode==='crowded'?'active':''}" data-filter="crowded" onclick="setRoomFilter('crowded')">3+ чел.</button>
+      </div>
+    </div>
+
+    <div id="recentRoomsWrap" class="recent-rooms-wrap hidden">
+      <div class="recent-rooms-title">Недавно открывали</div>
+      <div id="recentRooms" class="recent-rooms"></div>
+    </div>
+
+    <div class="room-range-note">Комнаты Campus №1: 13, 14, 23, 30–117, 119–125, 128–162</div>
+    <div id="roomsGrid" class="rooms-grid">${roomSkeletons()}</div>`;
+
   if(state.roomData){
-    drawRooms(state.roomData);
+    renderRoomSummary(state.roomData);
+    renderRecentRooms();
+    drawRooms(filteredRooms());
     if(!coreIsFresh(state.roomDataTime,60000)) refreshRooms(seq,true);
     return;
   }
+
   const list=await apiRequest('appGetRooms',[state.initData],{ttl:60000});
   if(!pageAlive('rooms',seq))return;
-  state.roomData=list; state.roomDataTime=Date.now(); drawRooms(list);
+  state.roomData=list;
+  state.roomDataTime=Date.now();
+  renderRoomSummary(list);
+  renderRecentRooms();
+  drawRooms(filteredRooms());
 }
-function roomSkeletons(){return Array.from({length:12},()=>'<div class="room-card"><div class="skeleton" style="height:22px;width:42%;margin:8px auto"></div><div class="skeleton" style="height:10px;width:65%;margin:10px auto"></div></div>').join('')}
+function roomSkeletons(){
+  return Array.from({length:12},()=>'<div class="room-card"><div class="skeleton" style="height:22px;width:42%;margin:8px auto"></div><div class="skeleton" style="height:10px;width:65%;margin:10px auto"></div></div>').join('')
+}
 async function refreshRooms(seq,silent){
   try{
     const list=await apiRequest('appGetRooms',[state.initData],{ttl:0,force:true});
-    state.roomData=list; state.roomDataTime=Date.now();
-    if(pageAlive('rooms',seq))drawRooms(list);
+    state.roomData=list;
+    state.roomDataTime=Date.now();
+    if(pageAlive('rooms',seq)){
+      renderRoomSummary(list);
+      renderRecentRooms();
+      drawRooms(filteredRooms());
+    }
   }catch(e){if(!silent)toast(e.message)}
 }
-function drawRooms(list){ const el=$('#roomsGrid'); if(!el)return; el.innerHTML=(list||[]).map(r=>`<button class="room-card ${r.occupants?'busy':'empty'}" type="button" onclick="openRoom('${esc(r.room)}')"><span class="room-dot"></span><b>${esc(r.room)}</b><small>${r.occupants?formatCount(r.occupants,'проживает','проживают','проживают'):'Свободна'}</small></button>`).join(''); }
-function filterRooms(){ const q=$('#roomFilter')?.value.trim()||''; drawRooms((state.roomData||[]).filter(r=>!q||String(r.room).includes(q))); }
+function drawRooms(list){
+  const el=$('#roomsGrid'); if(!el)return;
+  const rows=list||[];
+  const count=$('#roomResultCount');
+  if(count)count.textContent=rows.length?String(rows.length):'0';
+
+  if(!rows.length){
+    el.innerHTML='<div class="empty rooms-empty">Комнаты по этому фильтру не найдены</div>';
+    return;
+  }
+
+  el.innerHTML=rows.map(r=>{
+    const n=Number(r.occupants||0);
+    const cls=n===0?'empty':(n>=3?'crowded':'busy');
+    const label=n===0?'Свободна':formatCount(n,'проживает','проживают','проживают');
+    return `<button class="room-card ${cls}" type="button" onclick="openRoom('${esc(r.room)}')">
+      <span class="room-dot"></span>
+      ${n>0?`<span class="room-count-badge">${n}</span>`:''}
+      <b>${esc(r.room)}</b>
+      <small>${label}</small>
+    </button>`;
+  }).join('');
+}
+function filterRooms(){
+  drawRooms(filteredRooms());
+}
 async function openRoom(room){
   try{
+    rememberRoom(room);
+    renderRecentRooms();
+
     let occupants=null;
     const active=state.studentLists.active;
     if(active) occupants=active.filter(s=>String(s.room)===String(room));
-    if(!occupants){ occupants=(await apiRequest('appGetRoom',[state.initData,room],{ttl:15000})).occupants||[]; indexStudents(occupants); }
-    showModal(`<div class="sheet-handle"></div><h3>Комната №${esc(room)}</h3><div style="color:var(--muted);font-size:12px;margin-bottom:12px">${formatCount(occupants.length,'проживающий','проживающих','проживающих')}</div><div class="list">${occupants.length?occupants.map(s=>`<button class="row-card clickable" onclick="openStudent(${s.rowNumber})"><span class="avatar">${esc(initials(s.fio))}</span><span class="row-main"><b>${esc(s.fio)}</b><small>${esc(s.faculty||'')}</small></span></button>`).join(''):'<div class="empty">Комната свободна</div>'}</div>${canManage()?`<button class="btn btn-primary btn-wide" onclick="closeModal();openAddStudent('${esc(room)}')">Заселить в комнату</button>`:''}<button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+    if(!occupants){
+      occupants=(await apiRequest('appGetRoom',[state.initData,room],{ttl:15000})).occupants||[];
+      indexStudents(occupants);
+    }
+
+    const status=occupants.length
+      ? `<span class="room-detail-status occupied">${formatCount(occupants.length,'проживающий','проживающих','проживающих')}</span>`
+      : `<span class="room-detail-status free">Свободна</span>`;
+
+    showModal(`<div class="sheet-handle"></div>
+      <div class="room-detail-head">
+        <div><small>Campus №1</small><h3>Комната №${esc(room)}</h3></div>
+        ${status}
+      </div>
+
+      <div class="room-detail-list list">
+        ${occupants.length
+          ? occupants.map(s=>`<button class="row-card clickable" onclick="openStudent(${s.rowNumber})">
+              <span class="avatar">${esc(initials(s.fio))}</span>
+              <span class="row-main"><b>${esc(s.fio)}</b><small>${esc(s.faculty||'Факультет не указан')}</small></span>
+              <span class="mini-chevron">${icon('chevron')}</span>
+            </button>`).join('')
+          : `<div class="room-free-state"><span>${icon('door')}</span><b>Комната свободна</b><small>Сейчас здесь никто не проживает</small></div>`}
+      </div>
+
+      ${canManage()?`<button class="btn btn-primary btn-wide" onclick="closeModal();openAddStudent('${esc(room)}')">Заселить в комнату №${esc(room)}</button>`:''}
+      <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
   }catch(e){toast(e.message)}
 }
 
