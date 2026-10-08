@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V14_AI_ACTIONS */
+/* CAMPUS_GITHUB_UI_V13_2_AI_DEV */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.0.0';
+const APP_VERSION = '13.2.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -14,18 +14,17 @@ const state = {
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0
 };
 
-const UPDATE_CENTER_VERSION = '14.0.0';
+const UPDATE_CENTER_VERSION = '13.2.0';
 const CAMPUS_UPDATES = [
   {
-    version:'14.0',
+    version:'13.2',
     date:'9 октября 2026',
-    title:'Campus AI Actions',
+    title:'Campus AI — режим разработки',
     latest:true,
     items:[
-      'Campus AI умеет подготавливать переселение и выселение по обычной фразе.',
-      'Любое изменение базы показывается карточкой-предпросмотром и требует подтверждения.',
-      'Перед выполнением сервер повторно проверяет студента и текущую комнату.',
-      'ИИ не получает прямой доступ к таблице и не может изменить данные без подтверждения пользователя.'
+      'Campus AI временно отключён от рабочего интерфейса.',
+      'Вкладка ИИ сохранена и теперь показывает статус «В разработке».',
+      'Остальные разделы Campus №1 продолжают работать без изменений.'
     ]
   },
   {
@@ -175,7 +174,7 @@ function initTheme(){
 function toggleTheme(){ applyTheme(state.theme==='dark'?'light':'dark'); }
 
 async function apiRequest(method,args=[],options={}){
-  const readOnly = !/^app(Add|Update|Move|Evict|ExecuteAIAction|SetAIConfig|ClearAIConfig)/.test(method);
+  const readOnly = !/^app(Add|Update|Move|Evict)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
   const key = method+'|'+JSON.stringify(args);
   const now=Date.now();
@@ -325,7 +324,7 @@ function renderHome(){
 
     <button class="ai-promo" type="button" onclick="render('ai')">
       <span class="action-icon">${icon('spark')}</span>
-      <span class="ai-promo-copy"><b>Campus AI</b><small>Поиск по базе, анализ и подготовка текстов</small></span>
+      <span class="ai-promo-copy"><b>Campus AI</b><small>В разработке · скоро вернётся</small></span>
       <span class="arrow">›</span>
     </button>`;
 }
@@ -485,69 +484,32 @@ async function renderCouncil(kind,seq){
 }
 
 function renderAI(){
-  if(!state.aiMessages.length){
-    state.aiMessages=[{
-      role:'bot',
-      text:'Привет. Я Campus AI. Могу проверять студентов и комнаты, показывать статистику, а теперь ещё подготавливать переселение и выселение с обязательным подтверждением.',
-      source:'campus'
-    }];
-  }
-
-  const st=state.aiStatus;
-  const configured=!!st?.configured;
-  const statusText=st ? (configured ? (st.model || 'OpenAI') : 'Локальный режим') : 'Проверяем…';
-  const statusClass=st ? (configured?'online':'local') : 'checking';
-
   $('#view').innerHTML=`${pageHead('Campus AI','home')}
-    <div class="ai-v11-shell">
-      <div class="ai-v11-top">
-        <div class="ai-v11-identity">
-          <span class="ai-v11-orb">${icon('spark')}</span>
-          <span class="ai-v11-title"><b>Campus AI</b><small>Помощник по Campus №1</small></span>
-        </div>
-        <div class="ai-v11-tools">
-          <span id="aiModeBadge" class="ai-mode ${statusClass}">${esc(statusText)}</span>
-          ${state.user?.isOwner?`<button class="ai-config" type="button" onclick="openAISetup()">Настроить</button>`:''}
-          <button class="ai-clear" type="button" onclick="confirmClearAI()">Очистить</button>
-        </div>
+    <div class="ai-dev-shell">
+      <div class="ai-dev-visual">
+        <span class="ai-dev-orb">${icon('spark')}</span>
+        <span class="ai-dev-badge">В разработке</span>
       </div>
 
-      <div class="ai-safety-note">
-        <span class="ai-safety-dot"></span>
-        <span>Изменения базы выполняются только после вашего подтверждения. ИИН и паспорт модели не передаются.</span>
+      <div class="ai-dev-copy">
+        <h2>Campus AI пока готовится</h2>
+        <p>ИИ временно отключён от рабочего интерфейса. Сейчас приоритет — скорость, стабильность и основные функции Campus №1.</p>
       </div>
 
-      <div class="ai-suggestions">
-        <button type="button" onclick="askQuick('Кто проживает в комнате 145?')"><b>Комната</b><small>Кто живёт в 145?</small></button>
-        <button type="button" onclick="askQuick('Какие комнаты сейчас свободны?')"><b>Свободные</b><small>Показать список</small></button>
-        <button type="button" onclick="askQuick('Кратко проанализируй текущее заселение Campus №1')"><b>Анализ</b><small>Что происходит сейчас</small></button>
-        <button type="button" onclick="askQuick('Составь аккуратное объявление студентам о ремонтных работах на русском и казахском')"><b>Текст</b><small>Составить объявление</small></button>
+      <div class="ai-dev-progress">
+        <div class="ai-dev-progress-head"><span>Статус разработки</span><b>В процессе</b></div>
+        <div class="ai-dev-progress-bar"><span></span></div>
       </div>
 
-      <div id="chat" class="ai-v11-chat">${state.aiMessages.length
-        ? state.aiMessages.map((m,i)=>renderBubble(m,i)).join('')
-        : `<div class="ai-empty"><span class="ai-empty-icon">${icon('spark')}</span><b>Чем помочь?</b><p>Спросите про студента, комнату, свободные места или попросите подготовить текст.</p></div>`}</div>
-    </div>
-
-    <div class="ai-v11-compose-wrap">
-      <div class="ai-v11-compose">
-        <textarea id="aiInput" rows="1" maxlength="4000" placeholder="Спросите Campus AI…" oninput="autoGrow(this)" onkeydown="aiKeydown(event)"></textarea>
-        <button id="aiSendBtn" class="ai-v11-send" type="button" onclick="sendAI()" ${state.aiBusy?'disabled':''}>${state.aiBusy?'<span class="send-spinner"></span>':'↑'}</button>
+      <div class="ai-dev-list">
+        <div><span class="ai-dev-check">${icon('check')}</span><span><b>Интерфейс</b><small>Экран и базовый UX подготовлены</small></span></div>
+        <div><span class="ai-dev-check">${icon('check')}</span><span><b>Безопасность</b><small>ИИ не имеет прямого доступа к базе</small></span></div>
+        <div><span class="ai-dev-wait">${icon('clock')}</span><span><b>Умные действия</b><small>Будут добавлены позже после тестирования</small></span></div>
       </div>
-      <div class="ai-v11-compose-meta"><span>Enter — отправить · Shift+Enter — новая строка</span><span id="aiCounter">0 / 4000</span></div>
+
+      <button class="btn btn-secondary btn-wide" type="button" onclick="render('home')">Вернуться на главную</button>
     </div>`;
-
-  const input=$('#aiInput');
-  if(input){
-    input.value=state.aiDraft||'';
-    autoGrow(input);
-    const counter=()=>{state.aiDraft=input.value;const c=$('#aiCounter');if(c)c.textContent=`${input.value.length} / 4000`;};
-    input.addEventListener('input',counter); counter();
-  }
-  loadAIStatus();
-  setTimeout(()=>scrollChat(false),0);
 }
-
 async function loadAIStatus(force=false){
   if(state.aiStatus && !force){ updateAIStatusBadge(); return state.aiStatus; }
   try{
@@ -629,103 +591,12 @@ function renderBubble(m,index){
     ${isUser?'':`<div class="ai-avatar">${icon('spark')}</div>`}
     <div class="ai-message-body">
       <div class="ai-bubble">${esc(m.text)}</div>
-      ${!isUser && m.action ? renderAIActionCard(m.action,index) : ''}
       <div class="ai-message-meta">
         ${source?`<span>${esc(source)}</span>`:'<span></span>'}
         ${isUser?'':`<button type="button" onclick="copyAIMessage(${index})">Копировать</button>`}
       </div>
     </div>
   </div>`;
-}
-
-function renderAIActionCard(action,index){
-  if(!action)return '';
-  const status=action.status||'pending';
-  const isMove=action.type==='move';
-  const done=status==='done';
-  const cancelled=status==='cancelled';
-  const title=isMove?'Переселение':'Выселение';
-  const detail=isMove
-    ? `<div class="ai-action-route"><b>${esc(action.fromRoom||'—')}</b><span>→</span><b>${esc(action.toRoom||'—')}</b></div>`
-    : `<div class="ai-action-route"><b>Комната ${esc(action.fromRoom||'—')}</b></div>`;
-
-  return `<div class="ai-action-card ${action.type==='evict'?'danger':''} ${done?'done':''} ${cancelled?'cancelled':''}">
-    <div class="ai-action-head">
-      <span class="ai-action-icon">${icon(isMove?'swap':'logout')}</span>
-      <span><small>Действие с базой</small><b>${title}</b></span>
-      ${done?'<span class="ai-action-state success">Выполнено</span>':cancelled?'<span class="ai-action-state">Отменено</span>':'<span class="ai-action-state pending">Ожидает</span>'}
-    </div>
-    <div class="ai-action-person">${esc(action.student||'Студент')}</div>
-    ${detail}
-    ${action.faculty?`<div class="ai-action-sub">${esc(action.faculty)}</div>`:''}
-    ${status==='pending'
-      ? `<div class="ai-action-warning">Campus AI только подготовил действие. Таблица ещё не изменена.</div>
-         <div class="ai-action-buttons">
-           <button type="button" class="btn btn-secondary" onclick="cancelAIAction(${index})">Отмена</button>
-           <button type="button" class="btn ${action.type==='evict'?'btn-danger':'btn-primary'}" onclick="confirmAIAction(${index})">Подтвердить</button>
-         </div>`
-      : ''}
-  </div>`;
-}
-
-function cancelAIAction(index){
-  const msg=state.aiMessages[index];
-  if(!msg?.action || msg.action.status!=='pending')return;
-  msg.action.status='cancelled';
-  haptic('light');
-  if(state.currentPage==='ai')renderAI();
-}
-
-function confirmAIAction(index){
-  const action=state.aiMessages[index]?.action;
-  if(!action || action.status!=='pending')return;
-  const isMove=action.type==='move';
-
-  showModal(`<div class="sheet-handle"></div>
-    <h3>${isMove?'Подтвердить переселение?':'Подтвердить выселение?'}</h3>
-    <div class="ai-confirm-summary">
-      <b>${esc(action.student||'Студент')}</b>
-      ${isMove
-        ? `<span>Комната ${esc(action.fromRoom||'—')} → ${esc(action.toRoom||'—')}</span>`
-        : `<span>Текущая комната: ${esc(action.fromRoom||'—')}</span>`}
-    </div>
-    <p class="ai-confirm-note">Сервер ещё раз проверит текущую запись перед изменением. Действие попадёт в журнал.</p>
-    <button class="btn ${action.type==='evict'?'btn-danger':'btn-primary'} btn-wide" onclick="executeAIAction(${index})">${isMove?'Переселить':'Выселить'}</button>
-    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
-}
-
-async function executeAIAction(index){
-  const msg=state.aiMessages[index];
-  const action=msg?.action;
-  if(!action || action.status!=='pending')return;
-
-  const primary=$('.sheet .btn-primary, .sheet .btn-danger');
-  if(primary){primary.disabled=true;primary.textContent='Проверяем и выполняем…';}
-
-  try{
-    const result=await apiRequest('appExecuteAIAction',[state.initData,{
-      type:action.type,
-      rowNumber:action.rowNumber,
-      expectedRoom:action.fromRoom,
-      toRoom:action.toRoom||''
-    }],{ttl:0,force:true});
-
-    action.status='done';
-    closeModal();
-    try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}
-    state.aiMessages.push({
-      role:'bot',
-      text:result?.message || (action.type==='move'?'Переселение выполнено.':'Выселение выполнено.'),
-      source:'campus'
-    });
-    persistAIChat();
-    await refreshAfterMutation();
-    if(state.currentPage==='ai'){renderAI();scrollChat(true);}
-  }catch(e){
-    closeModal();
-    try{tg?.HapticFeedback?.notificationOccurred('error')}catch(ignore){}
-    toast(e?.message||String(e));
-  }
 }
 
 function copyAIMessage(index){
@@ -771,13 +642,7 @@ async function sendAI(){
 
   try{
     const r=await apiRequest('appAskAI',[state.initData,text,history],{ttl:0,force:true});
-    state.aiMessages[waitIndex]={
-      role:'bot',
-      text:r.text||'Ответ не получен.',
-      source:r.source||'campus',
-      model:r.model||'',
-      action:r.action ? {...r.action,status:'pending'} : null
-    };
+    state.aiMessages[waitIndex]={role:'bot',text:r.text||'Ответ не получен.',source:r.source||'campus',model:r.model||''};
     if(r.source==='openai') state.aiStatus={...(state.aiStatus||{}),configured:true,model:r.model||state.aiStatus?.model||'OpenAI'};
   }catch(e){
     state.aiMessages[waitIndex]={role:'bot',text:e?.message||String(e),source:'campus'};
@@ -899,3 +764,8 @@ initTheme();
 bindGlobalEvents();
 injectIcons();
 boot();
+
+
+function campusAIDevelopmentNotice(){
+  toast('Campus AI сейчас в разработке');
+}
