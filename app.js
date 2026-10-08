@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_FAST_POLISH */
+/* CAMPUS_GITHUB_UI_V13_1_WHATS_NEW */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.0.0';
+const APP_VERSION = '13.1.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -13,6 +13,51 @@ const state = {
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0
 };
+
+const UPDATE_CENTER_VERSION = '13.1.0';
+const CAMPUS_UPDATES = [
+  {
+    version:'13.1',
+    date:'9 октября 2026',
+    title:'Центр обновлений',
+    latest:true,
+    items:[
+      'Добавлена аккуратная кнопка «Что нового» справа сверху.',
+      'Новая версия отмечается маленькой синей точкой.',
+      'Добавлена история последних обновлений Campus №1.'
+    ]
+  },
+  {
+    version:'13.0',
+    date:'9 октября 2026',
+    title:'Скорость и полировка',
+    items:[
+      'Студенты и комнаты открываются быстрее благодаря кэшу.',
+      'Поиск сначала работает локально, без лишнего ожидания сервера.',
+      'Campus AI сохраняет текущий диалог и черновик сообщения.',
+      'Доработаны анимации, нажатия и тёмная тема.'
+    ]
+  },
+  {
+    version:'11.1',
+    date:'9 октября 2026',
+    title:'Campus AI',
+    items:[
+      'Добавлен полноценный экран Campus AI.',
+      'Локальные запросы по базе работают без внешнего ИИ.',
+      'Поддержано безопасное подключение OpenAI через backend.'
+    ]
+  },
+  {
+    version:'10.3',
+    date:'9 октября 2026',
+    title:'Быстрый запуск',
+    items:[
+      'Добавлена постоянная кнопка Campus №1 рядом с полем сообщения Telegram.',
+      'Для запуска приложения больше не требуется каждый раз писать /start.'
+    ]
+  }
+];
 
 const ICONS = {
   home:'<svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>',
@@ -175,7 +220,7 @@ async function boot(){
     restoreAIChat();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
-    injectIcons(); applyTheme(state.theme,false); render('home');
+    injectIcons(); applyTheme(state.theme,false); updateUpdatesBadge(); render('home');
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
     idle(()=>prefetchCore());
   }catch(e){
@@ -668,6 +713,56 @@ async function refreshAfterMutation(){
 
 function showModal(html){ $('#modalSheet').innerHTML=html; $('#modal').classList.remove('hidden'); document.body.style.overflow='hidden'; }
 function closeModal(){ $('#modal').classList.add('hidden'); document.body.style.overflow=''; }
+
+function updateSeenKey(){ return 'campus-update-seen-version'; }
+
+function updateUpdatesBadge(){
+  const dot=$('#updatesDot');
+  if(!dot)return;
+  const seen=localStorage.getItem(updateSeenKey())||'';
+  dot.classList.toggle('hidden',seen===UPDATE_CENTER_VERSION);
+}
+
+function markUpdatesSeen(){
+  try{ localStorage.setItem(updateSeenKey(),UPDATE_CENTER_VERSION); }catch(e){}
+  updateUpdatesBadge();
+}
+
+function renderUpdateItem(update){
+  return `<article class="update-card ${update.latest?'latest':''}">
+    <div class="update-card-head">
+      <div>
+        <div class="update-version-row">
+          <span class="update-version">v${esc(update.version)}</span>
+          ${update.latest?'<span class="update-latest">Последнее</span>':''}
+        </div>
+        <h4>${esc(update.title)}</h4>
+      </div>
+      <time>${esc(update.date)}</time>
+    </div>
+    <ul>${(update.items||[]).map(item=>`<li>${esc(item)}</li>`).join('')}</ul>
+  </article>`;
+}
+
+function showWhatsNew(){
+  haptic('light');
+  markUpdatesSeen();
+  showModal(`<div class="sheet-handle"></div>
+    <div class="updates-sheet-head">
+      <div>
+        <div class="updates-kicker">Campus №1</div>
+        <h3>Что нового</h3>
+        <p>Последние изменения и улучшения приложения.</p>
+      </div>
+      <span class="updates-current">v${esc(APP_VERSION)}</span>
+    </div>
+    <div class="updates-list">
+      ${CAMPUS_UPDATES.map(renderUpdateItem).join('')}
+    </div>
+    <div class="updates-footer">Обновления устанавливаются автоматически после публикации новой версии.</div>
+    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+}
+
 function showProfile(){
   const u=state.user||{};
   showModal(`<div class="sheet-handle"></div><div style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:54px;height:54px;font-size:15px">${esc(initials(u.firstName||u.username||'C1'))}</span><div><h3 style="margin:0 0 4px">${esc(u.firstName||'Пользователь')}</h3><span class="badge blue">${esc(roleLabel(u))}</span></div></div><div class="kv"><div><small>Telegram ID</small><b>${esc(u.id||'—')}</b></div><div><small>Доступ</small><b>${u.canManage?'Управление':'Просмотр'}</b></div></div><button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
@@ -684,6 +779,7 @@ function bindGlobalEvents(){
     render(page);
   }));
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
+  $('#updatesBtn')?.addEventListener('click',showWhatsNew);
   $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
   $('#modal')?.addEventListener('click',e=>{ if(e.target?.hasAttribute('data-close-modal'))closeModal(); });

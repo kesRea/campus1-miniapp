@@ -7,9 +7,9 @@
   <meta name="color-scheme" content="light dark">
   <title>Campus №1 — База данных</title>
   <meta name="description" content="Campus №1 — система управления общежитием">
-  <!-- CAMPUS_GITHUB_UI_V13_FAST_POLISH -->
+  <!-- CAMPUS_GITHUB_UI_V13_1_WHATS_NEW -->
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <link rel="stylesheet" href="styles.css?v=13.0.0">
+  <link rel="stylesheet" href="styles.css?v=13.1.0">
 </head>
 <body>
   <div id="splash" class="splash">
@@ -37,6 +37,10 @@
         </div>
         <div class="top-actions">
           <button id="themeBtn" class="icon-button" type="button" aria-label="Переключить тему"></button>
+          <button id="updatesBtn" class="icon-button updates-button" type="button" aria-label="Что нового">
+            <span data-icon="spark"></span>
+            <span id="updatesDot" class="updates-dot" aria-hidden="true"></span>
+          </button>
           <button id="profileBtn" class="profile-button" type="button" aria-label="Профиль">
             <span id="profileInitials">C1</span>
           </button>
@@ -61,6 +65,6 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=13.0.0"></script>
+  <script src="app.js?v=13.1.0"></script>
 </body>
 </html>
