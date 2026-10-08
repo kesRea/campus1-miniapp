@@ -1195,16 +1195,8 @@ html[data-season="summer"] body{
   animation-delay:var(--delay);
   will-change:transform;
 }
-.season-leaf{
-  width:calc(var(--size) * 1.2);
-  height:var(--size);
-  border-radius:80% 15% 80% 15%;
-  background:#c67b32;
-  box-shadow:inset -2px -1px 0 rgba(105,61,20,.15);
-}
-.season-leaf:nth-child(3n){background:#d79a3d}
-.season-leaf:nth-child(3n+1){background:#aa6231}
-.season-leaf:nth-child(4n){opacity:.34}
+/* Legacy rounded autumn particles removed in V13.6.3.
+   Autumn is rendered only by SVG leaves below. */
 .season-snow{
   border-radius:50%;
   background:rgba(255,255,255,.92);
@@ -1674,4 +1666,233 @@ body{
 @supports not (height:100dvh){
   .modal{height:100vh}
   .sheet{max-height:88vh}
+}
+
+/* ===== Campus UI V13.6.3 / UI Hotfix ===== */
+
+/* Main page scrolling: never let a stale inline style freeze the app. */
+html{
+  min-height:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+body{
+  min-height:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+body.modal-open{
+  overflow:hidden!important;
+  touch-action:none;
+}
+.app{
+  min-height:100dvh;
+  overflow:visible!important;
+}
+.content{
+  padding-bottom:calc(104px + var(--safe-bottom));
+}
+
+/* Decorative layers must never intercept taps or vertical swipes. */
+.season-layer,
+.season-layer *{
+  pointer-events:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+
+/* Header controls must stay above decorative content and receive touches. */
+.topbar{
+  isolation:isolate;
+}
+.top-actions,
+.icon-button,
+.profile-button,
+.updates-button{
+  position:relative;
+  pointer-events:auto!important;
+  touch-action:manipulation;
+}
+.updates-button{
+  z-index:3;
+}
+
+/* Update sheet opens instantly; network refresh happens after it is visible. */
+.updates-loading-card{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 12px;
+  margin:0 0 12px;
+  border:1px solid var(--border);
+  border-radius:15px;
+  background:var(--surface-2);
+}
+.updates-loading-spinner{
+  width:18px;
+  height:18px;
+  flex:0 0 auto;
+  border:2px solid color-mix(in srgb,var(--blue) 22%,transparent);
+  border-top-color:var(--blue);
+  border-radius:50%;
+  animation:campusUpdateSpin .7s linear infinite;
+}
+.updates-loading-card span:last-child{
+  display:flex;
+  flex-direction:column;
+}
+.updates-loading-card b{
+  font-size:10.5px;
+}
+.updates-loading-card small{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:9px;
+}
+@keyframes campusUpdateSpin{
+  to{transform:rotate(360deg)}
+}
+
+/* Autumn V2: ONLY real SVG leaves. Old rounded "blobs" are forcibly disabled. */
+.season-autumn .season-leaf{
+  background:none!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  width:calc(var(--size) * 1.75)!important;
+  height:calc(var(--size) * 1.75)!important;
+  opacity:.58;
+  filter:drop-shadow(0 2px 2px rgba(64,37,12,.12));
+}
+.season-autumn .season-leaf svg{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  overflow:visible!important;
+}
+.season-autumn .season-leaf .leaf-fill{
+  fill:currentColor!important;
+}
+.season-autumn .season-leaf.leaf-variant-0{
+  color:#E3A62F!important; /* yellow */
+}
+.season-autumn .season-leaf.leaf-variant-1{
+  color:#8B4B2B!important; /* brown */
+}
+.season-autumn .season-leaf.leaf-variant-2{
+  color:#C77A28!important; /* ochre/brown */
+}
+.season-autumn .season-leaf:nth-child(4n){
+  opacity:.44;
+}
+.season-autumn .season-leaf:nth-child(5n){
+  opacity:.68;
+}
+
+/* Modal scrolling remains independent from the page. */
+.modal:not(.hidden){
+  touch-action:none;
+}
+.modal:not(.hidden) .sheet{
+  touch-action:pan-y!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ===== Campus UI V13.6.4 / Winter Garland ===== */
+.winter-home-garland-wrap{
+  margin:0 0 12px;
+  position:relative;
+  height:84px;
+  border-radius:22px;
+  border:1px solid color-mix(in srgb,var(--blue) 12%,var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb,var(--blue-soft) 48%,var(--surface)) 0%, var(--surface) 100%);
+  box-shadow:var(--shadow-soft);
+  overflow:hidden;
+}
+.winter-home-garland-wrap::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255,255,255,.9) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 28% 34%, rgba(255,255,255,.65) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 39% 17%, rgba(255,255,255,.8) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 55% 30%, rgba(255,255,255,.72) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 68% 18%, rgba(255,255,255,.86) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 82% 28%, rgba(255,255,255,.75) 0 1.4px, transparent 2px);
+  opacity:.7;
+  pointer-events:none;
+}
+.winter-home-garland{
+  position:relative;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.winter-wire{
+  position:absolute;
+  left:-4%;
+  right:-4%;
+  border-bottom:2px solid rgba(62,85,126,.45);
+  border-radius:0 0 50% 50%;
+}
+.wire-1{top:4px;height:44px}
+.wire-2{top:0;height:58px;opacity:.86}
+.wire-3{top:12px;height:36px;opacity:.72}
+.winter-bulbs{
+  position:absolute;
+  inset:0;
+}
+.winter-bulb{
+  position:absolute;
+  left:var(--x);
+  top:var(--y);
+  width:14px;
+  height:20px;
+  transform:translateX(-50%);
+  animation:winterBulbGlow 2.4s ease-in-out infinite;
+}
+.winter-bulb::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-4px;
+  width:8px;
+  height:6px;
+  transform:translateX(-50%);
+  border-radius:4px 4px 2px 2px;
+  background:#54627f;
+}
+.winter-bulb::after{
+  content:"";
+  position:absolute;
+  inset:3px 0 0;
+  border-radius:8px 8px 10px 10px;
+  background:var(--bulb);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.18) inset,
+    0 0 8px color-mix(in srgb,var(--bulb) 65%,transparent),
+    0 0 16px color-mix(in srgb,var(--bulb) 38%,transparent);
+}
+.winter-bulb.red{--bulb:#f55b65}
+.winter-bulb.yellow{--bulb:#ffc83d}
+.winter-bulb.blue{--bulb:#4db8ff}
+.winter-bulb.green{--bulb:#49d08a}
+.winter-bulb.pink{--bulb:#e985ff}
+.winter-bulb.orange{--bulb:#ff9e4a}
+@keyframes winterBulbGlow{
+  0%,100%{transform:translateX(-50%) translateY(0) scale(1);opacity:.92}
+  50%{transform:translateX(-50%) translateY(1px) scale(1.05);opacity:1}
+}
+@media (prefers-color-scheme: dark){
+  .winter-home-garland-wrap{
+    border-color:color-mix(in srgb,var(--blue) 22%,var(--border));
+    background:linear-gradient(180deg, rgba(19,35,66,.95) 0%, rgba(15,24,41,.96) 100%);
+  }
+  .winter-wire{border-bottom-color:rgba(154,176,220,.36)}
 }

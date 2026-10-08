@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_6_2_STABILITY */
+/* CAMPUS_GITHUB_UI_V13_6_4_WINTER_GARLAND */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.6.2';
+const APP_VERSION = '13.6.4';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -15,15 +15,41 @@ const state = {
   roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, seasonMode:'auto', seasonResolved:'none', seasonPreviewActive:false, seasonPreviewSavedMode:null, seasonPreviewSavedResolved:null, remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.6.2';
+const UPDATE_CENTER_VERSION = '13.6.4';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
   {
+    version:'13.6.4',
+    date:'9 октября 2026',
+    title:'Winter Garland',
+    latest:false,
+    items:[
+      'На главной в зимнем сезоне добавлена красивая гирлянда.',
+      'Гирлянда работает только на главной странице и только зимой.',
+      'Сохранён чистый стиль: аккуратно, празднично и без перегруза.',
+      'Лампочки разноцветные, а снег остаётся частью сезонного оформления.'
+    ]
+  },
+  {
+    version:'13.6.3',
+    date:'9 октября 2026',
+    title:'UI Hotfix',
+    latest:true,
+    items:[
+      'Исправлено открытие центра обновлений: окно появляется сразу, без ожидания GitHub.',
+      'Исправлен вертикальный скролл внутри Telegram Mini App и защита от зависшего overflow:hidden.',
+      'Сезонный слой больше не может перехватывать нажатия и свайпы.',
+      'Старые округлые осенние частицы полностью отключены — остаются только SVG-листья.',
+      'Осенние листья переведены в жёлто-коричневую палитру.',
+      'Добавлено восстановление скролла после возврата в приложение и закрытия модальных окон.'
+    ]
+  },
+  {
     version:'13.6.2',
     date:'9 октября 2026',
     title:'Stability Fix',
-    latest:true,
+    latest:false,
     items:[
       'Исправлен конфликт сезонного оформления с fixed-позиционированием интерфейса.',
       'Нижняя навигация снова гарантированно закреплена снизу.',
@@ -644,7 +670,10 @@ function invalidateData(){
 async function boot(){
   const btn=$('#openStateBtn');
   try{
-    tg?.ready(); tg?.expand();
+    tg?.ready();
+    tg?.expand();
+    try{tg?.disableVerticalSwipes?.()}catch(e){}
+    repairScrollState();
     state.initData=tg?.initData || '';
     btn.onclick=boot;
     if(!state.initData){
@@ -711,6 +740,79 @@ async function render(page,opts={}){
     if(page==='control') return renderGenericTable('Контроль общежития','appGetControl','more',seq);
     if(page==='journal') return renderGenericTable('Журнал действий','appGetJournal','more',seq);
   }catch(e){ if(pageAlive(page,seq)) view.innerHTML=`${pageHead('Ошибка','home')}<div class="empty">${esc(e.message)}</div>`; }
+}
+
+let winterGarlandObserverInstalled=false;
+
+function winterSeasonActive(){
+  const season=(document.documentElement.dataset.season || state.seasonResolved || '').toLowerCase();
+  return season==='winter';
+}
+
+function winterGarlandBulbs(){
+  const bulbs=[
+    ['6%','14px','red'],['13%','25px','yellow'],['21%','16px','blue'],['29%','28px','green'],
+    ['37%','18px','pink'],['45%','30px','orange'],['53%','17px','yellow'],['61%','29px','blue'],
+    ['69%','18px','green'],['77%','27px','red'],['84%','16px','pink'],['92%','24px','orange']
+  ];
+  return bulbs.map(([x,y,c],i)=>`<span class="winter-bulb ${c}" style="--x:${x};--y:${y};animation-delay:${i*0.12}s"></span>`).join('');
+}
+
+function winterGarlandHtml(){
+  return `<div class="winter-home-garland" aria-hidden="true">
+    <div class="winter-wire wire-1"></div>
+    <div class="winter-wire wire-2"></div>
+    <div class="winter-wire wire-3"></div>
+    <div class="winter-bulbs">${winterGarlandBulbs()}</div>
+  </div>`;
+}
+
+function mountWinterHomeGarland(){
+  const view=$('#view');
+  if(!view)return;
+
+  view.querySelectorAll('.winter-home-garland-wrap').forEach(el=>el.remove());
+
+  if(state.currentPage!=='home')return;
+  if(!winterSeasonActive())return;
+
+  const wrap=document.createElement('div');
+  wrap.className='winter-home-garland-wrap';
+  wrap.innerHTML=winterGarlandHtml();
+
+  const first=view.firstElementChild;
+  if(first) first.insertAdjacentElement('afterend',wrap);
+  else view.prepend(wrap);
+}
+
+function refreshWinterHomeGarland(){
+  requestAnimationFrame(mountWinterHomeGarland);
+}
+
+function installWinterHomeGarlandObserver(){
+  if(winterGarlandObserverInstalled)return;
+  winterGarlandObserverInstalled=true;
+
+  const waitForView=()=>{
+    const view=$('#view');
+    if(!view){
+      requestAnimationFrame(waitForView);
+      return;
+    }
+
+    const viewObserver=new MutationObserver(()=>refreshWinterHomeGarland());
+    viewObserver.observe(view,{childList:true});
+
+    const seasonObserver=new MutationObserver(()=>refreshWinterHomeGarland());
+    seasonObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-season']});
+
+    window.addEventListener('resize',refreshWinterHomeGarland);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden)refreshWinterHomeGarland(); });
+
+    refreshWinterHomeGarland();
+  };
+
+  waitForView();
 }
 
 function renderHome(){
@@ -1919,10 +2021,9 @@ function showModal(html){
   sheet.scrollTop=0;
   modal.classList.remove('hidden');
 
-  if(!document.body.dataset.modalPrevOverflow){
-    document.body.dataset.modalPrevOverflow=document.body.style.overflow||'__empty__';
-  }
-  document.body.style.overflow='hidden';
+  document.body.classList.add('modal-open');
+  document.documentElement.classList.add('modal-open');
+  document.body.style.overflow='';
 
   requestAnimationFrame(()=>{
     sheet.scrollTop=0;
@@ -1942,14 +2043,17 @@ function closeModal(){
 
   modal?.classList.add('hidden');
 
-  const prev=document.body.dataset.modalPrevOverflow;
-  document.body.style.overflow=(!prev||prev==='__empty__')?'':prev;
-  delete document.body.dataset.modalPrevOverflow;
+  document.body.classList.remove('modal-open');
+  document.documentElement.classList.remove('modal-open');
+  document.body.style.overflow='';
+  document.documentElement.style.overflow='';
 
   if(sheet){
     sheet.scrollTop=0;
     requestAnimationFrame(()=>{sheet.scrollTop=0});
   }
+
+  repairScrollState();
 }
 
 function updateSeenKey(){ return 'campus-update-seen-version'; }
@@ -2034,14 +2138,8 @@ async function showWhatsNew(){
   haptic('light');
 
   const modal=$('#modal');
-  const sheet=$('#modalSheet');
+  if(modal&&!modal.classList.contains('hidden'))closeModal();
 
-  if(modal&&!modal.classList.contains('hidden')){
-    closeModal();
-    await new Promise(r=>setTimeout(r,40));
-  }
-
-  await checkRemoteUpdate(true);
   markUpdatesSeen();
 
   showModal(`<div class="sheet-handle"></div>
@@ -2053,10 +2151,18 @@ async function showWhatsNew(){
       </div>
       <span class="updates-current">v${esc(APP_VERSION)}</span>
     </div>
-    ${remoteUpdateCard()}
+
+    <div id="remoteUpdateArea">
+      <div class="updates-loading-card">
+        <span class="updates-loading-spinner"></span>
+        <span><b>Проверяем обновления</b><small>GitHub проверяется в фоне</small></span>
+      </div>
+    </div>
+
     <div class="updates-list">
       ${CAMPUS_UPDATES.map(renderUpdateItem).join('')}
     </div>
+
     <div class="updates-footer">Cloud Update проверяет GitHub. После публикации новой версии её можно установить прямо с телефона.</div>
     <button class="btn btn-secondary btn-wide" onclick="checkUpdatesFromSheet()">Проверить ещё раз</button>
     <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
@@ -2068,6 +2174,16 @@ async function showWhatsNew(){
       try{s.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
     }
   });
+
+  const manifest=await checkRemoteUpdate(true);
+  if(state.currentPage===undefined)return manifest;
+
+  const area=$('#remoteUpdateArea');
+  if(area && $('#modal') && !$('#modal').classList.contains('hidden')){
+    area.innerHTML=remoteUpdateCard();
+  }
+
+  return manifest;
 }
 async function checkUpdatesFromSheet(){
   const m=await checkRemoteUpdate(false);
@@ -2095,6 +2211,23 @@ function showProfile(){
   showModal(`<div class="sheet-handle"></div><div style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:54px;height:54px;font-size:15px">${esc(initials(u.firstName||u.username||'C1'))}</span><div><h3 style="margin:0 0 4px">${esc(u.firstName||'Пользователь')}</h3><span class="badge blue">${esc(roleLabel(u))}</span></div></div><div class="kv"><div><small>Telegram ID</small><b>${esc(u.id||'—')}</b></div><div><small>Доступ</small><b>${u.canManage?'Управление':'Просмотр'}</b></div></div><button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
 }
 
+
+function repairScrollState(){
+  const modal=$('#modal');
+  const modalOpen=!!modal && !modal.classList.contains('hidden');
+
+  if(modalOpen){
+    document.body.classList.add('modal-open');
+    document.documentElement.classList.add('modal-open');
+    return;
+  }
+
+  document.body.classList.remove('modal-open');
+  document.documentElement.classList.remove('modal-open');
+  document.body.style.overflow='';
+  document.documentElement.style.overflow='';
+}
+
 function bindGlobalEvents(){
   $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>{
     haptic('light');
@@ -2106,7 +2239,14 @@ function bindGlobalEvents(){
     render(page);
   }));
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
-  $('#updatesBtn')?.addEventListener('click',showWhatsNew);
+  const updatesBtn=$('#updatesBtn');
+  if(updatesBtn){
+    updatesBtn.onclick=e=>{
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      showWhatsNew();
+    };
+  }
   $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
   $('#modal')?.addEventListener('click',e=>{ if(e.target?.hasAttribute('data-close-modal'))closeModal(); });
@@ -2117,6 +2257,20 @@ initTheme();
 initSeasonTheme();
 bindGlobalEvents();
 injectIcons();
+repairScrollState();
+installWinterHomeGarlandObserver();
+
+window.addEventListener('pageshow',()=>{
+  repairScrollState();
+  refreshWinterHomeGarland();
+});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    repairScrollState();
+    refreshWinterHomeGarland();
+  }
+});
+
 boot();
 
 
