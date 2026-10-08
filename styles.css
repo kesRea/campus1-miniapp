@@ -232,3 +232,18 @@ html[data-theme="dark"] .ai-v11-compose{box-shadow:0 12px 36px rgba(0,0,0,.28)}
 
 @media (min-width:680px){.ai-suggestions{grid-template-columns:repeat(4,minmax(0,1fr))}.ai-message{max-width:80%}}
 @media (max-width:420px){.ai-v11-top{align-items:flex-start}.ai-v11-tools{max-width:148px}.ai-mode{max-width:110px;overflow:hidden;text-overflow:ellipsis}.ai-v11-compose-meta span:first-child{display:none}}
+
+
+/* ===== Campus UI V13 / Fast + Polish ===== */
+.search-hint{min-height:17px;margin:5px 5px 8px;font-size:9px;color:var(--muted);transition:opacity .15s ease}
+.ai-empty{margin:20px auto 0;max-width:360px;text-align:center;padding:26px 18px;color:var(--muted)}
+.ai-empty-icon{width:46px;height:46px;margin:0 auto 12px;border-radius:16px;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);border:1px solid color-mix(in srgb,var(--blue) 14%,var(--border))}
+.ai-empty-icon svg{width:23px;height:23px}.ai-empty b{display:block;color:var(--text);font-size:15px}.ai-empty p{margin:6px auto 0;font-size:11px;line-height:1.55}
+.bottom-nav{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-top-color:color-mix(in srgb,var(--border) 80%,transparent)}
+.topbar{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(20px) saturate(145%);-webkit-backdrop-filter:blur(20px) saturate(145%)}
+.global-search:focus-within{border-color:color-mix(in srgb,var(--blue) 42%,var(--border));box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 8%,transparent),var(--shadow-soft)}
+.row-card.clickable,.room-card,.action-card,.stat-card,.more-item{will-change:transform}
+.row-card.clickable:active,.room-card:active,.action-card:active,.stat-card:active,.more-item:active{transform:scale(.985)}
+.ai-v11-compose textarea{scrollbar-width:none}.ai-v11-compose textarea::-webkit-scrollbar{display:none}
+.ai-v11-send{transition:transform .12s ease,opacity .15s ease}.ai-v11-send:active{transform:scale(.94)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important}}

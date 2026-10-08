@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V11_AI */
+/* CAMPUS_GITHUB_UI_V13_FAST_POLISH */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '11.0.0';
+const APP_VERSION = '13.0.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -8,8 +8,10 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 
 const state = {
   initData:'', user:null, dashboard:null, analytics:null, rooms:[],
-  currentPage:'home', renderSeq:0, roomData:null, studentLists:{}, studentMap:new Map(),
-  cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false, theme:'light'
+  currentPage:'home', renderSeq:0, roomData:null, roomDataTime:0,
+  studentLists:{}, studentListTime:{}, studentMap:new Map(),
+  cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
+  aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0
 };
 
 const ICONS = {
@@ -44,6 +46,49 @@ function initials(name){ return String(name||'C1').split(/\s+/).filter(Boolean).
 function roleLabel(u){ return u?.role || 'Пользователь'; }
 function canManage(){ return !!state.user?.canManage; }
 function formatCount(n,one,few,many){ n=Math.abs(Number(n)||0); const n10=n%10,n100=n%100; const word=(n10===1&&n100!==11)?one:(n10>=2&&n10<=4&&(n100<12||n100>14))?few:many; return `${n} ${word}`; }
+
+function haptic(type='light'){ try{ tg?.HapticFeedback?.impactOccurred(type); }catch(e){} }
+
+function normalizeSearch(v){
+  return String(v??'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
+}
+function knownStudents(){
+  const byRow=new Map();
+  Object.values(state.studentLists).forEach(list=>(list||[]).forEach(s=>byRow.set(Number(s.rowNumber),s)));
+  return [...byRow.values()];
+}
+function localStudentSearch(q){
+  const needle=normalizeSearch(q);
+  if(!needle)return [];
+  const digits=needle.replace(/\D/g,'');
+  return knownStudents().filter(s=>{
+    const hay=normalizeSearch([s.fio,s.room,s.faculty,s.iin,s.registration].filter(Boolean).join(' '));
+    if(hay.includes(needle))return true;
+    if(digits.length>=3){
+      const idDigits=String(s.iin||'').replace(/\D/g,'');
+      if(idDigits.includes(digits))return true;
+    }
+    return false;
+  });
+}
+function persistAIChat(){
+  try{
+    const safe=state.aiMessages.filter(m=>!m.pending&&m.text).slice(-24).map(m=>({
+      role:m.role==='user'?'user':'bot',
+      text:String(m.text).slice(0,12000),
+      source:m.source||'',
+      model:m.model||''
+    }));
+    sessionStorage.setItem('campus-ai-chat-v13',JSON.stringify(safe));
+  }catch(e){}
+}
+function restoreAIChat(){
+  try{
+    const arr=JSON.parse(sessionStorage.getItem('campus-ai-chat-v13')||'[]');
+    if(Array.isArray(arr))state.aiMessages=arr.slice(-24);
+  }catch(e){}
+}
+function coreIsFresh(ts,maxAge=60000){ return !!ts && Date.now()-ts<maxAge; }
 
 function toast(message){
   const el=$('#toast'); if(!el) return;
@@ -126,6 +171,8 @@ async function boot(){
     btn.disabled=true; btn.textContent='Проверяем доступ…';
     const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true});
     state.user=data.user; state.dashboard=data.dashboard; state.analytics=data.analytics; state.rooms=data.rooms||[];
+    state.lastCoreSync=Date.now();
+    restoreAIChat();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); render('home');
@@ -140,11 +187,22 @@ async function boot(){
 async function prefetchCore(){
   try{
     const [students,rooms]=await Promise.all([
-      apiRequest('appGetStudents',[state.initData,'active'],{ttl:30000}),
-      apiRequest('appGetRooms',[state.initData],{ttl:30000})
+      apiRequest('appGetStudents',[state.initData,'active'],{ttl:60000}),
+      apiRequest('appGetRooms',[state.initData],{ttl:60000})
     ]);
-    state.studentLists.active=students; indexStudents(students); state.roomData=rooms;
+    state.studentLists.active=students; state.studentListTime.active=Date.now(); indexStudents(students);
+    state.roomData=rooms; state.roomDataTime=Date.now();
   }catch(e){}
+
+  setTimeout(async()=>{
+    try{
+      if(state.studentLists.all)return;
+      const all=await apiRequest('appGetStudents',[state.initData,'all'],{ttl:90000});
+      state.studentLists.all=all; state.studentListTime.all=Date.now(); indexStudents(all);
+    }catch(e){}
+  },900);
+
+  setTimeout(()=>loadAIStatus().catch(()=>{}),1400);
 }
 
 function indexStudents(list){ (list||[]).forEach(s=>state.studentMap.set(Number(s.rowNumber),s)); }
@@ -221,32 +279,88 @@ function homeSearch(e){ e.preventDefault(); const q=$('#homeSearchInput')?.value
 
 async function renderStudents(mode='active',query='',seq=state.renderSeq){
   $('#view').innerHTML=`${pageHead('Студенты','home')}
-    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет"><button class="search-action" type="submit">Найти</button></form>
+    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)"><button class="search-action" type="submit">Найти</button></form>
+    <div id="studentSearchHint" class="search-hint"></div>
     <div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button></div>
     <div id="studentList" class="list">${studentSkeletons()}</div>`;
 
   if(query){ return doStudentSearch(query,seq); }
   const cached=state.studentLists[mode];
-  if(cached){ drawStudents(cached); refreshStudents(mode,seq,true); return; }
-  const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:30000});
+  if(cached){
+    drawStudents(cached);
+    if(!coreIsFresh(state.studentListTime[mode],60000)) refreshStudents(mode,seq,true);
+    return;
+  }
+  const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:60000});
   if(!pageAlive('students',seq)) return;
-  state.studentLists[mode]=list; indexStudents(list); drawStudents(list);
+  state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list); drawStudents(list);
 }
 function studentSkeletons(){ return Array.from({length:5},()=>'<div class="row-card"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join(''); }
 async function refreshStudents(mode,seq,silent){
-  try{ const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:0,force:true}); state.studentLists[mode]=list; indexStudents(list); if(pageAlive('students',seq)) drawStudents(list); }catch(e){ if(!silent) toast(e.message); }
+  try{
+    const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:0,force:true});
+    state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list);
+    if(pageAlive('students',seq)) drawStudents(list);
+  }catch(e){ if(!silent) toast(e.message); }
 }
 function drawStudents(list){
   const el=$('#studentList'); if(!el)return;
   if(!list?.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
   el.innerHTML=list.map(s=>`<button class="row-card clickable" type="button" onclick="openStudent(${Number(s.rowNumber)})"><span class="avatar">${esc(initials(s.fio))}</span><span class="row-main"><b>${esc(s.fio)}</b><small>Комната ${esc(s.room||'—')} · ${esc(s.faculty||'Факультет не указан')}</small></span><span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span></button>`).join('');
 }
-function studentSearchSubmit(e){ e.preventDefault(); doStudentSearch($('#studentSearch')?.value.trim()||'',state.renderSeq); }
+function studentSearchInput(value){
+  clearTimeout(state.searchTimer);
+  const q=String(value||'').trim();
+  state.searchTimer=setTimeout(()=>{
+    if(state.currentPage!=='students')return;
+    const hint=$('#studentSearchHint');
+    if(!q){
+      if(hint)hint.textContent='';
+      const list=state.studentLists.active||state.studentLists.all||[];
+      drawStudents(list);
+      return;
+    }
+    const local=localStudentSearch(q);
+    if(local.length){
+      drawStudents(local);
+      if(hint)hint.textContent=`Мгновенный поиск · найдено ${local.length}`;
+    }else{
+      if(hint)hint.textContent='В локальном кэше совпадений нет · нажмите «Найти» для проверки базы';
+    }
+  },120);
+}
+function studentSearchSubmit(e){
+  e.preventDefault();
+  doStudentSearch($('#studentSearch')?.value.trim()||'',state.renderSeq);
+}
 async function doStudentSearch(q,seq=state.renderSeq){
   if(!q){ return renderStudents('active','',seq); }
-  const el=$('#studentList'); if(el) el.innerHTML=studentSkeletons();
-  try{ const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:8000,force:true}); if(!pageAlive('students',seq))return; indexStudents(list); drawStudents(list); }
-  catch(e){ if(pageAlive('students',seq)) $('#studentList').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+
+  const local=localStudentSearch(q);
+  const hint=$('#studentSearchHint');
+  if(local.length){
+    drawStudents(local);
+    if(hint)hint.textContent=`Найдено ${local.length} · уточняем в базе…`;
+  }else{
+    const el=$('#studentList'); if(el) el.innerHTML=studentSkeletons();
+    if(hint)hint.textContent='Проверяем базу…';
+  }
+
+  try{
+    const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:12000,force:true});
+    if(!pageAlive('students',seq))return;
+    indexStudents(list); drawStudents(list);
+    if(hint)hint.textContent=`База проверена · найдено ${(list||[]).length}`;
+  }catch(e){
+    if(pageAlive('students',seq)){
+      if(local.length){
+        drawStudents(local);
+        if(hint)hint.textContent='Показаны данные из локального кэша';
+      }else{
+        $('#studentList').innerHTML=`<div class="empty">${esc(e.message)}</div>`;
+      }
+    }
+  }
 }
 
 async function openStudent(row){
@@ -260,11 +374,23 @@ async function openStudent(row){
 
 async function renderRooms(seq=state.renderSeq){
   $('#view').innerHTML=`${pageHead('Комнаты','home')}<div class="global-search"><span class="mini-icon">${icon('search')}</span><input id="roomFilter" autocomplete="off" placeholder="Номер комнаты" oninput="filterRooms()"></div><div class="page-sub" style="margin:10px 2px 14px">13, 14, 23, 30–117, 119–125, 128–162</div><div id="roomsGrid" class="rooms-grid">${roomSkeletons()}</div>`;
-  if(state.roomData){ drawRooms(state.roomData); refreshRooms(seq,true); return; }
-  const list=await apiRequest('appGetRooms',[state.initData],{ttl:30000}); if(!pageAlive('rooms',seq))return; state.roomData=list; drawRooms(list);
+  if(state.roomData){
+    drawRooms(state.roomData);
+    if(!coreIsFresh(state.roomDataTime,60000)) refreshRooms(seq,true);
+    return;
+  }
+  const list=await apiRequest('appGetRooms',[state.initData],{ttl:60000});
+  if(!pageAlive('rooms',seq))return;
+  state.roomData=list; state.roomDataTime=Date.now(); drawRooms(list);
 }
 function roomSkeletons(){return Array.from({length:12},()=>'<div class="room-card"><div class="skeleton" style="height:22px;width:42%;margin:8px auto"></div><div class="skeleton" style="height:10px;width:65%;margin:10px auto"></div></div>').join('')}
-async function refreshRooms(seq,silent){ try{ const list=await apiRequest('appGetRooms',[state.initData],{ttl:0,force:true}); state.roomData=list; if(pageAlive('rooms',seq))drawRooms(list); }catch(e){if(!silent)toast(e.message)} }
+async function refreshRooms(seq,silent){
+  try{
+    const list=await apiRequest('appGetRooms',[state.initData],{ttl:0,force:true});
+    state.roomData=list; state.roomDataTime=Date.now();
+    if(pageAlive('rooms',seq))drawRooms(list);
+  }catch(e){if(!silent)toast(e.message)}
+}
 function drawRooms(list){ const el=$('#roomsGrid'); if(!el)return; el.innerHTML=(list||[]).map(r=>`<button class="room-card ${r.occupants?'busy':'empty'}" type="button" onclick="openRoom('${esc(r.room)}')"><span class="room-dot"></span><b>${esc(r.room)}</b><small>${r.occupants?formatCount(r.occupants,'проживает','проживают','проживают'):'Свободна'}</small></button>`).join(''); }
 function filterRooms(){ const q=$('#roomFilter')?.value.trim()||''; drawRooms((state.roomData||[]).filter(r=>!q||String(r.room).includes(q))); }
 async function openRoom(room){
@@ -341,7 +467,9 @@ function renderAI(){
         <button type="button" onclick="askQuick('Составь аккуратное объявление студентам о ремонтных работах на русском и казахском')"><b>Текст</b><small>Составить объявление</small></button>
       </div>
 
-      <div id="chat" class="ai-v11-chat">${state.aiMessages.map((m,i)=>renderBubble(m,i)).join('')}</div>
+      <div id="chat" class="ai-v11-chat">${state.aiMessages.length
+        ? state.aiMessages.map((m,i)=>renderBubble(m,i)).join('')
+        : `<div class="ai-empty"><span class="ai-empty-icon">${icon('spark')}</span><b>Чем помочь?</b><p>Спросите про студента, комнату, свободные места или попросите подготовить текст.</p></div>`}</div>
     </div>
 
     <div class="ai-v11-compose-wrap">
@@ -353,7 +481,12 @@ function renderAI(){
     </div>`;
 
   const input=$('#aiInput');
-  if(input){ input.addEventListener('input',()=>{const c=$('#aiCounter');if(c)c.textContent=`${input.value.length} / 4000`;}); }
+  if(input){
+    input.value=state.aiDraft||'';
+    autoGrow(input);
+    const counter=()=>{state.aiDraft=input.value;const c=$('#aiCounter');if(c)c.textContent=`${input.value.length} / 4000`;};
+    input.addEventListener('input',counter); counter();
+  }
   loadAIStatus();
   setTimeout(()=>scrollChat(false),0);
 }
@@ -463,15 +596,17 @@ function fallbackCopyAI(text,done){
 function confirmClearAI(){
   showModal(`<div class="sheet-handle"></div><h3>Очистить диалог?</h3><p style="color:var(--muted);font-size:12px;line-height:1.5">История Campus AI удалится только на этом устройстве.</p><button class="btn btn-danger btn-wide" onclick="clearAIChat()">Очистить</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
 }
-function clearAIChat(){ state.aiMessages=[]; closeModal(); renderAI(); toast('Диалог очищен'); }
+function clearAIChat(){ state.aiMessages=[]; state.aiDraft=''; persistAIChat(); closeModal(); renderAI(); toast('Диалог очищен'); }
 
 function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px'}
 function aiKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI()}}
-function askQuick(text){ const el=$('#aiInput'); if(el){el.value=text;el.dispatchEvent(new Event('input'));sendAI();} }
+function askQuick(text){ haptic('light'); const el=$('#aiInput'); if(el){el.value=text;state.aiDraft=text;el.dispatchEvent(new Event('input'));sendAI();} }
 
 async function sendAI(){
   if(state.aiBusy)return;
   const inp=$('#aiInput'); const text=inp?.value.trim(); if(!text)return;
+  haptic('light');
+  state.aiDraft='';
 
   const history=state.aiMessages
     .filter(m=>!m.pending && m.text && (m.role==='user'||m.role==='bot'))
@@ -479,6 +614,7 @@ async function sendAI(){
     .map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}));
 
   state.aiMessages.push({role:'user',text});
+  persistAIChat();
   state.aiMessages.push({role:'bot',text:'',pending:true,source:''});
   state.aiBusy=true;
   renderAI();
@@ -495,6 +631,7 @@ async function sendAI(){
     state.aiBusy=false;
   }
 
+  persistAIChat();
   if(state.currentPage==='ai'){renderAI();scrollChat(true)}
 }
 
@@ -537,10 +674,18 @@ function showProfile(){
 }
 
 function bindGlobalEvents(){
-  $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>render(btn.dataset.page)));
-  $('#themeBtn')?.addEventListener('click',toggleTheme);
-  $('#profileBtn')?.addEventListener('click',showProfile);
-  $('#homeLogoBtn')?.addEventListener('click',()=>render('home'));
+  $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>{
+    haptic('light');
+    const page=btn.dataset.page;
+    if(page===state.currentPage){
+      window.scrollTo({top:0,behavior:'smooth'});
+      return;
+    }
+    render(page);
+  }));
+  $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
+  $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
+  $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
   $('#modal')?.addEventListener('click',e=>{ if(e.target?.hasAttribute('data-close-modal'))closeModal(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeModal(); });
 }
