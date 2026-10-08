@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_6_4_WINTER_GARLAND */
+/* CAMPUS_GITHUB_UI_V13_6_UI_CLEAN_AUTUMN */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.6.4';
+const APP_VERSION = '13.6.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -12,90 +12,27 @@ const state = {
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
-  roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, seasonMode:'auto', seasonResolved:'none', seasonPreviewActive:false, seasonPreviewSavedMode:null, seasonPreviewSavedResolved:null, remoteManifest:null, updateCheckTime:0
+  roomFilterMode:'all', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.6.4';
+const UPDATE_CENTER_VERSION = '13.6.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-  {
-    version:'13.6.4',
-    date:'9 октября 2026',
-    title:'Winter Garland',
-    latest:false,
-    items:[
-      'На главной в зимнем сезоне добавлена красивая гирлянда.',
-      'Гирлянда работает только на главной странице и только зимой.',
-      'Сохранён чистый стиль: аккуратно, празднично и без перегруза.',
-      'Лампочки разноцветные, а снег остаётся частью сезонного оформления.'
-    ]
-  },
-  {
-    version:'13.6.3',
-    date:'9 октября 2026',
-    title:'UI Hotfix',
-    latest:true,
-    items:[
-      'Исправлено открытие центра обновлений: окно появляется сразу, без ожидания GitHub.',
-      'Исправлен вертикальный скролл внутри Telegram Mini App и защита от зависшего overflow:hidden.',
-      'Сезонный слой больше не может перехватывать нажатия и свайпы.',
-      'Старые округлые осенние частицы полностью отключены — остаются только SVG-листья.',
-      'Осенние листья переведены в жёлто-коричневую палитру.',
-      'Добавлено восстановление скролла после возврата в приложение и закрытия модальных окон.'
-    ]
-  },
-  {
-    version:'13.6.2',
-    date:'9 октября 2026',
-    title:'Stability Fix',
-    latest:false,
-    items:[
-      'Исправлен конфликт сезонного оформления с fixed-позиционированием интерфейса.',
-      'Нижняя навигация снова гарантированно закреплена снизу.',
-      'Модальные окна снова гарантированно занимают экран и нормально прокручиваются.',
-      'Toast-уведомления снова закреплены поверх интерфейса.',
-      'Добавлена автоматическая проверка JavaScript и критичных CSS-правил перед публикацией.'
-    ]
-  },
-  {
-    version:'13.6.1',
-    date:'9 октября 2026',
-    title:'Seasonal Polish',
-    latest:false,
-    items:[
-      'Осенние частицы полностью перерисованы: теперь это настоящие листья с формой и прожилками.',
-      'Исправлено повторное открытие окна обновлений: список всегда открывается сверху и нормально прокручивается.',
-      'Добавлен приватный предпросмотр сезонных тем только для владельца.',
-      'Предпросмотр не меняет сохранённую тему других пользователей.'
-    ]
-  },
-  {
-    version:'13.6',
-    date:'9 октября 2026',
-    title:'Personalization',
-    latest:false,
-    items:[
-      'Факультеты в фильтре объединяются в понятные категории: CS, ФЕН, Колледж ПГУ и другие.',
-      'Добавлены сезонные темы: осень, зима, весна и лето.',
-      'Режим «Авто» сам выбирает сезон по текущему месяцу.',
-      'Сезонное оформление работает вместе со светлой и тёмной темой.',
-      'Анимации автоматически упрощаются при включённом системном режиме уменьшения движения.'
-    ]
-  },
-  {
-    version:'13.5',
-    date:'9 октября 2026',
-    title:'Students+',
-    latest:false,
-    items:[
-      'Раздел студентов получил сводку: заселены, всего и выселены.',
-      'Добавлены фильтры по комнате и факультету, а также сортировка.',
-      'Недавно открытые студенты доступны в один тап.',
-      'Карточка студента стала информативнее: переход в комнату и копирование ИИН / паспорта.',
-      'После переселения и выселения интерфейс обновляется без тяжёлой перезагрузки страницы.'
-    ]
-  },
+
+{
+  version:'13.6',
+  date:'9 октября 2026',
+  title:'UI Clean Autumn',
+  latest:true,
+  items:[
+    'Исправлена кнопка обновлений и проверка версии.',
+    'Исправлена прокрутка экранов и более стабильная навигация.',
+    'Убраны гирлянда, лишние точки и тяжёлый декоративный мусор.',
+    'Светлая и тёмная темы стали чище и аккуратнее.',
+    'Добавлены минимальные осенние листья в жёлто-коричневой гамме.'
+  ]
+},
   {
     version:'13.4',
     date:'9 октября 2026',
@@ -212,83 +149,6 @@ function haptic(type='light'){ try{ tg?.HapticFeedback?.impactOccurred(type); }c
 function normalizeSearch(v){
   return String(v??'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
 }
-function canonicalFaculty(value){
-  const raw=String(value||'').trim();
-  if(!raw)return '';
-
-  const s=normalizeSearch(raw)
-    .replace(/[._/\\-]+/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-
-  if(
-    s.includes('колледж') ||
-    s.includes('college') ||
-    s.includes('higher college') ||
-    s.includes('колледж пгу') ||
-    s.includes('college tou')
-  ) return 'Колледж ПГУ';
-
-  if(
-    /(^|\s)cs(\s|$)/.test(s) ||
-    s.includes('computer science') ||
-    s.includes('компьютерные науки') ||
-    s.includes('computing') ||
-    s.includes('information technology') ||
-    /(^|\s)ict(\s|$)/.test(s)
-  ) return 'CS';
-
-  if(
-    /(^|\s)фен(\s|$)/.test(s) ||
-    s.includes('естествен') ||
-    s.includes('natural science') ||
-    s.includes('биолог') ||
-    s.includes('хими') ||
-    s.includes('эколог') ||
-    s.includes('географ')
-  ) return 'ФЕН';
-
-  if(
-    s.includes('энергет') ||
-    s.includes('energy') ||
-    s.includes('электроэнерг') ||
-    /(^|\s)эф(\s|$)/.test(s)
-  ) return 'Энергетика';
-
-  if(
-    s.includes('эконом') ||
-    s.includes('finance') ||
-    s.includes('финанс') ||
-    s.includes('business') ||
-    s.includes('бизнес') ||
-    s.includes('management') ||
-    s.includes('менедж') ||
-    s.includes('учет') ||
-    s.includes('аудит')
-  ) return 'Экономика и бизнес';
-
-  if(
-    s.includes('архит') ||
-    s.includes('строител') ||
-    s.includes('construction') ||
-    s.includes('civil engineering') ||
-    s.includes('design') ||
-    s.includes('дизайн')
-  ) return 'Архитектура и строительство';
-
-  if(
-    s.includes('гуманит') ||
-    s.includes('филолог') ||
-    s.includes('журналист') ||
-    s.includes('право') ||
-    s.includes('юрис') ||
-    s.includes('психолог') ||
-    s.includes('social science')
-  ) return 'Гуманитарные и социальные науки';
-
-  return raw;
-}
-
 function knownStudents(){
   const byRow=new Map();
   Object.values(state.studentLists).forEach(list=>(list||[]).forEach(s=>byRow.set(Number(s.rowNumber),s)));
@@ -354,279 +214,6 @@ function initTheme(){
 }
 function toggleTheme(){ applyTheme(state.theme==='dark'?'light':'dark'); }
 
-const CAMPUS_SEASONS = {
-  none:{label:'Выкл'},
-  autumn:{label:'Осень'},
-  winter:{label:'Зима'},
-  spring:{label:'Весна'},
-  summer:{label:'Лето'}
-};
-
-function resolveAutoSeason(){
-  const month=new Date().getMonth()+1;
-  if(month===12 || month<=2)return 'winter';
-  if(month>=3 && month<=5)return 'spring';
-  if(month>=6 && month<=8)return 'summer';
-  return 'autumn';
-}
-
-function resolveSeasonMode(mode){
-  if(mode==='off')return 'none';
-  if(mode==='auto')return resolveAutoSeason();
-  return ['autumn','winter','spring','summer'].includes(mode)?mode:'none';
-}
-
-function seasonModeLabel(){
-  const resolved=state.seasonResolved||resolveSeasonMode(state.seasonMode||'auto');
-  const label=CAMPUS_SEASONS[resolved]?.label||'Выкл';
-  return state.seasonMode==='auto' ? `${label} · Авто` : label;
-}
-
-function initSeasonTheme(){
-  const saved=localStorage.getItem('campus-season-mode')||'auto';
-  setSeasonMode(saved,false);
-}
-
-function setSeasonMode(mode,persist=true){
-  const allowed=['auto','off','autumn','winter','spring','summer'];
-  state.seasonMode=allowed.includes(mode)?mode:'auto';
-  state.seasonResolved=resolveSeasonMode(state.seasonMode);
-
-  document.documentElement.dataset.season=state.seasonResolved;
-
-  if(persist){
-    try{localStorage.setItem('campus-season-mode',state.seasonMode)}catch(e){}
-  }
-
-  renderSeasonLayer();
-
-  const badge=$('#seasonModeBadge');
-  if(badge)badge.textContent=seasonModeLabel();
-
-  $$('.season-choice').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.seasonMode===state.seasonMode);
-  });
-}
-
-function ensureSeasonLayer(){
-  let layer=$('#seasonLayer');
-  if(layer)return layer;
-
-  layer=document.createElement('div');
-  layer.id='seasonLayer';
-  layer.className='season-layer';
-  layer.setAttribute('aria-hidden','true');
-  document.body.prepend(layer);
-  return layer;
-}
-
-function seasonParticleStyle(i,total,kind){
-  const x=((i*37+11)%97)+1;
-  const delay=-(i*1.17)%11;
-  const duration=kind==='snow' ? 8+(i%5)*1.3 : 10+(i%6)*1.1;
-  const size=kind==='snow' ? 4+(i%4)*2 : 8+(i%5)*2;
-  const drift=((i%2===0?1:-1)*(12+(i%5)*5));
-  return `--x:${x};--delay:${delay}s;--dur:${duration}s;--size:${size}px;--drift:${drift}px`;
-}
-
-function autumnLeafSvg(i){
-  const type=i%3;
-  if(type===0){
-    return `<svg viewBox="0 0 36 36" aria-hidden="true">
-      <path class="leaf-fill" d="M31 5C19 5.5 9.2 10.4 6.1 19.2c-2.4 6.7 2.2 11.2 8.6 9.5C23.8 26.3 29.2 16.8 31 5Z"/>
-      <path class="leaf-vein" d="M8.7 26.5C15 20.5 20.3 15.4 28.8 8.1M14.2 21.2l-1.1-6.1M18.4 17.4l6.1.2"/>
-    </svg>`;
-  }
-  if(type===1){
-    return `<svg viewBox="0 0 36 36" aria-hidden="true">
-      <path class="leaf-fill" d="M18 3.5c1.6 4.1 3.5 6.2 7 8.7l-2.8 1.5c2.4 2.1 4.6 3.2 8.1 3.8l-3.7 2.4c1.2 2.4 2 4.7 2.1 8.2-4.4-.7-7.1-1.8-9.5-4.4l-1.2 8.7-1.2-8.7c-2.4 2.6-5.1 3.7-9.5 4.4.1-3.5.9-5.8 2.1-8.2l-3.7-2.4c3.5-.6 5.7-1.7 8.1-3.8L11 12.2c3.5-2.5 5.4-4.6 7-8.7Z"/>
-      <path class="leaf-vein" d="M18 7.6v21.9M18 18.3l-5.1-3.4M18 21.3l5.4-3.4"/>
-    </svg>`;
-  }
-  return `<svg viewBox="0 0 36 36" aria-hidden="true">
-    <path class="leaf-fill" d="M29.8 7.1C22 7 15 10.1 10.8 15.2c-4.5 5.4-3.2 11.4 2.2 13.8 5.8 2.5 12.9-.9 15.1-8.3 1.2-4.1 1.5-8.8 1.7-13.6Z"/>
-    <path class="leaf-vein" d="M10.7 27.6C16 22 21.1 16.9 28.1 9.3M16.3 21.9l-1-6M20.7 17.6l5.7.7"/>
-  </svg>`;
-}
-
-function previewSeason(mode){
-  if(!state.user?.isOwner)return toast('Предпросмотр доступен только владельцу');
-
-  if(!state.seasonPreviewActive){
-    state.seasonPreviewActive=true;
-    state.seasonPreviewSavedMode=state.seasonMode;
-    state.seasonPreviewSavedResolved=state.seasonResolved;
-  }
-
-  const resolved=mode==='auto'?resolveAutoSeason():resolveSeasonMode(mode);
-  state.seasonResolved=resolved;
-  document.documentElement.dataset.season=resolved;
-  renderSeasonLayer();
-
-  $$('.owner-season-preview-btn').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.preview===mode);
-  });
-
-  const label=$('#ownerSeasonPreviewLabel');
-  if(label)label.textContent=CAMPUS_SEASONS[resolved]?.label||resolved;
-}
-
-function closeSeasonPreview(){
-  if(state.seasonPreviewActive){
-    state.seasonPreviewActive=false;
-    state.seasonResolved=state.seasonPreviewSavedResolved||resolveSeasonMode(state.seasonMode||'auto');
-    document.documentElement.dataset.season=state.seasonResolved;
-    renderSeasonLayer();
-  }
-  closeModal();
-}
-
-function openOwnerSeasonPreview(){
-  if(!state.user?.isOwner)return toast('Недостаточно прав');
-
-  state.seasonPreviewActive=true;
-  state.seasonPreviewSavedMode=state.seasonMode;
-  state.seasonPreviewSavedResolved=state.seasonResolved;
-
-  showModal(`
-    <div class="sheet-handle"></div>
-    <div class="owner-preview-head">
-      <span class="owner-preview-badge">Только владелец</span>
-      <h3>Предпросмотр сезонов</h3>
-      <p>Выбранная здесь тема включается только временно для проверки. Сохранённая тема пользователей не меняется.</p>
-    </div>
-
-    <div class="owner-preview-current">
-      <small>Сейчас показывается</small>
-      <b id="ownerSeasonPreviewLabel">${esc(CAMPUS_SEASONS[state.seasonResolved]?.label||'Тема')}</b>
-    </div>
-
-    <div class="owner-season-preview-grid">
-      ${ownerPreviewButton('autumn','Осень','Листья')}
-      ${ownerPreviewButton('winter','Зима','Снег + огни')}
-      ${ownerPreviewButton('spring','Весна','Лепестки')}
-      ${ownerPreviewButton('summer','Лето','Солнечный фон')}
-    </div>
-
-    <button class="btn btn-secondary btn-wide" type="button" onclick="closeSeasonPreview()">Вернуться к моей теме</button>
-  `);
-}
-
-function ownerPreviewButton(mode,title,sub){
-  return `<button type="button" class="owner-season-preview-btn" data-preview="${mode}" onclick="previewSeason('${mode}')">
-    <span class="owner-season-preview-icon owner-season-${mode}"></span>
-    <span><b>${esc(title)}</b><small>${esc(sub)}</small></span>
-  </button>`;
-}
-
-function renderSeasonLayer(){
-  const layer=ensureSeasonLayer();
-  const season=state.seasonResolved||'none';
-  layer.className=`season-layer season-${season}`;
-  layer.innerHTML='';
-
-  if(season==='none')return;
-
-  let reduce=false;
-  try{reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches}catch(e){}
-  if(reduce)return;
-
-  if(season==='autumn'){
-    for(let i=0;i<10;i++){
-      const p=document.createElement('span');
-      p.className=`season-particle season-leaf leaf-variant-${i%3}`;
-      p.style.cssText=seasonParticleStyle(i,10,'leaf');
-      p.innerHTML=autumnLeafSvg(i);
-      layer.appendChild(p);
-    }
-  }
-
-  if(season==='winter'){
-    const lights=document.createElement('div');
-    lights.className='winter-lights';
-    for(let i=0;i<14;i++){
-      const bulb=document.createElement('span');
-      bulb.style.setProperty('--i',String(i));
-      lights.appendChild(bulb);
-    }
-    layer.appendChild(lights);
-
-    for(let i=0;i<16;i++){
-      const p=document.createElement('span');
-      p.className='season-particle season-snow';
-      p.style.cssText=seasonParticleStyle(i,16,'snow');
-      layer.appendChild(p);
-    }
-  }
-
-  if(season==='spring'){
-    for(let i=0;i<11;i++){
-      const p=document.createElement('span');
-      p.className='season-particle season-petal';
-      p.style.cssText=seasonParticleStyle(i,11,'petal');
-      layer.appendChild(p);
-    }
-  }
-
-  if(season==='summer'){
-    const glow=document.createElement('span');
-    glow.className='summer-glow';
-    layer.appendChild(glow);
-
-    for(let i=0;i<7;i++){
-      const p=document.createElement('span');
-      p.className='season-particle season-spark';
-      p.style.cssText=seasonParticleStyle(i,7,'spark');
-      layer.appendChild(p);
-    }
-  }
-}
-
-function openSeasonSettings(){
-  showModal(`
-    <div class="sheet-handle"></div>
-    <div class="season-settings-head">
-      <small>Оформление</small>
-      <h3>Сезонная тема</h3>
-      <p>Можно оставить автоматический режим или выбрать сезон вручную.</p>
-    </div>
-
-    <div class="season-choice-grid">
-      ${seasonChoice('auto','Авто','Тема меняется по времени года')}
-      ${seasonChoice('off','Выкл','Только обычная светлая / тёмная тема')}
-      ${seasonChoice('autumn','Осень','Лёгкие падающие листья')}
-      ${seasonChoice('winter','Зима','Снег и новогодние огни')}
-      ${seasonChoice('spring','Весна','Нежные падающие лепестки')}
-      ${seasonChoice('summer','Лето','Тёплое солнечное оформление')}
-    </div>
-
-    <div class="season-settings-note">
-      Анимация автоматически упрощается, если на устройстве включено «Уменьшение движения».
-    </div>
-
-    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Готово</button>
-  `);
-
-  $$('.season-choice').forEach(btn=>btn.classList.toggle('active',btn.dataset.seasonMode===state.seasonMode));
-}
-
-function seasonChoice(mode,title,subtitle){
-  const iconMap={
-    auto:'spark',
-    off:'grid',
-    autumn:'book',
-    winter:'spark',
-    spring:'globe',
-    summer:'sun'
-  };
-
-  return `<button class="season-choice ${state.seasonMode===mode?'active':''}" data-season-mode="${mode}" type="button" onclick="setSeasonMode('${mode}')">
-    <span class="season-choice-icon">${icon(iconMap[mode])}</span>
-    <span><b>${esc(title)}</b><small>${esc(subtitle)}</small></span>
-    <span class="season-choice-check">✓</span>
-  </button>`;
-}
-
 async function apiRequest(method,args=[],options={}){
   const readOnly = !/^app(Add|Update|Move|Evict)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
@@ -670,10 +257,7 @@ function invalidateData(){
 async function boot(){
   const btn=$('#openStateBtn');
   try{
-    tg?.ready();
-    tg?.expand();
-    try{tg?.disableVerticalSwipes?.()}catch(e){}
-    repairScrollState();
+    tg?.ready(); tg?.expand();
     state.initData=tg?.initData || '';
     btn.onclick=boot;
     if(!state.initData){
@@ -742,119 +326,56 @@ async function render(page,opts={}){
   }catch(e){ if(pageAlive(page,seq)) view.innerHTML=`${pageHead('Ошибка','home')}<div class="empty">${esc(e.message)}</div>`; }
 }
 
-let winterGarlandObserverInstalled=false;
-
-function winterSeasonActive(){
-  const season=(document.documentElement.dataset.season || state.seasonResolved || '').toLowerCase();
-  return season==='winter';
-}
-
-function winterGarlandBulbs(){
-  const bulbs=[
-    ['6%','14px','red'],['13%','25px','yellow'],['21%','16px','blue'],['29%','28px','green'],
-    ['37%','18px','pink'],['45%','30px','orange'],['53%','17px','yellow'],['61%','29px','blue'],
-    ['69%','18px','green'],['77%','27px','red'],['84%','16px','pink'],['92%','24px','orange']
-  ];
-  return bulbs.map(([x,y,c],i)=>`<span class="winter-bulb ${c}" style="--x:${x};--y:${y};animation-delay:${i*0.12}s"></span>`).join('');
-}
-
-function winterGarlandHtml(){
-  return `<div class="winter-home-garland" aria-hidden="true">
-    <div class="winter-wire wire-1"></div>
-    <div class="winter-wire wire-2"></div>
-    <div class="winter-wire wire-3"></div>
-    <div class="winter-bulbs">${winterGarlandBulbs()}</div>
-  </div>`;
-}
-
-function mountWinterHomeGarland(){
-  const view=$('#view');
-  if(!view)return;
-
-  view.querySelectorAll('.winter-home-garland-wrap').forEach(el=>el.remove());
-
-  if(state.currentPage!=='home')return;
-  if(!winterSeasonActive())return;
-
-  const wrap=document.createElement('div');
-  wrap.className='winter-home-garland-wrap';
-  wrap.innerHTML=winterGarlandHtml();
-
-  const first=view.firstElementChild;
-  if(first) first.insertAdjacentElement('afterend',wrap);
-  else view.prepend(wrap);
-}
-
-function refreshWinterHomeGarland(){
-  requestAnimationFrame(mountWinterHomeGarland);
-}
-
-function installWinterHomeGarlandObserver(){
-  if(winterGarlandObserverInstalled)return;
-  winterGarlandObserverInstalled=true;
-
-  const waitForView=()=>{
-    const view=$('#view');
-    if(!view){
-      requestAnimationFrame(waitForView);
-      return;
-    }
-
-    const viewObserver=new MutationObserver(()=>refreshWinterHomeGarland());
-    viewObserver.observe(view,{childList:true});
-
-    const seasonObserver=new MutationObserver(()=>refreshWinterHomeGarland());
-    seasonObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-season']});
-
-    window.addEventListener('resize',refreshWinterHomeGarland);
-    document.addEventListener('visibilitychange',()=>{ if(!document.hidden)refreshWinterHomeGarland(); });
-
-    refreshWinterHomeGarland();
-  };
-
-  waitForView();
-}
-
 function renderHome(){
   const d=state.dashboard||{};
   const occupancy=d.totalRooms ? Math.round((d.occupiedRooms||0)/d.totalRooms*100) : 0;
   $('#view').innerHTML=`
-    <div class="welcome">
-      <div><small>Добро пожаловать,</small><h1>${esc(state.user?.firstName || 'Пользователь')}</h1></div>
-      <span class="role-chip">${esc(roleLabel(state.user))}</span>
-    </div>
-    <form class="global-search" onsubmit="homeSearch(event)">
+    <section class="hero-panel fade-in">
+      <div class="hero-copy">
+        <small>Добро пожаловать,</small>
+        <h1>${esc(state.user?.firstName || 'Пользователь')}</h1>
+        <p>Campus №1 · ${esc(roleLabel(state.user))}</p>
+      </div>
+      <div class="hero-side">
+        <span class="role-chip">${esc(roleLabel(state.user))}</span>
+      </div>
+      <div class="hero-leaves" aria-hidden="true">
+        <span>🍁</span><span>🍂</span><span>🍁</span>
+      </div>
+    </section>
+
+    <form class="global-search fade-in" onsubmit="homeSearch(event)">
       <span class="mini-icon">${icon('search')}</span>
       <input id="homeSearchInput" autocomplete="off" placeholder="Поиск студента, комнаты, ИИН…">
       <button class="search-action" type="submit">Найти</button>
     </form>
 
-    <div class="section-heading"><h2>Обзор</h2><button onclick="render('analytics')">Аналитика</button></div>
-    <div class="stats-grid">
+    <div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render('analytics')">Аналитика</button></div>
+    <div class="stats-grid fade-in">
       ${statCard('users',d.currentStudents||0,'Заселено сейчас','green','students')}
       ${statCard('door',d.freeRooms||0,'Свободно комнат','','rooms')}
       ${statCard('globe',d.foreigners||0,'Иностранные','','foreigners')}
       ${statCard('council',(d.council||0)+(d.activists||0),'Студсовет и активисты','','council')}
     </div>
 
-    <div class="section-heading"><h2>Быстрые действия</h2></div>
-    <div class="action-grid">
+    <div class="section-heading fade-in"><h2>Быстрые действия</h2></div>
+    <div class="action-grid fade-in">
       ${canManage()?actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
       ${actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
       ${actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
       ${actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
     </div>
 
-    <div class="section-heading"><h2>Загрузка комнат</h2></div>
-    <div class="capacity-card" onclick="render('rooms')">
+    <div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>
+    <div class="capacity-card fade-in" onclick="render('rooms')">
       <div class="capacity-row"><b>Занято ${d.occupiedRooms||0} из ${d.totalRooms||0} комнат</b><span>${occupancy}%</span></div>
       <div class="progress"><span style="width:${Math.min(100,occupancy)}%"></span></div>
       <div class="capacity-meta"><span>${d.currentStudents||0} проживающих</span><span>${d.freeRooms||0} свободно</span></div>
     </div>
 
-    <button class="ai-promo" type="button" onclick="render('ai')">
+    <button class="ai-promo fade-in" type="button" onclick="render('ai')">
       <span class="action-icon">${icon('spark')}</span>
-      <span class="ai-promo-copy"><b>Campus AI</b><small>В разработке · скоро вернётся</small></span>
+      <span class="ai-promo-copy"><b>Campus AI</b><small>В разработке · позже вернёмся к нему</small></span>
       <span class="arrow">›</span>
     </button>`;
 }
@@ -864,458 +385,79 @@ function actionCard(iconName,title,subtitle,onclick){ return `<button class="act
 function homeSearch(e){ e.preventDefault(); const q=$('#homeSearchInput')?.value.trim()||''; render('students',{mode:'all',query:q}); }
 
 async function renderStudents(mode='active',query='',seq=state.renderSeq){
-  state.studentView = state.studentView || {mode:'active',query:'',room:'',faculty:'',sort:'name'};
-  state.studentView.mode = mode;
-  if(query !== undefined) state.studentView.query = query || '';
-
   $('#view').innerHTML=`${pageHead('Студенты','home')}
-    <div id="studentSummary" class="student-summary">
-      <div class="student-summary-card skeleton-card"></div>
-      <div class="student-summary-card skeleton-card"></div>
-      <div class="student-summary-card skeleton-card"></div>
-    </div>
-
-    <form class="global-search student-main-search" onsubmit="studentSearchSubmit(event)">
-      <span class="mini-icon">${icon('search')}</span>
-      <input id="studentSearch" autocomplete="off" value="${esc(state.studentView.query||'')}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)">
-      <button class="search-action" type="submit">Найти</button>
-    </form>
+    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)"><button class="search-action" type="submit">Найти</button></form>
     <div id="studentSearchHint" class="search-hint"></div>
-
-    <div class="tabs student-status-tabs">
-      <button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button>
-      <button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button>
-      <button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button>
-    </div>
-
-    <div class="student-filter-panel">
-      <div class="student-filter-row">
-        <label class="student-filter-field">
-          <span>Комната</span>
-          <select id="studentRoomFilter" onchange="studentFilterChanged()">
-            <option value="">Все комнаты</option>
-          </select>
-        </label>
-        <label class="student-filter-field">
-          <span>Факультет</span>
-          <select id="studentFacultyFilter" onchange="studentFilterChanged()">
-            <option value="">Все факультеты</option>
-          </select>
-        </label>
-      </div>
-      <label class="student-filter-field student-sort-field">
-        <span>Сортировка</span>
-        <select id="studentSort" onchange="studentFilterChanged()">
-          <option value="name">По ФИО</option>
-          <option value="room">По комнате</option>
-          <option value="date">По дате заселения</option>
-        </select>
-      </label>
-    </div>
-
-    <div id="recentStudentsWrap" class="recent-students-wrap hidden">
-      <div class="recent-students-title">Недавно открывали</div>
-      <div id="recentStudents" class="recent-students"></div>
-    </div>
-
-    <div class="student-list-head">
-      <span id="studentResultLabel">Студенты</span>
-      <span id="studentResultCount" class="student-result-count"></span>
-    </div>
-
+    <div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button></div>
     <div id="studentList" class="list">${studentSkeletons()}</div>`;
 
-  hydrateStudentControls();
-  renderRecentStudents();
-  updateStudentSummary();
-
   if(query){ return doStudentSearch(query,seq); }
-
   const cached=state.studentLists[mode];
   if(cached){
-    updateStudentFilterOptions(cached);
-    drawStudentView(cached);
-    ensureStudentOverview(seq);
+    drawStudents(cached);
     if(!coreIsFresh(state.studentListTime[mode],60000)) refreshStudents(mode,seq,true);
     return;
   }
-
   const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:60000});
   if(!pageAlive('students',seq)) return;
-
-  state.studentLists[mode]=list;
-  state.studentListTime[mode]=Date.now();
-  indexStudents(list);
-  updateStudentFilterOptions(list);
-  drawStudentView(list);
-  ensureStudentOverview(seq);
+  state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list); drawStudents(list);
 }
-
-function studentSkeletons(){
-  return Array.from({length:6},()=>'<div class="row-card student-row"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join('');
-}
-
+function studentSkeletons(){ return Array.from({length:5},()=>'<div class="row-card"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join(''); }
 async function refreshStudents(mode,seq,silent){
   try{
     const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:0,force:true});
-    state.studentLists[mode]=list;
-    state.studentListTime[mode]=Date.now();
-    indexStudents(list);
-
-    if(pageAlive('students',seq)){
-      updateStudentFilterOptions(list);
-      drawStudentView(list);
-      updateStudentSummary();
-    }
-  }catch(e){
-    if(!silent) toast(e.message);
-  }
+    state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list);
+    if(pageAlive('students',seq)) drawStudents(list);
+  }catch(e){ if(!silent) toast(e.message); }
 }
-
-function getRecentStudents(){
-  try{
-    const arr=JSON.parse(localStorage.getItem('campus-recent-students')||'[]');
-    return Array.isArray(arr)?arr.slice(0,6):[];
-  }catch(e){
-    return [];
-  }
-}
-
-function rememberStudent(row){
-  try{
-    const id=Number(row);
-    const arr=[id,...getRecentStudents().map(Number).filter(x=>x!==id)].slice(0,6);
-    localStorage.setItem('campus-recent-students',JSON.stringify(arr));
-  }catch(e){}
-}
-
-function renderRecentStudents(){
-  const wrap=$('#recentStudentsWrap');
-  const el=$('#recentStudents');
-  if(!wrap||!el)return;
-
-  const recent=getRecentStudents()
-    .map(row=>state.studentMap.get(Number(row)))
-    .filter(Boolean);
-
-  wrap.classList.toggle('hidden',!recent.length);
-
-  el.innerHTML=recent.map(s=>`
-    <button class="recent-student-chip" type="button" onclick="openStudent(${Number(s.rowNumber)})">
-      <span class="recent-student-avatar">${esc(initials(s.fio))}</span>
-      <span><b>${esc(shortStudentName(s.fio))}</b><small>Комната ${esc(s.room||'—')}</small></span>
-    </button>`).join('');
-}
-
-function shortStudentName(name){
-  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
-  if(parts.length<=2)return parts.join(' ');
-  return `${parts[0]} ${parts[1]}`;
-}
-
-function studentCounts(){
-  const activeKnown=state.studentLists.active?.length;
-  const allKnown=state.studentLists.all?.length;
-
-  const current=Number.isFinite(activeKnown)
-    ? activeKnown
-    : Number(state.dashboard?.currentStudents||0);
-
-  const all=Number.isFinite(allKnown)
-    ? allKnown
-    : Math.max(current,Number(state.dashboard?.currentStudents||0));
-
-  const evicted=Math.max(0,all-current);
-
-  return {current,all,evicted};
-}
-
-function updateStudentSummary(){
-  const el=$('#studentSummary');
-  if(!el)return;
-
-  const c=studentCounts();
-  el.innerHTML=`
-    <button class="student-summary-card active" type="button" onclick="renderStudents('active','',state.renderSeq)">
-      <span>${icon('users')}</span><b>${c.current}</b><small>Заселены</small>
-    </button>
-    <button class="student-summary-card" type="button" onclick="renderStudents('all','',state.renderSeq)">
-      <span>${icon('book')}</span><b>${c.all}</b><small>Всего</small>
-    </button>
-    <button class="student-summary-card evicted" type="button" onclick="renderStudents('evicted','',state.renderSeq)">
-      <span>${icon('logout')}</span><b>${c.evicted}</b><small>Выселены</small>
-    </button>`;
-}
-
-async function ensureStudentOverview(seq){
-  if(state.studentLists.active && state.studentLists.all){
-    updateStudentSummary();
-    return;
-  }
-
-  try{
-    const tasks=[];
-    if(!state.studentLists.active){
-      tasks.push(
-        apiRequest('appGetStudents',[state.initData,'active'],{ttl:90000})
-          .then(list=>{
-            state.studentLists.active=list;
-            state.studentListTime.active=Date.now();
-            indexStudents(list);
-          })
-      );
-    }
-
-    if(!state.studentLists.all){
-      tasks.push(
-        apiRequest('appGetStudents',[state.initData,'all'],{ttl:90000})
-          .then(list=>{
-            state.studentLists.all=list;
-            state.studentListTime.all=Date.now();
-            indexStudents(list);
-          })
-      );
-    }
-
-    await Promise.all(tasks);
-
-    if(pageAlive('students',seq)){
-      updateStudentSummary();
-      renderRecentStudents();
-      const current=state.studentLists[state.studentView?.mode||'active']||[];
-      updateStudentFilterOptions(current);
-      drawStudentView(current);
-    }
-  }catch(e){}
-}
-
-function uniqueStudentValues(list,key){
-  return [...new Set((list||[])
-    .map(s=>String(s?.[key]||'').trim())
-    .filter(Boolean))]
-    .sort((a,b)=>a.localeCompare(b,'ru',{numeric:true,sensitivity:'base'}));
-}
-
-function updateStudentFilterOptions(list){
-  const allPool=state.studentLists.all || list || [];
-  const roomEl=$('#studentRoomFilter');
-  const facultyEl=$('#studentFacultyFilter');
-  if(!roomEl||!facultyEl)return;
-
-  const selectedRoom=state.studentView?.room||'';
-  const selectedFaculty=state.studentView?.faculty||'';
-
-  const rooms=uniqueStudentValues(allPool,'room');
-  const faculties=[...new Set((allPool||[]).map(s=>canonicalFaculty(s.faculty)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true,sensitivity:'base'}));
-
-  roomEl.innerHTML='<option value="">Все комнаты</option>'+
-    rooms.map(v=>`<option value="${esc(v)}" ${String(v)===String(selectedRoom)?'selected':''}>№${esc(v)}</option>`).join('');
-
-  facultyEl.innerHTML='<option value="">Все факультеты</option>'+
-    faculties.map(v=>`<option value="${esc(v)}" ${String(v)===String(selectedFaculty)?'selected':''}>${esc(v)}</option>`).join('');
-}
-
-function hydrateStudentControls(){
-  const v=state.studentView||{};
-  const sort=$('#studentSort');
-  if(sort)sort.value=v.sort||'name';
-}
-
-function parseCampusDate(value){
-  const s=String(value||'').trim();
-  if(!s)return 0;
-
-  const m=s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
-  if(m){
-    let y=Number(m[3]);
-    if(y<100)y+=2000;
-    return new Date(y,Number(m[2])-1,Number(m[1])).getTime()||0;
-  }
-
-  const t=Date.parse(s);
-  return Number.isFinite(t)?t:0;
-}
-
-function applyStudentFilters(list){
-  const view=state.studentView||{};
-  const query=normalizeSearch(view.query||'');
-  const digits=query.replace(/\D/g,'');
-
-  let rows=(list||[]).filter(s=>{
-    if(view.room && String(s.room||'')!==String(view.room))return false;
-    if(view.faculty && canonicalFaculty(s.faculty)!==String(view.faculty))return false;
-
-    if(query){
-      const hay=normalizeSearch([s.fio,s.room,s.faculty,s.iin,s.registration].filter(Boolean).join(' '));
-      if(hay.includes(query))return true;
-
-      if(digits.length>=3){
-        const idDigits=String(s.iin||'').replace(/\D/g,'');
-        if(idDigits.includes(digits))return true;
-      }
-
-      return false;
-    }
-
-    return true;
-  });
-
-  const sort=view.sort||'name';
-
-  rows=[...rows].sort((a,b)=>{
-    if(sort==='room'){
-      return String(a.room||'').localeCompare(String(b.room||''),'ru',{numeric:true,sensitivity:'base'}) ||
-        String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
-    }
-
-    if(sort==='date'){
-      return parseCampusDate(b.dateIn)-parseCampusDate(a.dateIn) ||
-        String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
-    }
-
-    return String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
-  });
-
-  return rows;
-}
-
-function currentStudentBaseList(){
-  const mode=state.studentView?.mode||'active';
-  return state.studentLists[mode] || [];
-}
-
-function studentFilterChanged(){
-  state.studentView=state.studentView||{};
-
-  state.studentView.room=$('#studentRoomFilter')?.value||'';
-  state.studentView.faculty=$('#studentFacultyFilter')?.value||'';
-  state.studentView.sort=$('#studentSort')?.value||'name';
-
-  drawStudentView(currentStudentBaseList());
-}
-
-function drawStudentView(baseList){
-  const rows=applyStudentFilters(baseList);
-  drawStudents(rows);
-
-  const count=$('#studentResultCount');
-  const label=$('#studentResultLabel');
-
-  if(count)count.textContent=String(rows.length);
-
-  if(label){
-    const mode=state.studentView?.mode||'active';
-    label.textContent=mode==='evicted'?'Выселенные':mode==='all'?'Все студенты':'Заселённые';
-  }
-}
-
 function drawStudents(list){
-  const el=$('#studentList');
-  if(!el)return;
-
-  if(!list?.length){
-    el.innerHTML='<div class="empty">По выбранным параметрам ничего не найдено</div>';
-    return;
-  }
-
-  el.innerHTML=list.map(s=>`
-    <button class="row-card clickable student-row" type="button" onclick="openStudent(${Number(s.rowNumber)})">
-      <span class="avatar">${esc(initials(s.fio))}</span>
-      <span class="row-main">
-        <b>${esc(s.fio)}</b>
-        <small><span class="student-room-inline">№${esc(s.room||'—')}</span> ${esc(s.faculty||'Факультет не указан')}</small>
-        ${s.dateIn?`<small class="student-date-inline">Заселение: ${esc(s.dateIn)}</small>`:''}
-      </span>
-      <span class="student-row-end">
-        <span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span>
-        <span class="mini-chevron">${icon('chevron')}</span>
-      </span>
-    </button>`).join('');
+  const el=$('#studentList'); if(!el)return;
+  if(!list?.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
+  el.innerHTML=list.map(s=>`<button class="row-card clickable" type="button" onclick="openStudent(${Number(s.rowNumber)})"><span class="avatar">${esc(initials(s.fio))}</span><span class="row-main"><b>${esc(s.fio)}</b><small>Комната ${esc(s.room||'—')} · ${esc(s.faculty||'Факультет не указан')}</small></span><span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span></button>`).join('');
 }
-
 function studentSearchInput(value){
   clearTimeout(state.searchTimer);
   const q=String(value||'').trim();
-
-  state.studentView=state.studentView||{};
-  state.studentView.query=q;
-
   state.searchTimer=setTimeout(()=>{
     if(state.currentPage!=='students')return;
-
     const hint=$('#studentSearchHint');
-
     if(!q){
       if(hint)hint.textContent='';
-      drawStudentView(currentStudentBaseList());
+      const list=state.studentLists.active||state.studentLists.all||[];
+      drawStudents(list);
       return;
     }
-
-    const local=applyStudentFilters(currentStudentBaseList());
-
+    const local=localStudentSearch(q);
     if(local.length){
       drawStudents(local);
       if(hint)hint.textContent=`Мгновенный поиск · найдено ${local.length}`;
-      const count=$('#studentResultCount');
-      if(count)count.textContent=String(local.length);
     }else{
-      drawStudents([]);
       if(hint)hint.textContent='В локальном кэше совпадений нет · нажмите «Найти» для проверки базы';
     }
-  },100);
+  },120);
 }
-
 function studentSearchSubmit(e){
   e.preventDefault();
   doStudentSearch($('#studentSearch')?.value.trim()||'',state.renderSeq);
 }
-
 async function doStudentSearch(q,seq=state.renderSeq){
-  state.studentView=state.studentView||{};
-  state.studentView.query=q||'';
+  if(!q){ return renderStudents('active','',seq); }
 
-  if(!q){
-    drawStudentView(currentStudentBaseList());
-    return;
-  }
-
-  const local=applyStudentFilters(currentStudentBaseList());
+  const local=localStudentSearch(q);
   const hint=$('#studentSearchHint');
-
   if(local.length){
     drawStudents(local);
     if(hint)hint.textContent=`Найдено ${local.length} · уточняем в базе…`;
   }else{
-    const el=$('#studentList');
-    if(el)el.innerHTML=studentSkeletons();
+    const el=$('#studentList'); if(el) el.innerHTML=studentSkeletons();
     if(hint)hint.textContent='Проверяем базу…';
   }
 
   try{
     const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:12000,force:true});
     if(!pageAlive('students',seq))return;
-
-    indexStudents(list);
-
-    let rows=[...(list||[])];
-
-    if(state.studentView.room){
-      rows=rows.filter(s=>String(s.room||'')===String(state.studentView.room));
-    }
-
-    if(state.studentView.faculty){
-      rows=rows.filter(s=>canonicalFaculty(s.faculty)===String(state.studentView.faculty));
-    }
-
-    rows=applyStudentFilters(rows);
-
-    drawStudents(rows);
-
-    const count=$('#studentResultCount');
-    if(count)count.textContent=String(rows.length);
-
-    if(hint)hint.textContent=`База проверена · найдено ${rows.length}`;
-    renderRecentStudents();
+    indexStudents(list); drawStudents(list);
+    if(hint)hint.textContent=`База проверена · найдено ${(list||[]).length}`;
   }catch(e){
     if(pageAlive('students',seq)){
       if(local.length){
@@ -1328,130 +470,15 @@ async function doStudentSearch(q,seq=state.renderSeq){
   }
 }
 
-function copyStudentValue(value,label='Значение'){
-  const text=String(value||'').trim();
-  if(!text)return toast('Нет данных для копирования');
-
-  const done=()=>{
-    toast(`${label} скопировано`);
-    try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}
-  };
-
-  if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopyStudent(text,done));
-  }else{
-    fallbackCopyStudent(text,done);
-  }
-}
-
-function fallbackCopyStudent(text,done){
-  const ta=document.createElement('textarea');
-  ta.value=text;
-  ta.style.position='fixed';
-  ta.style.opacity='0';
-  document.body.appendChild(ta);
-  ta.select();
-
-  try{
-    document.execCommand('copy');
-    done();
-  }catch(e){
-    toast('Не удалось скопировать');
-  }
-
-  ta.remove();
-}
-
-function openStudentRoom(room){
-  if(!room)return toast('Комната не указана');
-  closeModal();
-  render('rooms');
-  setTimeout(()=>openRoom(room),80);
-}
-
 async function openStudent(row){
   try{
     let s=state.studentMap.get(Number(row));
-
-    if(!s){
-      s=await apiRequest('appGetStudent',[state.initData,row],{ttl:15000});
-      state.studentMap.set(Number(row),s);
-    }
-
-    rememberStudent(row);
-    renderRecentStudents();
-
-    const statusClass=s.active?'active':'evicted';
-    const statusText=s.active?'Проживает':'Выселен';
-
-    const roomAction=s.room
-      ? `<button class="student-room-action" type="button" onclick="openStudentRoom('${esc(s.room)}')">
-           <span>${icon('door')}</span>
-           <span><small>Комната</small><b>№${esc(s.room)}</b></span>
-           <span class="mini-chevron">${icon('chevron')}</span>
-         </button>`
-      : '';
-
-    const copyIin=s.iin
-      ? `<button class="student-copy-button" type="button" onclick="copyStudentValue('${esc(String(s.iin).replace(/'/g,"\\'"))}','ИИН / паспорт')">${icon('copy')}<span>Копировать</span></button>`
-      : '';
-
-    const actions=canManage()&&s.active
-      ? `<div class="student-action-row">
-           <button class="btn btn-secondary" onclick="openMove(${s.rowNumber})">${icon('swap')}<span>Переселить</span></button>
-           <button class="btn btn-danger" onclick="confirmEvict(${s.rowNumber})">${icon('logout')}<span>Выселить</span></button>
-         </div>`
-      : '';
-
-    showModal(`
-      <div class="sheet-handle"></div>
-
-      <div class="student-profile-head">
-        <span class="student-profile-avatar">${esc(initials(s.fio))}</span>
-        <div class="student-profile-copy">
-          <small>Карточка студента</small>
-          <h3>${esc(s.fio)}</h3>
-          <span class="student-status-pill ${statusClass}">${statusText}</span>
-        </div>
-      </div>
-
-      ${roomAction}
-
-      <div class="student-detail-grid">
-        <div class="student-detail-item">
-          <small>Факультет</small>
-          <b>${esc(s.faculty||'—')}</b>
-        </div>
-        <div class="student-detail-item">
-          <small>Дата заселения</small>
-          <b>${esc(s.dateIn||'—')}</b>
-        </div>
-        <div class="student-detail-item">
-          <small>Дата рождения</small>
-          <b>${esc(s.birthDate||'—')}</b>
-        </div>
-        <div class="student-detail-item">
-          <small>Прописка</small>
-          <b>${esc(s.registration||'—')}</b>
-        </div>
-      </div>
-
-      <div class="student-id-card">
-        <div>
-          <small>ИИН / паспорт</small>
-          <b>${esc(s.iin||'—')}</b>
-        </div>
-        ${copyIin}
-      </div>
-
-      ${actions}
-
-      <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>
-    `);
-  }catch(e){
-    toast(e.message);
-  }
+    if(!s){ s=await apiRequest('appGetStudent',[state.initData,row],{ttl:15000}); state.studentMap.set(Number(row),s); }
+    const actions=canManage()&&s.active?`<div class="button-row"><button class="btn btn-secondary" onclick="openMove(${s.rowNumber})">Переселить</button><button class="btn btn-danger" onclick="confirmEvict(${s.rowNumber})">Выселить</button></div>`:'';
+    showModal(`<div class="sheet-handle"></div><h3>${esc(s.fio)}</h3><span class="badge ${s.active?'':'red'}">${s.active?'Проживает':'Выселен'}</span><div class="kv"><div><small>Комната</small><b>${esc(s.room||'—')}</b></div><div><small>Факультет</small><b>${esc(s.faculty||'—')}</b></div><div><small>ИИН / паспорт</small><b>${esc(s.iin||'—')}</b></div><div><small>Заселение</small><b>${esc(s.dateIn||'—')}</b></div><div><small>Дата рождения</small><b>${esc(s.birthDate||'—')}</b></div><div><small>Прописка</small><b>${esc(s.registration||'—')}</b></div></div>${actions}<button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+  }catch(e){toast(e.message)}
 }
+
 
 function getRecentRooms(){
   try{
@@ -1643,56 +670,7 @@ function renderAnalytics(){
 }
 
 function renderMore(){
-  const ownerPreview=state.user?.isOwner
-    ? `<button class="setting-row setting-row-button owner-preview-row" type="button" onclick="openOwnerSeasonPreview()">
-         <div class="setting-copy">
-           <b>Предпросмотр сезонов</b>
-           <small>Только для владельца · временный просмотр</small>
-         </div>
-         <span class="badge blue">DEV</span>
-       </button>`
-    : '';
-
-  $('#view').innerHTML=`${pageHead('Ещё','home')}
-    <div class="more-grid">
-      ${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}
-      ${moreCard('council','Студсовет','Состав и сектора',"render('council')")}
-      ${moreCard('users','Активисты','Список активистов',"render('activists')")}
-      ${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}
-      ${moreCard('clipboard','Журнал','История действий',"render('journal')")}
-      ${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}
-      ${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}
-    </div>
-
-    <div class="section-heading"><h2>Настройки</h2></div>
-
-    <div class="settings-card">
-      <div class="setting-row">
-        <div class="setting-copy">
-          <b>Тёмная тема</b>
-          <small>Сохраняется на этом устройстве</small>
-        </div>
-        <button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button>
-      </div>
-
-      <button class="setting-row setting-row-button" type="button" onclick="openSeasonSettings()">
-        <div class="setting-copy">
-          <b>Сезонное оформление</b>
-          <small>Листья, снег, лепестки и летний фон</small>
-        </div>
-        <span id="seasonModeBadge" class="badge blue">${esc(seasonModeLabel())}</span>
-      </button>
-
-      ${ownerPreview}
-
-      <button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()">
-        <div class="setting-copy">
-          <b>Обновления системы</b>
-          <small>GitHub Cloud Update · проверка без компьютера</small>
-        </div>
-        <span class="badge blue">v${APP_VERSION}</span>
-      </button>
-    </div>`;
+  $('#view').innerHTML=`${pageHead('Ещё','home')}<div class="more-grid">${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}${moreCard('council','Студсовет','Состав и сектора',"render('council')")}${moreCard('users','Активисты','Список активистов',"render('activists')")}${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}${moreCard('clipboard','Журнал','История действий',"render('journal')")}${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}</div><div class="section-heading"><h2>Настройки</h2></div><div class="settings-card"><div class="setting-row"><div class="setting-copy"><b>Тёмная тема</b><small>Сохраняется на этом устройстве</small></div><button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button></div><button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()"><div class="setting-copy"><b>Обновления системы</b><small>GitHub Cloud Update · проверка без компьютера</small></div><span class="badge blue">v${APP_VERSION}</span></button></div>`;
 }
 function moreCard(iconName,title,sub,onclick){ return `<button class="more-item" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(sub)}</small></button>`; }
 
@@ -1903,158 +881,17 @@ function openMove(row){
   const s=state.studentMap.get(Number(row)); if(!s)return toast('Данные студента не загружены');
   showModal(`<div class="sheet-handle"></div><h3>Переселить</h3><p><b>${esc(s.fio)}</b><br><span style="color:var(--muted);font-size:12px">Текущая комната: ${esc(s.room||'—')}</span></p><div class="field"><label>Новая комната</label><select id="move_room"><option value="">Выберите комнату</option>${roomOptions('')}</select></div><button class="btn btn-primary btn-wide" onclick="saveMove(${row})">Подтвердить переселение</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
 }
-async function saveMove(row){
-  try{
-    const room=$('#move_room')?.value||'';
-    if(!room)return toast('Выберите новую комнату');
-
-    await apiRequest('appMoveStudent',[state.initData,row,room],{ttl:0,force:true});
-
-    const s=state.studentMap.get(Number(row));
-    if(s)s.room=room;
-
-    Object.values(state.studentLists).forEach(list=>{
-      const item=(list||[]).find(x=>Number(x.rowNumber)===Number(row));
-      if(item)item.room=room;
-    });
-
-    state.cache.clear();
-    state.roomData=null;
-    state.roomDataTime=0;
-
-    closeModal();
-    toast('Студент переселён');
-    render('students');
-    refreshAfterMutation();
-  }catch(e){
-    toast(e.message);
-  }
-}
+async function saveMove(row){ try{await apiRequest('appMoveStudent',[state.initData,row,$('#move_room').value],{ttl:0,force:true});closeModal();toast('Студент переселён');await refreshAfterMutation();render('students');}catch(e){toast(e.message)} }
 function confirmEvict(row){ const s=state.studentMap.get(Number(row)); showModal(`<div class="sheet-handle"></div><h3>Подтвердить выселение?</h3><p><b>${esc(s?.fio||'Студент')}</b></p><p style="color:var(--muted);font-size:12px">Действие будет записано в журнал.</p><button class="btn btn-danger btn-wide" onclick="doEvict(${row})">Выселить</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`); }
-async function doEvict(row){
-  try{
-    await apiRequest('appEvictStudent',[state.initData,row],{ttl:0,force:true});
-
-    const s=state.studentMap.get(Number(row));
-    if(s)s.active=false;
-
-    if(state.studentLists.active){
-      state.studentLists.active=state.studentLists.active.filter(x=>Number(x.rowNumber)!==Number(row));
-    }
-
-    if(state.studentLists.all){
-      const item=state.studentLists.all.find(x=>Number(x.rowNumber)===Number(row));
-      if(item)item.active=false;
-    }
-
-    if(state.studentLists.evicted){
-      const item=state.studentMap.get(Number(row));
-      if(item&&!state.studentLists.evicted.some(x=>Number(x.rowNumber)===Number(row))){
-        state.studentLists.evicted.unshift(item);
-      }
-    }
-
-    state.cache.clear();
-    state.roomData=null;
-    state.roomDataTime=0;
-
-    closeModal();
-    toast('Студент выселен');
-    render('students');
-    refreshAfterMutation();
-  }catch(e){
-    toast(e.message);
-  }
-}
+async function doEvict(row){ try{await apiRequest('appEvictStudent',[state.initData,row],{ttl:0,force:true});closeModal();toast('Студент выселен');await refreshAfterMutation();render('students');}catch(e){toast(e.message)} }
 async function refreshAfterMutation(){
-  try{
-    state.cache.clear();
-
-    const [bootstrap,active,all,rooms]=await Promise.allSettled([
-      apiRequest('appBootstrap',[state.initData],{ttl:0,force:true}),
-      apiRequest('appGetStudents',[state.initData,'active'],{ttl:0,force:true}),
-      apiRequest('appGetStudents',[state.initData,'all'],{ttl:0,force:true}),
-      apiRequest('appGetRooms',[state.initData],{ttl:0,force:true})
-    ]);
-
-    if(bootstrap.status==='fulfilled'){
-      const data=bootstrap.value;
-      state.dashboard=data.dashboard;
-      state.analytics=data.analytics;
-      state.rooms=data.rooms||state.rooms;
-      state.lastCoreSync=Date.now();
-    }
-
-    if(active.status==='fulfilled'){
-      state.studentLists.active=active.value;
-      state.studentListTime.active=Date.now();
-      indexStudents(active.value);
-    }
-
-    if(all.status==='fulfilled'){
-      state.studentLists.all=all.value;
-      state.studentListTime.all=Date.now();
-      indexStudents(all.value);
-    }
-
-    if(rooms.status==='fulfilled'){
-      state.roomData=rooms.value;
-      state.roomDataTime=Date.now();
-    }
-
-    if(state.currentPage==='students'){
-      updateStudentSummary();
-      renderRecentStudents();
-      const base=currentStudentBaseList();
-      updateStudentFilterOptions(base);
-      drawStudentView(base);
-    }
-  }catch(e){}
+  invalidateData();
+  try{ const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true}); state.dashboard=data.dashboard;state.analytics=data.analytics;state.rooms=data.rooms||state.rooms; }catch(e){}
+  prefetchCore();
 }
 
-function showModal(html){
-  const sheet=$('#modalSheet');
-  const modal=$('#modal');
-  if(!sheet||!modal)return;
-
-  sheet.innerHTML=html;
-  sheet.scrollTop=0;
-  modal.classList.remove('hidden');
-
-  document.body.classList.add('modal-open');
-  document.documentElement.classList.add('modal-open');
-  document.body.style.overflow='';
-
-  requestAnimationFrame(()=>{
-    sheet.scrollTop=0;
-    try{sheet.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
-  });
-}
-function closeModal(){
-  const modal=$('#modal');
-  const sheet=$('#modalSheet');
-
-  if(state.seasonPreviewActive){
-    state.seasonPreviewActive=false;
-    state.seasonResolved=state.seasonPreviewSavedResolved||resolveSeasonMode(state.seasonMode||'auto');
-    document.documentElement.dataset.season=state.seasonResolved;
-    renderSeasonLayer();
-  }
-
-  modal?.classList.add('hidden');
-
-  document.body.classList.remove('modal-open');
-  document.documentElement.classList.remove('modal-open');
-  document.body.style.overflow='';
-  document.documentElement.style.overflow='';
-
-  if(sheet){
-    sheet.scrollTop=0;
-    requestAnimationFrame(()=>{sheet.scrollTop=0});
-  }
-
-  repairScrollState();
-}
+function showModal(html){ $('#modalSheet').innerHTML=html; $('#modal').classList.remove('hidden'); document.body.style.overflow='hidden'; }
+function closeModal(){ $('#modal').classList.add('hidden'); document.body.style.overflow=''; }
 
 function updateSeenKey(){ return 'campus-update-seen-version'; }
 
@@ -2136,12 +973,8 @@ function remoteUpdateCard(){
 }
 async function showWhatsNew(){
   haptic('light');
-
-  const modal=$('#modal');
-  if(modal&&!modal.classList.contains('hidden'))closeModal();
-
+  await checkRemoteUpdate(true);
   markUpdatesSeen();
-
   showModal(`<div class="sheet-handle"></div>
     <div class="updates-sheet-head">
       <div>
@@ -2151,39 +984,13 @@ async function showWhatsNew(){
       </div>
       <span class="updates-current">v${esc(APP_VERSION)}</span>
     </div>
-
-    <div id="remoteUpdateArea">
-      <div class="updates-loading-card">
-        <span class="updates-loading-spinner"></span>
-        <span><b>Проверяем обновления</b><small>GitHub проверяется в фоне</small></span>
-      </div>
-    </div>
-
+    ${remoteUpdateCard()}
     <div class="updates-list">
       ${CAMPUS_UPDATES.map(renderUpdateItem).join('')}
     </div>
-
     <div class="updates-footer">Cloud Update проверяет GitHub. После публикации новой версии её можно установить прямо с телефона.</div>
     <button class="btn btn-secondary btn-wide" onclick="checkUpdatesFromSheet()">Проверить ещё раз</button>
     <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
-
-  requestAnimationFrame(()=>{
-    const s=$('#modalSheet');
-    if(s){
-      s.scrollTop=0;
-      try{s.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
-    }
-  });
-
-  const manifest=await checkRemoteUpdate(true);
-  if(state.currentPage===undefined)return manifest;
-
-  const area=$('#remoteUpdateArea');
-  if(area && $('#modal') && !$('#modal').classList.contains('hidden')){
-    area.innerHTML=remoteUpdateCard();
-  }
-
-  return manifest;
 }
 async function checkUpdatesFromSheet(){
   const m=await checkRemoteUpdate(false);
@@ -2193,15 +1000,7 @@ async function checkUpdatesFromSheet(){
 function installRemoteUpdate(){
   const m=state.remoteManifest;
   if(!m?.version)return;
-
   try{localStorage.setItem('campus-last-update-target',String(m.version))}catch(e){}
-
-  const sheet=$('#modalSheet');
-  if(sheet)sheet.scrollTop=0;
-
-  document.body.style.overflow='';
-  delete document.body.dataset.modalPrevOverflow;
-
   const url=CLOUD_APP_URL+'?v='+encodeURIComponent(m.version)+'&cb='+Date.now();
   location.replace(url);
 }
@@ -2209,23 +1008,6 @@ function installRemoteUpdate(){
 function showProfile(){
   const u=state.user||{};
   showModal(`<div class="sheet-handle"></div><div style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:54px;height:54px;font-size:15px">${esc(initials(u.firstName||u.username||'C1'))}</span><div><h3 style="margin:0 0 4px">${esc(u.firstName||'Пользователь')}</h3><span class="badge blue">${esc(roleLabel(u))}</span></div></div><div class="kv"><div><small>Telegram ID</small><b>${esc(u.id||'—')}</b></div><div><small>Доступ</small><b>${u.canManage?'Управление':'Просмотр'}</b></div></div><button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
-}
-
-
-function repairScrollState(){
-  const modal=$('#modal');
-  const modalOpen=!!modal && !modal.classList.contains('hidden');
-
-  if(modalOpen){
-    document.body.classList.add('modal-open');
-    document.documentElement.classList.add('modal-open');
-    return;
-  }
-
-  document.body.classList.remove('modal-open');
-  document.documentElement.classList.remove('modal-open');
-  document.body.style.overflow='';
-  document.documentElement.style.overflow='';
 }
 
 function bindGlobalEvents(){
@@ -2239,14 +1021,7 @@ function bindGlobalEvents(){
     render(page);
   }));
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
-  const updatesBtn=$('#updatesBtn');
-  if(updatesBtn){
-    updatesBtn.onclick=e=>{
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-      showWhatsNew();
-    };
-  }
+  $('#updatesBtn')?.addEventListener('click',showWhatsNew);
   $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
   $('#modal')?.addEventListener('click',e=>{ if(e.target?.hasAttribute('data-close-modal'))closeModal(); });
@@ -2254,23 +1029,8 @@ function bindGlobalEvents(){
 }
 
 initTheme();
-initSeasonTheme();
 bindGlobalEvents();
 injectIcons();
-repairScrollState();
-installWinterHomeGarlandObserver();
-
-window.addEventListener('pageshow',()=>{
-  repairScrollState();
-  refreshWinterHomeGarland();
-});
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden){
-    repairScrollState();
-    refreshWinterHomeGarland();
-  }
-});
-
 boot();
 
 
