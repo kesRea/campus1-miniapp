@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_6_PERSONALIZATION */
+/* CAMPUS_GITHUB_UI_V13_6_1_POLISH */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.6.0';
+const APP_VERSION = '13.6.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -12,18 +12,30 @@ const state = {
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
-  roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, seasonMode:'auto', seasonResolved:'none', remoteManifest:null, updateCheckTime:0
+  roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, seasonMode:'auto', seasonResolved:'none', seasonPreviewActive:false, seasonPreviewSavedMode:null, seasonPreviewSavedResolved:null, remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.6.0';
+const UPDATE_CENTER_VERSION = '13.6.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
   {
+    version:'13.6.1',
+    date:'9 октября 2026',
+    title:'Seasonal Polish',
+    latest:true,
+    items:[
+      'Осенние частицы полностью перерисованы: теперь это настоящие листья с формой и прожилками.',
+      'Исправлено повторное открытие окна обновлений: список всегда открывается сверху и нормально прокручивается.',
+      'Добавлен приватный предпросмотр сезонных тем только для владельца.',
+      'Предпросмотр не меняет сохранённую тему других пользователей.'
+    ]
+  },
+  {
     version:'13.6',
     date:'9 октября 2026',
     title:'Personalization',
-    latest:true,
+    latest:false,
     items:[
       'Факультеты в фильтре объединяются в понятные категории: CS, ФЕН, Колледж ПГУ и другие.',
       'Добавлены сезонные темы: осень, зима, весна и лето.',
@@ -378,6 +390,96 @@ function seasonParticleStyle(i,total,kind){
   return `--x:${x};--delay:${delay}s;--dur:${duration}s;--size:${size}px;--drift:${drift}px`;
 }
 
+function autumnLeafSvg(i){
+  const type=i%3;
+  if(type===0){
+    return `<svg viewBox="0 0 36 36" aria-hidden="true">
+      <path class="leaf-fill" d="M31 5C19 5.5 9.2 10.4 6.1 19.2c-2.4 6.7 2.2 11.2 8.6 9.5C23.8 26.3 29.2 16.8 31 5Z"/>
+      <path class="leaf-vein" d="M8.7 26.5C15 20.5 20.3 15.4 28.8 8.1M14.2 21.2l-1.1-6.1M18.4 17.4l6.1.2"/>
+    </svg>`;
+  }
+  if(type===1){
+    return `<svg viewBox="0 0 36 36" aria-hidden="true">
+      <path class="leaf-fill" d="M18 3.5c1.6 4.1 3.5 6.2 7 8.7l-2.8 1.5c2.4 2.1 4.6 3.2 8.1 3.8l-3.7 2.4c1.2 2.4 2 4.7 2.1 8.2-4.4-.7-7.1-1.8-9.5-4.4l-1.2 8.7-1.2-8.7c-2.4 2.6-5.1 3.7-9.5 4.4.1-3.5.9-5.8 2.1-8.2l-3.7-2.4c3.5-.6 5.7-1.7 8.1-3.8L11 12.2c3.5-2.5 5.4-4.6 7-8.7Z"/>
+      <path class="leaf-vein" d="M18 7.6v21.9M18 18.3l-5.1-3.4M18 21.3l5.4-3.4"/>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 36 36" aria-hidden="true">
+    <path class="leaf-fill" d="M29.8 7.1C22 7 15 10.1 10.8 15.2c-4.5 5.4-3.2 11.4 2.2 13.8 5.8 2.5 12.9-.9 15.1-8.3 1.2-4.1 1.5-8.8 1.7-13.6Z"/>
+    <path class="leaf-vein" d="M10.7 27.6C16 22 21.1 16.9 28.1 9.3M16.3 21.9l-1-6M20.7 17.6l5.7.7"/>
+  </svg>`;
+}
+
+function previewSeason(mode){
+  if(!state.user?.isOwner)return toast('Предпросмотр доступен только владельцу');
+
+  if(!state.seasonPreviewActive){
+    state.seasonPreviewActive=true;
+    state.seasonPreviewSavedMode=state.seasonMode;
+    state.seasonPreviewSavedResolved=state.seasonResolved;
+  }
+
+  const resolved=mode==='auto'?resolveAutoSeason():resolveSeasonMode(mode);
+  state.seasonResolved=resolved;
+  document.documentElement.dataset.season=resolved;
+  renderSeasonLayer();
+
+  $$('.owner-season-preview-btn').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.preview===mode);
+  });
+
+  const label=$('#ownerSeasonPreviewLabel');
+  if(label)label.textContent=CAMPUS_SEASONS[resolved]?.label||resolved;
+}
+
+function closeSeasonPreview(){
+  if(state.seasonPreviewActive){
+    state.seasonPreviewActive=false;
+    state.seasonResolved=state.seasonPreviewSavedResolved||resolveSeasonMode(state.seasonMode||'auto');
+    document.documentElement.dataset.season=state.seasonResolved;
+    renderSeasonLayer();
+  }
+  closeModal();
+}
+
+function openOwnerSeasonPreview(){
+  if(!state.user?.isOwner)return toast('Недостаточно прав');
+
+  state.seasonPreviewActive=true;
+  state.seasonPreviewSavedMode=state.seasonMode;
+  state.seasonPreviewSavedResolved=state.seasonResolved;
+
+  showModal(`
+    <div class="sheet-handle"></div>
+    <div class="owner-preview-head">
+      <span class="owner-preview-badge">Только владелец</span>
+      <h3>Предпросмотр сезонов</h3>
+      <p>Выбранная здесь тема включается только временно для проверки. Сохранённая тема пользователей не меняется.</p>
+    </div>
+
+    <div class="owner-preview-current">
+      <small>Сейчас показывается</small>
+      <b id="ownerSeasonPreviewLabel">${esc(CAMPUS_SEASONS[state.seasonResolved]?.label||'Тема')}</b>
+    </div>
+
+    <div class="owner-season-preview-grid">
+      ${ownerPreviewButton('autumn','Осень','Листья')}
+      ${ownerPreviewButton('winter','Зима','Снег + огни')}
+      ${ownerPreviewButton('spring','Весна','Лепестки')}
+      ${ownerPreviewButton('summer','Лето','Солнечный фон')}
+    </div>
+
+    <button class="btn btn-secondary btn-wide" type="button" onclick="closeSeasonPreview()">Вернуться к моей теме</button>
+  `);
+}
+
+function ownerPreviewButton(mode,title,sub){
+  return `<button type="button" class="owner-season-preview-btn" data-preview="${mode}" onclick="previewSeason('${mode}')">
+    <span class="owner-season-preview-icon owner-season-${mode}"></span>
+    <span><b>${esc(title)}</b><small>${esc(sub)}</small></span>
+  </button>`;
+}
+
 function renderSeasonLayer(){
   const layer=ensureSeasonLayer();
   const season=state.seasonResolved||'none';
@@ -391,10 +493,11 @@ function renderSeasonLayer(){
   if(reduce)return;
 
   if(season==='autumn'){
-    for(let i=0;i<12;i++){
+    for(let i=0;i<10;i++){
       const p=document.createElement('span');
-      p.className='season-particle season-leaf';
-      p.style.cssText=seasonParticleStyle(i,12,'leaf');
+      p.className=`season-particle season-leaf leaf-variant-${i%3}`;
+      p.style.cssText=seasonParticleStyle(i,10,'leaf');
+      p.innerHTML=autumnLeafSvg(i);
       layer.appendChild(p);
     }
   }
@@ -1425,6 +1528,16 @@ function renderAnalytics(){
 }
 
 function renderMore(){
+  const ownerPreview=state.user?.isOwner
+    ? `<button class="setting-row setting-row-button owner-preview-row" type="button" onclick="openOwnerSeasonPreview()">
+         <div class="setting-copy">
+           <b>Предпросмотр сезонов</b>
+           <small>Только для владельца · временный просмотр</small>
+         </div>
+         <span class="badge blue">DEV</span>
+       </button>`
+    : '';
+
   $('#view').innerHTML=`${pageHead('Ещё','home')}
     <div class="more-grid">
       ${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}
@@ -1454,6 +1567,8 @@ function renderMore(){
         </div>
         <span id="seasonModeBadge" class="badge blue">${esc(seasonModeLabel())}</span>
       </button>
+
+      ${ownerPreview}
 
       <button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()">
         <div class="setting-copy">
@@ -1782,8 +1897,47 @@ async function refreshAfterMutation(){
   }catch(e){}
 }
 
-function showModal(html){ $('#modalSheet').innerHTML=html; $('#modal').classList.remove('hidden'); document.body.style.overflow='hidden'; }
-function closeModal(){ $('#modal').classList.add('hidden'); document.body.style.overflow=''; }
+function showModal(html){
+  const sheet=$('#modalSheet');
+  const modal=$('#modal');
+  if(!sheet||!modal)return;
+
+  sheet.innerHTML=html;
+  sheet.scrollTop=0;
+  modal.classList.remove('hidden');
+
+  if(!document.body.dataset.modalPrevOverflow){
+    document.body.dataset.modalPrevOverflow=document.body.style.overflow||'__empty__';
+  }
+  document.body.style.overflow='hidden';
+
+  requestAnimationFrame(()=>{
+    sheet.scrollTop=0;
+    try{sheet.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
+  });
+}
+function closeModal(){
+  const modal=$('#modal');
+  const sheet=$('#modalSheet');
+
+  if(state.seasonPreviewActive){
+    state.seasonPreviewActive=false;
+    state.seasonResolved=state.seasonPreviewSavedResolved||resolveSeasonMode(state.seasonMode||'auto');
+    document.documentElement.dataset.season=state.seasonResolved;
+    renderSeasonLayer();
+  }
+
+  modal?.classList.add('hidden');
+
+  const prev=document.body.dataset.modalPrevOverflow;
+  document.body.style.overflow=(!prev||prev==='__empty__')?'':prev;
+  delete document.body.dataset.modalPrevOverflow;
+
+  if(sheet){
+    sheet.scrollTop=0;
+    requestAnimationFrame(()=>{sheet.scrollTop=0});
+  }
+}
 
 function updateSeenKey(){ return 'campus-update-seen-version'; }
 
@@ -1865,8 +2019,18 @@ function remoteUpdateCard(){
 }
 async function showWhatsNew(){
   haptic('light');
+
+  const modal=$('#modal');
+  const sheet=$('#modalSheet');
+
+  if(modal&&!modal.classList.contains('hidden')){
+    closeModal();
+    await new Promise(r=>setTimeout(r,40));
+  }
+
   await checkRemoteUpdate(true);
   markUpdatesSeen();
+
   showModal(`<div class="sheet-handle"></div>
     <div class="updates-sheet-head">
       <div>
@@ -1883,6 +2047,14 @@ async function showWhatsNew(){
     <div class="updates-footer">Cloud Update проверяет GitHub. После публикации новой версии её можно установить прямо с телефона.</div>
     <button class="btn btn-secondary btn-wide" onclick="checkUpdatesFromSheet()">Проверить ещё раз</button>
     <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+
+  requestAnimationFrame(()=>{
+    const s=$('#modalSheet');
+    if(s){
+      s.scrollTop=0;
+      try{s.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
+    }
+  });
 }
 async function checkUpdatesFromSheet(){
   const m=await checkRemoteUpdate(false);
@@ -1892,7 +2064,15 @@ async function checkUpdatesFromSheet(){
 function installRemoteUpdate(){
   const m=state.remoteManifest;
   if(!m?.version)return;
+
   try{localStorage.setItem('campus-last-update-target',String(m.version))}catch(e){}
+
+  const sheet=$('#modalSheet');
+  if(sheet)sheet.scrollTop=0;
+
+  document.body.style.overflow='';
+  delete document.body.dataset.modalPrevOverflow;
+
   const url=CLOUD_APP_URL+'?v='+encodeURIComponent(m.version)+'&cb='+Date.now();
   location.replace(url);
 }
