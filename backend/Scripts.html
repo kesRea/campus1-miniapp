@@ -1,0 +1,261 @@
+<script>
+/* CAMPUS_UI_V8_POLISHED */
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+const state = {
+  initData:'', user:null, dashboard:null, analytics:null, rooms:[], students:[], currentPage:'home',
+  roomData:[], renderId:0, cache:{}, pending:{}, aiMessages:[], aiSending:false, theme:'light', prefetchStarted:false
+};
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function icon(name){
+  const p={
+    home:'<path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H4.5A1.5 1.5 0 0 1 3 19.5z"/>',
+    users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    building:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2M10 21v-3h4v3"/>',
+    spark:'<path d="m12 3 1.4 4.1a5.5 5.5 0 0 0 3.5 3.5L21 12l-4.1 1.4a5.5 5.5 0 0 0-3.5 3.5L12 21l-1.4-4.1a5.5 5.5 0 0 0-3.5-3.5L3 12l4.1-1.4a5.5 5.5 0 0 0 3.5-3.5z"/>',
+    menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    chart:'<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>',
+    globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>',
+    journal:'<path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/>',
+    moon:'<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"/>',
+    sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/>',
+    arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+    send:'<path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/>',
+    move:'<path d="M7 7h11l-3-3M18 7l-3 3M17 17H6l3 3M6 17l3-3"/>',
+    person:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    palette:'<path d="M12 3a9 9 0 1 0 0 18h1.5a1.5 1.5 0 0 0 0-3H12a2 2 0 0 1 0-4h3a6 6 0 0 0 6-6c0-3-4-5-9-5z"/><circle cx="7.5" cy="9" r="1"/><circle cx="10.5" cy="6.5" r="1"/><circle cx="14.5" cy="6.5" r="1"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p[name]||p.spark}</svg>`;
+}
+
+function getTelegramInitDataBridge(){
+  return new Promise(function(resolve){
+    try{ if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData){ resolve(String(window.Telegram.WebApp.initData)); return; } }catch(e){}
+    try{
+      if(typeof google !== 'undefined' && google.script && google.script.url && google.script.url.getLocation){
+        google.script.url.getLocation(function(location){
+          try{ const p=(location&&location.parameter)||{}; resolve(String(p.tgInitData||p.tginitdata||'')); }catch(e){ resolve(''); }
+        }); return;
+      }
+    }catch(e){}
+    try{ const q=new URLSearchParams(window.location.search||''); resolve(String(q.get('tgInitData')||'')); return; }catch(e){}
+    resolve('');
+  });
+}
+
+function server(name,...args){
+  return new Promise((resolve,reject)=>{
+    try{
+      const runner=google.script.run.withSuccessHandler(resolve).withFailureHandler(err=>reject(new Error(err&&err.message?err.message:String(err))));
+      runner[name](...args);
+    }catch(e){ reject(e); }
+  });
+}
+function toast(msg){ const el=$('#toast'); if(!el)return; el.textContent=msg; el.classList.remove('hidden'); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.add('hidden'),2600); }
+function initials(name){ return String(name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
+function roleLabel(u){ return u&&u.role?u.role:'Пользователь'; }
+function skeleton(count=5){ return `<div class="skeleton-list">${Array.from({length:count},()=>'<div class="skeleton"></div>').join('')}</div>`; }
+
+function cacheGet(key,ttl){ const c=state.cache[key]; return c&&Date.now()-c.time<ttl?c.value:null; }
+function cacheSet(key,value){ state.cache[key]={value,time:Date.now()}; return value; }
+function cacheDrop(prefix=''){ Object.keys(state.cache).forEach(k=>{if(!prefix||k.startsWith(prefix))delete state.cache[k]}); }
+async function loadCached(key,ttl,loader){
+  const hit=cacheGet(key,ttl); if(hit!==null)return hit;
+  if(state.pending[key])return state.pending[key];
+  state.pending[key]=Promise.resolve().then(loader).then(v=>cacheSet(key,v)).finally(()=>delete state.pending[key]);
+  return state.pending[key];
+}
+
+function initialTheme(){
+  const saved=localStorage.getItem('campus-theme');
+  if(saved==='dark'||saved==='light')return saved;
+  if(tg&&tg.colorScheme==='dark')return 'dark';
+  return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+}
+function applyTheme(theme,persist=true){
+  state.theme=theme==='dark'?'dark':'light';
+  document.documentElement.dataset.theme=state.theme;
+  if(persist)localStorage.setItem('campus-theme',state.theme);
+  const btn=$('#themeQuick'); if(btn)btn.innerHTML=icon(state.theme==='dark'?'sun':'moon');
+  const toggle=$('#themeToggle'); if(toggle)toggle.textContent=state.theme==='dark'?'Светлая':'Тёмная';
+  try{
+    if(tg){ const bg=state.theme==='dark'?'#0b111b':'#f4f7fb'; tg.setHeaderColor(bg); tg.setBackgroundColor(bg); }
+  }catch(e){}
+}
+function toggleTheme(){ applyTheme(state.theme==='dark'?'light':'dark'); if(state.currentPage==='more')renderMore(); }
+function enhanceShell(){
+  const navMap={home:['home','Главная'],students:['users','Студенты'],rooms:['building','Комнаты'],ai:['spark','ИИ'],more:['menu','Ещё']};
+  document.querySelectorAll('.nav').forEach(b=>{ const x=navMap[b.dataset.page]; if(x)b.innerHTML=`<i>${icon(x[0])}</i>${x[1]}`; });
+  const top=$('.toprow');
+  if(top&&!$('#themeQuick')){
+    const b=document.createElement('button'); b.id='themeQuick'; b.className='theme-quick'; b.type='button'; b.onclick=toggleTheme; b.setAttribute('aria-label','Сменить тему');
+    const pill=$('#userPill'); top.insertBefore(b,pill||null);
+  }
+  applyTheme(state.theme,false);
+}
+
+async function boot(fromButton){
+  const btn=$('#openStateBtn');
+  try{
+    if(btn){btn.disabled=true;btn.textContent=fromButton?'Повторная проверка…':'Проверяем Telegram…';}
+    if(tg){ try{tg.ready();tg.expand();}catch(e){} }
+    state.initData=await getTelegramInitDataBridge();
+    if(!state.initData){ if(btn){btn.disabled=false;btn.textContent='Повторить вход';} const p=$('.splash p'); if(p)p.textContent='Telegram-сессия не получена. Нажмите «Повторить вход».'; return; }
+    if(btn)btn.textContent='Проверяем доступ…';
+    const data=await server('appBootstrap',state.initData);
+    state.user=data.user; state.dashboard=data.dashboard; state.analytics=data.analytics; state.rooms=data.rooms||[];
+    const pill=$('#userPill'); if(pill)pill.textContent=(state.user.firstName||'Пользователь')+' · '+roleLabel(state.user);
+    const splash=$('#splash'),app=$('#app'),bottom=$('#bottomNav');
+    if(splash)splash.classList.add('hidden'); if(app)app.classList.remove('hidden'); if(bottom)bottom.classList.remove('hidden');
+    enhanceShell(); render('home'); setTimeout(prefetchCampusData,60);
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Повторить вход';}
+    const p=$('.splash p'); if(p)p.textContent=e&&e.message?e.message:String(e); toast(e&&e.message?e.message:String(e));
+  }
+}
+
+function prefetchCampusData(){
+  if(state.prefetchStarted)return;
+  state.prefetchStarted=true;
+  loadCached('students:active',60000,()=>server('appGetStudents',state.initData,'active')).catch(()=>{});
+  setTimeout(()=>loadCached('rooms:data',60000,()=>server('appGetRooms',state.initData)).catch(()=>{}),120);
+}
+function cachedStudent(row){
+  const pools=[];
+  const a=cacheGet('students:active',60000); if(Array.isArray(a))pools.push(a);
+  const all=cacheGet('students:all',60000); if(Array.isArray(all))pools.push(all);
+  if(Array.isArray(state.students))pools.push(state.students);
+  for(const pool of pools){const hit=pool.find(x=>Number(x.rowNumber)===Number(row));if(hit)return hit;}
+  return null;
+}
+function showStudentCard(s){
+  const manage=state.user&&state.user.canManage;
+  showModal(`<div class="sheet-handle"></div><h3>${esc(s.fio)}</h3><span class="badge ${s.active?'':'red'}">${s.active?'Проживает':'Выселен'}</span><div class="kv"><div><small>Комната</small><b>${esc(s.room||'—')}</b></div><div><small>Факультет</small><b>${esc(s.faculty||'—')}</b></div><div><small>ИИН / паспорт</small><b>${esc(s.iin||'—')}</b></div><div><small>Дата заселения</small><b>${esc(s.dateIn||'—')}</b></div><div><small>Дата рождения</small><b>${esc(s.birthDate||'—')}</b></div><div><small>Прописка</small><b>${esc(s.registration||'—')}</b></div></div>${manage&&s.active?`<div class="button-row"><button class="secondary" onclick="openMove(${s.rowNumber},'${esc(s.fio)}','${esc(s.room)}')">Переселить</button><button class="secondary danger" onclick="confirmEvict(${s.rowNumber},'${esc(s.fio)}')">Выселить</button></div>`:''}<button class="secondary" style="width:100%;margin-top:10px" onclick="closeModal()">Закрыть</button>`);
+}
+
+function setNav(page){ document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===page)); }
+function setView(html){ const v=$('#view'); if(v)v.innerHTML=html; }
+async function render(page){
+  state.currentPage=page; const rid=++state.renderId; setNav(page);
+  try{
+    if(page==='home')return renderHome();
+    if(page==='students')return renderStudents('active',rid);
+    if(page==='rooms')return renderRooms(rid);
+    if(page==='ai')return renderAI(rid);
+    if(page==='more')return renderMore();
+    if(page==='analytics')return renderAnalytics();
+    if(page==='foreigners')return renderGenericTable('Иностранные студенты','appGetForeigners',rid);
+    if(page==='council')return renderCouncil('council',rid);
+    if(page==='activists')return renderCouncil('activists',rid);
+    if(page==='control')return renderGenericTable('Контроль общежития','appGetControl',rid);
+    if(page==='journal')return renderGenericTable('Журнал действий','appGetJournal',rid);
+  }catch(e){ if(rid===state.renderId)setView('<div class="empty">'+esc(e.message)+'</div>'); }
+}
+
+function renderHome(){
+  const d=state.dashboard||{}; const total=Math.max(1,d.totalRooms||0); const occ=Math.round(((d.occupiedRooms||0)/total)*100); const u=state.user||{};
+  const avatar=u.photoUrl?`<img src="${esc(u.photoUrl)}" alt="">`:esc(initials(u.firstName||u.username||'C'));
+  setView(`
+    <section class="welcome-panel">
+      <div class="welcome-top"><div class="profile-avatar">${avatar}</div><div class="welcome-copy"><div class="welcome-kicker">Добро пожаловать</div><div class="welcome-name">${esc(u.firstName||u.username||'Пользователь')}</div><div class="role-line"><span class="role-badge">${esc(roleLabel(u))}</span><span>Campus №1</span></div></div></div>
+      <div class="occupancy"><div class="occupancy-head"><span>Загрузка комнат</span><span>${d.occupiedRooms||0} из ${d.totalRooms||0} · ${occ}%</span></div><div class="progress"><i style="width:${Math.min(100,occ)}%"></i></div></div>
+    </section>
+    <div class="smart-search" onclick="render('students')"><div class="search-icon">${icon('search')}</div><div><strong>Быстрый поиск</strong><small>ФИО, ИИН, паспорт или комната</small></div><span class="chev">›</span></div>
+    <div class="section-title">Обзор</div>
+    <div class="metrics">
+      <div class="metric green" onclick="render('students')"><div class="metric-top"><div class="metric-icon">${icon('users')}</div></div><strong>${d.currentStudents||0}</strong><span>Сейчас заселено</span></div>
+      <div class="metric" onclick="render('rooms')"><div class="metric-top"><div class="metric-icon">${icon('building')}</div></div><strong>${d.freeRooms||0}</strong><span>Свободно комнат</span></div>
+      <div class="metric violet" onclick="render('foreigners')"><div class="metric-top"><div class="metric-icon">${icon('globe')}</div></div><strong>${d.foreigners||0}</strong><span>Иностранцы</span></div>
+      <div class="metric amber" onclick="render('council')"><div class="metric-top"><div class="metric-icon">${icon('shield')}</div></div><strong>${(d.council||0)+(d.activists||0)}</strong><span>Студсовет и активисты</span></div>
+    </div>
+    <div class="section-title">Быстрые действия</div>
+    <div class="quick-grid">
+      ${u.canManage?`<button class="quick-card" onclick="openAddStudent()"><div class="quick-icon">${icon('plus')}</div><b>Заселить</b><small>Добавить студента в базу</small></button>`:''}
+      <button class="quick-card" onclick="render('students')"><div class="quick-icon">${icon('search')}</div><b>Найти</b><small>Студент, ИИН или комната</small></button>
+      <button class="quick-card" onclick="render('rooms')"><div class="quick-icon">${icon('building')}</div><b>Комнаты</b><small>Занятость Campus №1</small></button>
+      <button class="quick-card" onclick="render('analytics')"><div class="quick-icon">${icon('chart')}</div><b>Аналитика</b><small>Динамика и распределение</small></button>
+    </div>
+    <div class="ai-promo" onclick="render('ai')"><div class="ai-promo-icon">${icon('spark')}</div><div><b>Campus AI</b><small>Поиск по базе, анализ и тексты</small></div><div class="arrow">→</div></div>`);
+}
+
+function pageHead(title,back,sub=''){ return `<div class="page-head">${back?`<button onclick="render('${back}')">‹</button>`:''}<h2>${esc(title)}</h2>${sub?`<span class="head-sub">${esc(sub)}</span>`:''}</div>`; }
+
+async function renderStudents(mode='active',rid=state.renderId){
+  setView(pageHead('Студенты')+`<div class="search"><span class="search-symbol">${icon('search')}</span><input id="studentSearch" placeholder="ФИО, ИИН, комната, факультет" onkeydown="if(event.key==='Enter')doStudentSearch()"><button class="secondary" onclick="doStudentSearch()">Найти</button></div><div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active',state.renderId)">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all',state.renderId)">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted',state.renderId)">Выселены</button></div><div id="studentList" class="list">${skeleton(5)}</div>`);
+  const key='students:'+mode; const cached=cacheGet(key,45000); if(cached)drawStudents(cached);
+  try{
+    const list=await loadCached(key,45000,()=>server('appGetStudents',state.initData,mode));
+    if(rid!==state.renderId||state.currentPage!=='students')return; state.students=list; drawStudents(list);
+  }catch(e){ if(rid===state.renderId){const el=$('#studentList');if(el)el.innerHTML='<div class="empty">'+esc(e.message)+'</div>';} }
+}
+function drawStudents(list){ const el=$('#studentList'); if(!el)return; if(!list||!list.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;} el.innerHTML=list.map(s=>`<div class="row-card" onclick="openStudent(${s.rowNumber})"><div class="avatar">${esc(initials(s.fio))}</div><div class="row-main"><b>${esc(s.fio)}</b><small>Комната ${esc(s.room||'—')} · ${esc(s.faculty||'Факультет не указан')}</small></div><span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span></div>`).join(''); }
+async function doStudentSearch(){ const input=$('#studentSearch'),el=$('#studentList'); if(!input||!el)return; const q=input.value.trim(); if(!q)return; el.innerHTML=skeleton(3); try{const list=await server('appSearchStudents',state.initData,q); if(state.currentPage==='students')drawStudents(list);}catch(e){toast(e.message)} }
+
+async function openStudent(row){
+  const local=cachedStudent(row);
+  if(local){showStudentCard(local);return;}
+  try{const s=await server('appGetStudent',state.initData,row);showStudentCard(s);}catch(e){toast(e.message)}
+}
+
+async function renderRooms(rid=state.renderId){
+  setView(pageHead('Комнаты')+`<div class="search"><span class="search-symbol">${icon('search')}</span><input id="roomFilter" placeholder="Номер комнаты" oninput="filterRooms()"></div><div class="section-sub" style="margin-top:10px">13, 14, 23, 30–117, 119–125, 128–162</div><div id="roomsGrid" class="rooms">${skeleton(6)}</div>`);
+  const cached=cacheGet('rooms:data',45000); if(cached){state.roomData=cached;drawRooms(cached)}
+  try{ const list=await loadCached('rooms:data',45000,()=>server('appGetRooms',state.initData)); if(rid!==state.renderId||state.currentPage!=='rooms')return; state.roomData=list; drawRooms(list); }catch(e){const el=$('#roomsGrid');if(el)el.innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
+}
+function drawRooms(list){ const el=$('#roomsGrid'); if(!el)return; el.innerHTML=(list||[]).map(r=>`<div class="room ${r.occupants?'busy':'empty'}" onclick="openRoom('${esc(r.room)}')"><span class="dot"></span><b>${esc(r.room)}</b><small>${r.occupants?r.occupants+' прожив.':'Свободна'}</small></div>`).join(''); }
+function filterRooms(){ const inp=$('#roomFilter'); if(!inp)return; const q=inp.value.trim(); drawRooms((state.roomData||[]).filter(r=>!q||String(r.room).includes(q))); }
+async function openRoom(room){ try{ const data=await server('appGetRoom',state.initData,room); showModal(`<div class="sheet-handle"></div><h3>Комната №${esc(room)}</h3><div style="color:var(--muted);margin-bottom:12px;font-size:11px">${data.occupants.length} проживающих</div><div class="list">${data.occupants.length?data.occupants.map(s=>`<div class="row-card" onclick="openStudent(${s.rowNumber})"><div class="avatar">${esc(initials(s.fio))}</div><div class="row-main"><b>${esc(s.fio)}</b><small>${esc(s.faculty||'')}</small></div></div>`).join(''):'<div class="empty">Комната свободна</div>'}</div>${state.user&&state.user.canManage?`<button class="primary" style="width:100%;margin-top:14px" onclick="closeModal();openAddStudent('${esc(room)}')">Заселить в комнату</button>`:''}<button class="secondary" style="width:100%;margin-top:9px" onclick="closeModal()">Закрыть</button>`); }catch(e){toast(e.message)} }
+
+async function renderAnalytics(){
+  if(!state.analytics){
+    setView(pageHead('Аналитика','home')+skeleton(4));
+    try{state.analytics=await loadCached('analytics',60000,()=>server('appGetAnalytics',state.initData));}
+    catch(e){setView(pageHead('Аналитика','home')+`<div class="empty">${esc(e.message)}</div>`);return;}
+  }
+  const a=state.analytics||{},d=a.dashboard||{},m=a.months||[],max=Math.max(1,...m.map(x=>x.inCount));
+  setView(pageHead('Аналитика','home')+`<div class="metrics"><div class="metric green"><strong>${d.currentStudents||0}</strong><span>Заселено сейчас</span></div><div class="metric"><strong>${d.freeRooms||0}</strong><span>Свободно комнат</span></div><div class="metric violet"><strong>${d.occupiedRooms||0}</strong><span>Занято комнат</span></div><div class="metric amber"><strong>${d.totalRooms||0}</strong><span>Всего комнат</span></div></div><div class="section-title">Заселения за 6 месяцев</div><div class="panel"><div class="chart">${m.map(x=>`<div class="bar-wrap"><div class="bar" style="height:${Math.max(6,Math.round(x.inCount/max*120))}px"></div><span>${esc(x.label)}</span></div>`).join('')}</div></div><div class="section-title">Распределение комнат</div><div class="panel donut-grid"><div class="mini-stat"><b>${a.distribution?.empty||0}</b><small>Пустые</small></div><div class="mini-stat"><b>${a.distribution?.one||0}</b><small>1 человек</small></div><div class="mini-stat"><b>${a.distribution?.two||0}</b><small>2 человека</small></div><div class="mini-stat"><b>${a.distribution?.three||0}</b><small>3 человека</small></div><div class="mini-stat"><b>${a.distribution?.fourPlus||0}</b><small>4+ человека</small></div></div>`);
+}
+
+function renderMore(){
+  setView(pageHead('Ещё')+`<div class="setting-card"><div class="setting-icon">${icon('palette')}</div><div class="setting-main"><b>Оформление</b><small>Тема сохраняется на этом устройстве</small></div><button id="themeToggle" class="theme-switch" onclick="toggleTheme()">${state.theme==='dark'?'Светлая':'Тёмная'}</button></div><div class="more-grid"><div class="more-item" onclick="render('foreigners')"><div class="mi">${icon('globe')}</div><b>Иностранцы</b><small>Отдельный список</small></div><div class="more-item" onclick="render('council')"><div class="mi">${icon('shield')}</div><b>Студсовет</b><small>Состав и сектора</small></div><div class="more-item" onclick="render('activists')"><div class="mi">${icon('users')}</div><b>Активисты</b><small>Список активистов</small></div><div class="more-item" onclick="render('control')"><div class="mi">${icon('shield')}</div><b>Контроль</b><small>Нарушения и замечания</small></div><div class="more-item" onclick="render('journal')"><div class="mi">${icon('journal')}</div><b>Журнал</b><small>История действий</small></div><div class="more-item" onclick="render('analytics')"><div class="mi">${icon('chart')}</div><b>Аналитика</b><small>Общее заселение</small></div></div>`);
+}
+
+async function renderGenericTable(title,fn,rid=state.renderId){
+  setView(pageHead(title,'more')+`<div id="generic" class="list">${skeleton(4)}</div>`); const key='generic:'+fn; const hit=cacheGet(key,60000); if(hit)drawGeneric(hit,title);
+  try{const data=await loadCached(key,60000,()=>server(fn,state.initData)); if(rid!==state.renderId)return; drawGeneric(data,title);}catch(e){const el=$('#generic');if(el)el.innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
+}
+function drawGeneric(data,title){const el=$('#generic');if(!el)return;if(!data||!data.rows||!data.rows.length){el.innerHTML='<div class="panel empty">Таблица пока пустая или не подключена.</div>';return;}el.innerHTML=data.rows.map(r=>{const vals=Object.entries(r).filter(([k,v])=>k!=='_rowNumber'&&String(v).trim()).slice(0,4);return `<div class="row-card"><div class="avatar">${esc(initials(vals[0]?.[1]||title))}</div><div class="row-main">${vals.map(([k,v],i)=>i===0?`<b>${esc(v)}</b>`:`<small>${esc(k)}: ${esc(v)}</small>`).join('')}</div></div>`;}).join('');}
+async function renderCouncil(kind,rid=state.renderId){const title=kind==='activists'?'Активисты':'Студенческий совет';setView(pageHead(title,'more')+`<div id="generic" class="list">${skeleton(4)}</div>`);const key='council:'+kind;try{const data=await loadCached(key,60000,()=>server('appGetCouncil',state.initData,kind));if(rid!==state.renderId)return;const el=$('#generic');if(!el)return;if(!data.rows.length){el.innerHTML='<div class="panel empty">Список пока пустой.</div>';return;}el.innerHTML=data.rows.map(r=>{const name=r['ФИО']||r['Имя']||Object.values(r).find(v=>v&&typeof v==='string')||'Участник';return `<div class="row-card"><div class="avatar">${esc(initials(name))}</div><div class="row-main"><b>${esc(name)}</b><small>${esc(r['Должность']||r['Роль']||r['Сектор']||'')}</small>${r['Комната']?`<small>Комната ${esc(r['Комната'])}</small>`:''}</div></div>`;}).join('');}catch(e){const el=$('#generic');if(el)el.innerHTML='<div class="empty">'+esc(e.message)+'</div>';}}
+
+function renderAI(rid=state.renderId){
+  if(!state.aiMessages.length)state.aiMessages.push({role:'bot',text:'Привет. Я Campus AI. Могу быстро ответить по базе, найти комнату или студента, посчитать заселение и помочь подготовить текст.'});
+  setView(pageHead('Campus AI')+`<div class="ai-head"><div class="ai-head-icon">${icon('spark')}</div><div class="ai-head-main"><b>Помощник Campus №1</b><small>Данные базы + полноценный ИИ при подключённом API</small></div><span id="aiStatus" class="ai-status">Проверка…</span></div><div class="prompt-chips"><button class="prompt-chip" onclick="askSuggestion('Кто проживает в комнате 145?')">Комната 145</button><button class="prompt-chip" onclick="askSuggestion('Покажи свободные комнаты')">Свободные комнаты</button><button class="prompt-chip" onclick="askSuggestion('Сколько сейчас заселено студентов?')">Статистика</button><button class="prompt-chip" onclick="askSuggestion('Составь объявление для студентов')">Объявление</button></div><div id="chat" class="chat"></div><div class="chat-compose"><div class="compose"><textarea id="aiInput" rows="1" placeholder="Спросите что-нибудь…" onkeydown="aiKeydown(event)"></textarea><button id="aiSend" class="send" onclick="sendAI()">${icon('send')}</button></div></div>`);
+  drawAIChat();
+  server('appGetAIStatus',state.initData).then(s=>{if(rid!==state.renderId||state.currentPage!=='ai')return;const el=$('#aiStatus');if(!el)return;el.textContent=s.enabled?'AI подключён':'Локальный режим';el.classList.toggle('on',!!s.enabled);}).catch(()=>{const el=$('#aiStatus');if(el)el.textContent='Локальный режим';});
+}
+function drawAIChat(){const el=$('#chat');if(!el)return;el.innerHTML=state.aiMessages.map(m=>`<div class="bubble ${m.role==='user'?'user':'bot'}">${esc(m.text)}</div>`).join('')+(state.aiSending?'<div class="bubble bot wait">Думаю…</div>':'');requestAnimationFrame(()=>{if(el)el.scrollTop=el.scrollHeight;});}
+function askSuggestion(text){const inp=$('#aiInput');if(!inp)return;inp.value=text;sendAI();}
+function aiKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}}
+async function sendAI(){const inp=$('#aiInput');if(!inp||state.aiSending)return;const text=inp.value.trim();if(!text)return;inp.value='';state.aiMessages.push({role:'user',text});state.aiSending=true;drawAIChat();const btn=$('#aiSend');if(btn)btn.disabled=true;try{const r=await server('appAskAI',state.initData,text);state.aiMessages.push({role:'bot',text:r&&r.text?r.text:'Ответ не получен.'});}catch(e){state.aiMessages.push({role:'bot',text:e&&e.message?e.message:String(e)});}finally{state.aiSending=false;if(state.currentPage==='ai'){drawAIChat();const b=$('#aiSend');if(b)b.disabled=false;}}}
+
+function roomOptions(selected){return (state.rooms||[]).map(r=>`<option value="${r}" ${String(r)===String(selected)?'selected':''}>${r}</option>`).join('');}
+function openAddStudent(room=''){if(!state.user||!state.user.canManage)return toast('Недостаточно прав');showModal(`<div class="sheet-handle"></div><h3>Заселить студента</h3><div class="field"><label>ФИО</label><input id="f_fio"></div><div class="field"><label>Комната</label><select id="f_room"><option value="">Выберите</option>${roomOptions(room)}</select></div><div class="field"><label>ИИН / паспорт</label><input id="f_iin"></div><div class="field"><label>Факультет</label><input id="f_faculty"></div><div class="field"><label>Дата заселения</label><input id="f_dateIn" placeholder="01.09.2026"></div><div class="field"><label>Дата рождения</label><input id="f_birthDate" placeholder="15.03.2007"></div><div class="field"><label>Прописка</label><input id="f_registration"></div><button class="primary" style="width:100%" onclick="saveNewStudent()">Заселить</button><button class="secondary" style="width:100%;margin-top:9px" onclick="closeModal()">Отмена</button>`);}
+async function refreshDashboard(){try{state.dashboard=await server('appGetDashboard',state.initData);state.analytics=await server('appGetAnalytics',state.initData);}catch(e){}}
+async function saveNewStudent(){try{await server('appAddStudent',state.initData,{fio:$('#f_fio').value,room:$('#f_room').value,iin:$('#f_iin').value,faculty:$('#f_faculty').value,dateIn:$('#f_dateIn').value,birthDate:$('#f_birthDate').value,registration:$('#f_registration').value});closeModal();cacheDrop();await refreshDashboard();toast('Студент добавлен');render('home');}catch(e){toast(e.message)}}
+function openMove(row,fio,room){showModal(`<div class="sheet-handle"></div><h3>Переселить</h3><p><b>${esc(fio)}</b><br><span style="color:var(--muted);font-size:11px">Текущая комната: ${esc(room||'—')}</span></p><div class="field"><label>Новая комната</label><select id="move_room">${roomOptions('')}</select></div><button class="primary" style="width:100%" onclick="saveMove(${row})">Подтвердить переселение</button><button class="secondary" style="width:100%;margin-top:9px" onclick="closeModal()">Отмена</button>`);}
+async function saveMove(row){try{await server('appMoveStudent',state.initData,row,$('#move_room').value);closeModal();cacheDrop();await refreshDashboard();toast('Студент переселён');render('students');}catch(e){toast(e.message)}}
+function confirmEvict(row,fio){showModal(`<div class="sheet-handle"></div><h3>Подтвердить выселение?</h3><p><b>${esc(fio)}</b></p><p style="color:var(--muted);font-size:11px">Действие будет записано в журнал.</p><button class="primary" style="width:100%;background:var(--red)" onclick="doEvict(${row})">Выселить</button><button class="secondary" style="width:100%;margin-top:9px" onclick="closeModal()">Отмена</button>`);}
+async function doEvict(row){try{await server('appEvictStudent',state.initData,row);closeModal();cacheDrop();await refreshDashboard();toast('Студент выселен');render('students');}catch(e){toast(e.message)}}
+function showModal(html){const sheet=$('#modalSheet'),modal=$('#modal');if(!sheet||!modal)return;sheet.innerHTML=html;modal.classList.remove('hidden');}
+function closeModal(){const modal=$('#modal');if(modal)modal.classList.add('hidden');}
+
+state.theme=initialTheme();applyTheme(state.theme,false);
+const modal=$('#modal');if(modal)modal.addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>render(b.dataset.page)));
+const openBtn=$('#openStateBtn');if(openBtn)openBtn.addEventListener('click',()=>boot(true));
+boot();
+</script>

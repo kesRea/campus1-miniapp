@@ -663,3 +663,68 @@ html[data-theme="dark"] .ai-v11-compose{box-shadow:0 12px 36px rgba(0,0,0,.28)}
   .room-summary-item{padding-left:4px;padding-right:4px}
   .room-summary-item span{font-size:7.5px}
 }
+
+
+/* ===== Campus UI V13.4 / Cloud Update ===== */
+.setting-row-button{
+  width:100%;
+  border:0;
+  color:inherit;
+  text-align:left;
+  cursor:pointer
+}
+.cloud-update-status{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 12px;
+  margin:0 0 12px;
+  border:1px solid var(--border);
+  border-radius:15px;
+  background:var(--surface-2)
+}
+.cloud-update-status>span:last-child{display:flex;flex-direction:column;min-width:0}
+.cloud-update-status b{font-size:10.5px}
+.cloud-update-status small{margin-top:2px;color:var(--muted);font-size:9px}
+.cloud-status-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--blue);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--blue) 10%,transparent)
+}
+.cloud-update-status.ok .cloud-status-dot{
+  background:var(--green);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 10%,transparent)
+}
+.cloud-update-card{
+  margin-bottom:12px;
+  padding:13px;
+  border:1px solid color-mix(in srgb,var(--blue) 22%,var(--border));
+  border-radius:18px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--blue-soft) 68%,var(--surface)),var(--surface))
+}
+.cloud-update-head{display:flex;align-items:center;gap:10px}
+.cloud-update-icon{
+  width:36px;height:36px;border-radius:12px;
+  display:grid;place-items:center;
+  background:var(--blue);color:#fff
+}
+.cloud-update-icon svg{
+  width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round
+}
+.cloud-update-head>span:last-child{display:flex;flex-direction:column}
+.cloud-update-head small{color:var(--muted);font-size:8.5px}
+.cloud-update-head b{font-size:12px;margin-top:1px}
+.cloud-update-title{margin-top:10px;font-size:11px;font-weight:850}
+.cloud-update-card ul{
+  margin:8px 0 11px;padding:0;list-style:none;
+  display:flex;flex-direction:column;gap:5px
+}
+.cloud-update-card li{
+  position:relative;padding-left:12px;
+  color:var(--muted);font-size:9.5px;line-height:1.4
+}
+.cloud-update-card li:before{
+  content:"";position:absolute;left:1px;top:.55em;
+  width:4px;height:4px;border-radius:50%;background:var(--blue)
+}

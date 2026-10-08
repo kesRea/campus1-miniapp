@@ -1,0 +1,7 @@
+# Campus local / secret files
+.clasprc.json
+.clasp.json
+apps-script-build/
+*.bak
+*_backup_*
+.env

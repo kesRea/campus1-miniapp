@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_3_ROOMS_PLUS */
+/* CAMPUS_GITHUB_UI_V13_4_CLOUD_UPDATE */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.3.0';
+const APP_VERSION = '13.4.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -12,16 +12,30 @@ const state = {
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
-  roomFilterMode:'all'
+  roomFilterMode:'all', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.3.0';
+const UPDATE_CENTER_VERSION = '13.4.0';
+const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
+const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
+  {
+    version:'13.4',
+    date:'9 октября 2026',
+    title:'Cloud Update System',
+    latest:true,
+    items:[
+      'Campus №1 теперь проверяет новую версию напрямую через GitHub.',
+      'Кнопка Telegram переводится на постоянный адрес — менять её для каждой версии больше не нужно.',
+      'Backend можно хранить в GitHub без токенов и автоматически разворачивать через GitHub Actions.',
+      'Проект становится переносимым: его можно продолжить с другого компьютера после обычного git clone.'
+    ]
+  },
   {
     version:'13.3',
     date:'9 октября 2026',
     title:'Rooms+',
-    latest:true,
+    latest:false,
     items:[
       'Раздел комнат получил компактную сводку по заселению.',
       'Добавлены фильтры: все, свободные, занятые и комнаты с 3+ проживающими.',
@@ -246,7 +260,7 @@ async function boot(){
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); updateUpdatesBadge(); render('home');
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
-    idle(()=>prefetchCore());
+    idle(()=>{prefetchCore();checkRemoteUpdate(true);});
   }catch(e){
     btn.disabled=false; btn.textContent='Повторить вход'; btn.onclick=boot;
     $('#splashText').textContent=e?.message || String(e);
@@ -632,7 +646,7 @@ function renderAnalytics(){
 }
 
 function renderMore(){
-  $('#view').innerHTML=`${pageHead('Ещё','home')}<div class="more-grid">${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}${moreCard('council','Студсовет','Состав и сектора',"render('council')")}${moreCard('users','Активисты','Список активистов',"render('activists')")}${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}${moreCard('clipboard','Журнал','История действий',"render('journal')")}${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}</div><div class="section-heading"><h2>Настройки</h2></div><div class="settings-card"><div class="setting-row"><div class="setting-copy"><b>Тёмная тема</b><small>Сохраняется на этом устройстве</small></div><button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button></div><div class="setting-row"><div class="setting-copy"><b>Версия интерфейса</b><small>GitHub Pages · быстрый frontend</small></div><span class="badge blue">v${APP_VERSION}</span></div></div>`;
+  $('#view').innerHTML=`${pageHead('Ещё','home')}<div class="more-grid">${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}${moreCard('council','Студсовет','Состав и сектора',"render('council')")}${moreCard('users','Активисты','Список активистов',"render('activists')")}${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}${moreCard('clipboard','Журнал','История действий',"render('journal')")}${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}</div><div class="section-heading"><h2>Настройки</h2></div><div class="settings-card"><div class="setting-row"><div class="setting-copy"><b>Тёмная тема</b><small>Сохраняется на этом устройстве</small></div><button id="themeSwitch" class="switch ${state.theme==='dark'?'on':''}" onclick="toggleTheme()"><span></span></button></div><button class="setting-row setting-row-button" type="button" onclick="showWhatsNew()"><div class="setting-copy"><b>Обновления системы</b><small>GitHub Cloud Update · проверка без компьютера</small></div><span class="badge blue">v${APP_VERSION}</span></button></div>`;
 }
 function moreCard(iconName,title,sub,onclick){ return `<button class="more-item" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(sub)}</small></button>`; }
 
@@ -857,18 +871,50 @@ function closeModal(){ $('#modal').classList.add('hidden'); document.body.style.
 
 function updateSeenKey(){ return 'campus-update-seen-version'; }
 
+function versionParts(v){
+  return String(v||'0').split('.').map(n=>parseInt(n,10)||0);
+}
+function isNewerVersion(a,b){
+  const x=versionParts(a),y=versionParts(b);
+  for(let i=0;i<Math.max(x.length,y.length);i++){
+    const av=x[i]||0,bv=y[i]||0;
+    if(av>bv)return true;
+    if(av<bv)return false;
+  }
+  return false;
+}
+function hasRemoteUpdate(){
+  return !!(state.remoteManifest?.version && isNewerVersion(state.remoteManifest.version,APP_VERSION));
+}
 function updateUpdatesBadge(){
   const dot=$('#updatesDot');
   if(!dot)return;
   const seen=localStorage.getItem(updateSeenKey())||'';
-  dot.classList.toggle('hidden',seen===UPDATE_CENTER_VERSION);
+  const localUnseen=seen!==UPDATE_CENTER_VERSION;
+  dot.classList.toggle('hidden',!localUnseen && !hasRemoteUpdate());
 }
-
 function markUpdatesSeen(){
   try{ localStorage.setItem(updateSeenKey(),UPDATE_CENTER_VERSION); }catch(e){}
   updateUpdatesBadge();
 }
-
+async function checkRemoteUpdate(silent=false){
+  try{
+    const r=await fetch(UPDATE_MANIFEST_URL+'?t='+Date.now(),{
+      cache:'no-store',
+      headers:{'cache-control':'no-cache','pragma':'no-cache'}
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const m=await r.json();
+    if(!m || !m.version)throw new Error('Некорректный manifest');
+    state.remoteManifest=m;
+    state.updateCheckTime=Date.now();
+    updateUpdatesBadge();
+    return m;
+  }catch(e){
+    if(!silent)toast('Не удалось проверить обновления');
+    return null;
+  }
+}
 function renderUpdateItem(update){
   return `<article class="update-card ${update.latest?'latest':''}">
     <div class="update-card-head">
@@ -884,24 +930,55 @@ function renderUpdateItem(update){
     <ul>${(update.items||[]).map(item=>`<li>${esc(item)}</li>`).join('')}</ul>
   </article>`;
 }
-
-function showWhatsNew(){
+function remoteUpdateCard(){
+  const m=state.remoteManifest;
+  if(!m)return `<div class="cloud-update-status"><span class="cloud-status-dot"></span><span><b>Cloud Update включён</b><small>Новая версия проверяется через GitHub</small></span></div>`;
+  if(!hasRemoteUpdate()){
+    return `<div class="cloud-update-status ok"><span class="cloud-status-dot"></span><span><b>Установлена последняя версия</b><small>Campus №1 v${esc(APP_VERSION)} актуален</small></span></div>`;
+  }
+  const notes=Array.isArray(m.notes)?m.notes:[];
+  return `<div class="cloud-update-card">
+    <div class="cloud-update-head">
+      <span class="cloud-update-icon">${icon('download')}</span>
+      <span><small>Доступно обновление</small><b>Campus №1 v${esc(m.version)}</b></span>
+    </div>
+    ${m.title?`<div class="cloud-update-title">${esc(m.title)}</div>`:''}
+    ${notes.length?`<ul>${notes.slice(0,5).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+    <button class="btn btn-primary btn-wide" type="button" onclick="installRemoteUpdate()">Обновить сейчас</button>
+  </div>`;
+}
+async function showWhatsNew(){
   haptic('light');
+  await checkRemoteUpdate(true);
   markUpdatesSeen();
   showModal(`<div class="sheet-handle"></div>
     <div class="updates-sheet-head">
       <div>
         <div class="updates-kicker">Campus №1</div>
-        <h3>Что нового</h3>
-        <p>Последние изменения и улучшения приложения.</p>
+        <h3>Обновления</h3>
+        <p>Версия приложения и последние изменения.</p>
       </div>
       <span class="updates-current">v${esc(APP_VERSION)}</span>
     </div>
+    ${remoteUpdateCard()}
     <div class="updates-list">
       ${CAMPUS_UPDATES.map(renderUpdateItem).join('')}
     </div>
-    <div class="updates-footer">Обновления устанавливаются автоматически после публикации новой версии.</div>
+    <div class="updates-footer">Cloud Update проверяет GitHub. После публикации новой версии её можно установить прямо с телефона.</div>
+    <button class="btn btn-secondary btn-wide" onclick="checkUpdatesFromSheet()">Проверить ещё раз</button>
     <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+}
+async function checkUpdatesFromSheet(){
+  const m=await checkRemoteUpdate(false);
+  closeModal();
+  if(m)setTimeout(showWhatsNew,80);
+}
+function installRemoteUpdate(){
+  const m=state.remoteManifest;
+  if(!m?.version)return;
+  try{localStorage.setItem('campus-last-update-target',String(m.version))}catch(e){}
+  const url=CLOUD_APP_URL+'?v='+encodeURIComponent(m.version)+'&cb='+Date.now();
+  location.replace(url);
 }
 
 function showProfile(){

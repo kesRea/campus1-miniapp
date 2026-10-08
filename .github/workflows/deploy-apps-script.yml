@@ -1,0 +1,55 @@
+name: Deploy Campus Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/scripts/build-apps-script.js"
+      - ".github/workflows/deploy-apps-script.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: campus-apps-script-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install --global @google/clasp@3.4.1
+
+      - name: Restore clasp credentials
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node -e "const fs=require('fs'),os=require('os'),path=require('path'); const v=process.env.CLASPRC_JSON; if(!v) throw new Error('CLASPRC_JSON secret missing'); fs.writeFileSync(path.join(os.homedir(),'.clasprc.json'),v);"
+
+      - name: Build Apps Script source
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          SS_ID: ${{ secrets.SS_ID }}
+          OWNER_ID: ${{ secrets.OWNER_ID }}
+        run: node .github/scripts/build-apps-script.js
+
+      - name: Push Apps Script
+        working-directory: apps-script-build
+        run: clasp push --force
+
+      - name: Update production deployment
+        working-directory: apps-script-build
+        env:
+          DEPLOYMENT_ID: AKfycbyNCrLjMu6UqP6UXrpT5IHfl8IyW8jh1ZX-C0hhKZhrSJOTFESz2EatUs0U7JoChmiS
+        run: clasp create-deployment --deploymentId "$DEPLOYMENT_ID" --description "GitHub_${GITHUB_RUN_NUMBER}"
