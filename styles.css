@@ -1178,7 +1178,7 @@ html[data-season="summer"] body{
   overflow:hidden;
   contain:layout paint;
 }
-.app,.bottom-nav,.modal,.toast,.splash{position:relative;z-index:2}
+.app,.splash{position:relative;z-index:2}
 .topbar{z-index:30}
 .bottom-nav{z-index:40}
 .modal{z-index:100}
@@ -1610,4 +1610,68 @@ html[data-season="summer"] body{
 
 @media(prefers-reduced-motion:reduce){
   .season-autumn .season-leaf{display:none!important}
+}
+
+/* ===== Campus UI V13.6.2 / Stability Guard ===== */
+.app{
+  position:relative;
+  z-index:2;
+}
+.splash{
+  position:relative;
+  z-index:2;
+}
+.topbar{
+  position:sticky!important;
+  top:0;
+  z-index:40;
+}
+.bottom-nav{
+  position:fixed!important;
+  left:50%;
+  bottom:0;
+  z-index:50;
+}
+.modal{
+  position:fixed!important;
+  inset:0!important;
+  width:100%;
+  height:100dvh;
+  min-height:100vh;
+  z-index:100;
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+}
+.toast{
+  position:fixed!important;
+  z-index:120;
+}
+.season-layer{
+  position:fixed!important;
+  inset:0!important;
+  z-index:0;
+}
+.sheet{
+  position:relative!important;
+  z-index:1;
+  width:min(820px,100%);
+  max-height:min(88dvh,calc(100dvh - 12px));
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  scroll-behavior:auto!important;
+}
+#modalSheet{
+  min-height:0;
+}
+body{
+  overflow-x:hidden;
+}
+@supports not (height:100dvh){
+  .modal{height:100vh}
+  .sheet{max-height:88vh}
 }

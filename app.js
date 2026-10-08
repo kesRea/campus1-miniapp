@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_6_1_POLISH */
+/* CAMPUS_GITHUB_UI_V13_6_2_STABILITY */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.6.1';
+const APP_VERSION = '13.6.2';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -15,15 +15,28 @@ const state = {
   roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, seasonMode:'auto', seasonResolved:'none', seasonPreviewActive:false, seasonPreviewSavedMode:null, seasonPreviewSavedResolved:null, remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.6.1';
+const UPDATE_CENTER_VERSION = '13.6.2';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
   {
+    version:'13.6.2',
+    date:'9 октября 2026',
+    title:'Stability Fix',
+    latest:true,
+    items:[
+      'Исправлен конфликт сезонного оформления с fixed-позиционированием интерфейса.',
+      'Нижняя навигация снова гарантированно закреплена снизу.',
+      'Модальные окна снова гарантированно занимают экран и нормально прокручиваются.',
+      'Toast-уведомления снова закреплены поверх интерфейса.',
+      'Добавлена автоматическая проверка JavaScript и критичных CSS-правил перед публикацией.'
+    ]
+  },
+  {
     version:'13.6.1',
     date:'9 октября 2026',
     title:'Seasonal Polish',
-    latest:true,
+    latest:false,
     items:[
       'Осенние частицы полностью перерисованы: теперь это настоящие листья с формой и прожилками.',
       'Исправлено повторное открытие окна обновлений: список всегда открывается сверху и нормально прокручивается.',
