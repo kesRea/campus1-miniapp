@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_4_CLOUD_UPDATE */
+/* CAMPUS_GITHUB_UI_V13_5_STUDENTS_PLUS */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.4.0';
+const APP_VERSION = '13.5.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -12,18 +12,31 @@ const state = {
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
   cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
   aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
-  roomFilterMode:'all', remoteManifest:null, updateCheckTime:0
+  roomFilterMode:'all', studentView:{mode:'active',query:'',room:'',faculty:'',sort:'name'}, remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.4.0';
+const UPDATE_CENTER_VERSION = '13.5.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
   {
+    version:'13.5',
+    date:'9 октября 2026',
+    title:'Students+',
+    latest:true,
+    items:[
+      'Раздел студентов получил сводку: заселены, всего и выселены.',
+      'Добавлены фильтры по комнате и факультету, а также сортировка.',
+      'Недавно открытые студенты доступны в один тап.',
+      'Карточка студента стала информативнее: переход в комнату и копирование ИИН / паспорта.',
+      'После переселения и выселения интерфейс обновляется без тяжёлой перезагрузки страницы.'
+    ]
+  },
+  {
     version:'13.4',
     date:'9 октября 2026',
     title:'Cloud Update System',
-    latest:true,
+    latest:false,
     items:[
       'Campus №1 теперь проверяет новую версию напрямую через GitHub.',
       'Кнопка Telegram переводится на постоянный адрес — менять её для каждой версии больше не нужно.',
@@ -361,79 +374,458 @@ function actionCard(iconName,title,subtitle,onclick){ return `<button class="act
 function homeSearch(e){ e.preventDefault(); const q=$('#homeSearchInput')?.value.trim()||''; render('students',{mode:'all',query:q}); }
 
 async function renderStudents(mode='active',query='',seq=state.renderSeq){
+  state.studentView = state.studentView || {mode:'active',query:'',room:'',faculty:'',sort:'name'};
+  state.studentView.mode = mode;
+  if(query !== undefined) state.studentView.query = query || '';
+
   $('#view').innerHTML=`${pageHead('Студенты','home')}
-    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)"><button class="search-action" type="submit">Найти</button></form>
+    <div id="studentSummary" class="student-summary">
+      <div class="student-summary-card skeleton-card"></div>
+      <div class="student-summary-card skeleton-card"></div>
+      <div class="student-summary-card skeleton-card"></div>
+    </div>
+
+    <form class="global-search student-main-search" onsubmit="studentSearchSubmit(event)">
+      <span class="mini-icon">${icon('search')}</span>
+      <input id="studentSearch" autocomplete="off" value="${esc(state.studentView.query||'')}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)">
+      <button class="search-action" type="submit">Найти</button>
+    </form>
     <div id="studentSearchHint" class="search-hint"></div>
-    <div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button></div>
+
+    <div class="tabs student-status-tabs">
+      <button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button>
+      <button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button>
+      <button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button>
+    </div>
+
+    <div class="student-filter-panel">
+      <div class="student-filter-row">
+        <label class="student-filter-field">
+          <span>Комната</span>
+          <select id="studentRoomFilter" onchange="studentFilterChanged()">
+            <option value="">Все комнаты</option>
+          </select>
+        </label>
+        <label class="student-filter-field">
+          <span>Факультет</span>
+          <select id="studentFacultyFilter" onchange="studentFilterChanged()">
+            <option value="">Все факультеты</option>
+          </select>
+        </label>
+      </div>
+      <label class="student-filter-field student-sort-field">
+        <span>Сортировка</span>
+        <select id="studentSort" onchange="studentFilterChanged()">
+          <option value="name">По ФИО</option>
+          <option value="room">По комнате</option>
+          <option value="date">По дате заселения</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="recentStudentsWrap" class="recent-students-wrap hidden">
+      <div class="recent-students-title">Недавно открывали</div>
+      <div id="recentStudents" class="recent-students"></div>
+    </div>
+
+    <div class="student-list-head">
+      <span id="studentResultLabel">Студенты</span>
+      <span id="studentResultCount" class="student-result-count"></span>
+    </div>
+
     <div id="studentList" class="list">${studentSkeletons()}</div>`;
 
+  hydrateStudentControls();
+  renderRecentStudents();
+  updateStudentSummary();
+
   if(query){ return doStudentSearch(query,seq); }
+
   const cached=state.studentLists[mode];
   if(cached){
-    drawStudents(cached);
+    updateStudentFilterOptions(cached);
+    drawStudentView(cached);
+    ensureStudentOverview(seq);
     if(!coreIsFresh(state.studentListTime[mode],60000)) refreshStudents(mode,seq,true);
     return;
   }
+
   const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:60000});
   if(!pageAlive('students',seq)) return;
-  state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list); drawStudents(list);
+
+  state.studentLists[mode]=list;
+  state.studentListTime[mode]=Date.now();
+  indexStudents(list);
+  updateStudentFilterOptions(list);
+  drawStudentView(list);
+  ensureStudentOverview(seq);
 }
-function studentSkeletons(){ return Array.from({length:5},()=>'<div class="row-card"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join(''); }
+
+function studentSkeletons(){
+  return Array.from({length:6},()=>'<div class="row-card student-row"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join('');
+}
+
 async function refreshStudents(mode,seq,silent){
   try{
     const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:0,force:true});
-    state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list);
-    if(pageAlive('students',seq)) drawStudents(list);
-  }catch(e){ if(!silent) toast(e.message); }
+    state.studentLists[mode]=list;
+    state.studentListTime[mode]=Date.now();
+    indexStudents(list);
+
+    if(pageAlive('students',seq)){
+      updateStudentFilterOptions(list);
+      drawStudentView(list);
+      updateStudentSummary();
+    }
+  }catch(e){
+    if(!silent) toast(e.message);
+  }
 }
+
+function getRecentStudents(){
+  try{
+    const arr=JSON.parse(localStorage.getItem('campus-recent-students')||'[]');
+    return Array.isArray(arr)?arr.slice(0,6):[];
+  }catch(e){
+    return [];
+  }
+}
+
+function rememberStudent(row){
+  try{
+    const id=Number(row);
+    const arr=[id,...getRecentStudents().map(Number).filter(x=>x!==id)].slice(0,6);
+    localStorage.setItem('campus-recent-students',JSON.stringify(arr));
+  }catch(e){}
+}
+
+function renderRecentStudents(){
+  const wrap=$('#recentStudentsWrap');
+  const el=$('#recentStudents');
+  if(!wrap||!el)return;
+
+  const recent=getRecentStudents()
+    .map(row=>state.studentMap.get(Number(row)))
+    .filter(Boolean);
+
+  wrap.classList.toggle('hidden',!recent.length);
+
+  el.innerHTML=recent.map(s=>`
+    <button class="recent-student-chip" type="button" onclick="openStudent(${Number(s.rowNumber)})">
+      <span class="recent-student-avatar">${esc(initials(s.fio))}</span>
+      <span><b>${esc(shortStudentName(s.fio))}</b><small>Комната ${esc(s.room||'—')}</small></span>
+    </button>`).join('');
+}
+
+function shortStudentName(name){
+  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+  if(parts.length<=2)return parts.join(' ');
+  return `${parts[0]} ${parts[1]}`;
+}
+
+function studentCounts(){
+  const activeKnown=state.studentLists.active?.length;
+  const allKnown=state.studentLists.all?.length;
+
+  const current=Number.isFinite(activeKnown)
+    ? activeKnown
+    : Number(state.dashboard?.currentStudents||0);
+
+  const all=Number.isFinite(allKnown)
+    ? allKnown
+    : Math.max(current,Number(state.dashboard?.currentStudents||0));
+
+  const evicted=Math.max(0,all-current);
+
+  return {current,all,evicted};
+}
+
+function updateStudentSummary(){
+  const el=$('#studentSummary');
+  if(!el)return;
+
+  const c=studentCounts();
+  el.innerHTML=`
+    <button class="student-summary-card active" type="button" onclick="renderStudents('active','',state.renderSeq)">
+      <span>${icon('users')}</span><b>${c.current}</b><small>Заселены</small>
+    </button>
+    <button class="student-summary-card" type="button" onclick="renderStudents('all','',state.renderSeq)">
+      <span>${icon('book')}</span><b>${c.all}</b><small>Всего</small>
+    </button>
+    <button class="student-summary-card evicted" type="button" onclick="renderStudents('evicted','',state.renderSeq)">
+      <span>${icon('logout')}</span><b>${c.evicted}</b><small>Выселены</small>
+    </button>`;
+}
+
+async function ensureStudentOverview(seq){
+  if(state.studentLists.active && state.studentLists.all){
+    updateStudentSummary();
+    return;
+  }
+
+  try{
+    const tasks=[];
+    if(!state.studentLists.active){
+      tasks.push(
+        apiRequest('appGetStudents',[state.initData,'active'],{ttl:90000})
+          .then(list=>{
+            state.studentLists.active=list;
+            state.studentListTime.active=Date.now();
+            indexStudents(list);
+          })
+      );
+    }
+
+    if(!state.studentLists.all){
+      tasks.push(
+        apiRequest('appGetStudents',[state.initData,'all'],{ttl:90000})
+          .then(list=>{
+            state.studentLists.all=list;
+            state.studentListTime.all=Date.now();
+            indexStudents(list);
+          })
+      );
+    }
+
+    await Promise.all(tasks);
+
+    if(pageAlive('students',seq)){
+      updateStudentSummary();
+      renderRecentStudents();
+      const current=state.studentLists[state.studentView?.mode||'active']||[];
+      updateStudentFilterOptions(current);
+      drawStudentView(current);
+    }
+  }catch(e){}
+}
+
+function uniqueStudentValues(list,key){
+  return [...new Set((list||[])
+    .map(s=>String(s?.[key]||'').trim())
+    .filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'ru',{numeric:true,sensitivity:'base'}));
+}
+
+function updateStudentFilterOptions(list){
+  const allPool=state.studentLists.all || list || [];
+  const roomEl=$('#studentRoomFilter');
+  const facultyEl=$('#studentFacultyFilter');
+  if(!roomEl||!facultyEl)return;
+
+  const selectedRoom=state.studentView?.room||'';
+  const selectedFaculty=state.studentView?.faculty||'';
+
+  const rooms=uniqueStudentValues(allPool,'room');
+  const faculties=uniqueStudentValues(allPool,'faculty');
+
+  roomEl.innerHTML='<option value="">Все комнаты</option>'+
+    rooms.map(v=>`<option value="${esc(v)}" ${String(v)===String(selectedRoom)?'selected':''}>№${esc(v)}</option>`).join('');
+
+  facultyEl.innerHTML='<option value="">Все факультеты</option>'+
+    faculties.map(v=>`<option value="${esc(v)}" ${String(v)===String(selectedFaculty)?'selected':''}>${esc(v)}</option>`).join('');
+}
+
+function hydrateStudentControls(){
+  const v=state.studentView||{};
+  const sort=$('#studentSort');
+  if(sort)sort.value=v.sort||'name';
+}
+
+function parseCampusDate(value){
+  const s=String(value||'').trim();
+  if(!s)return 0;
+
+  const m=s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+  if(m){
+    let y=Number(m[3]);
+    if(y<100)y+=2000;
+    return new Date(y,Number(m[2])-1,Number(m[1])).getTime()||0;
+  }
+
+  const t=Date.parse(s);
+  return Number.isFinite(t)?t:0;
+}
+
+function applyStudentFilters(list){
+  const view=state.studentView||{};
+  const query=normalizeSearch(view.query||'');
+  const digits=query.replace(/\D/g,'');
+
+  let rows=(list||[]).filter(s=>{
+    if(view.room && String(s.room||'')!==String(view.room))return false;
+    if(view.faculty && String(s.faculty||'')!==String(view.faculty))return false;
+
+    if(query){
+      const hay=normalizeSearch([s.fio,s.room,s.faculty,s.iin,s.registration].filter(Boolean).join(' '));
+      if(hay.includes(query))return true;
+
+      if(digits.length>=3){
+        const idDigits=String(s.iin||'').replace(/\D/g,'');
+        if(idDigits.includes(digits))return true;
+      }
+
+      return false;
+    }
+
+    return true;
+  });
+
+  const sort=view.sort||'name';
+
+  rows=[...rows].sort((a,b)=>{
+    if(sort==='room'){
+      return String(a.room||'').localeCompare(String(b.room||''),'ru',{numeric:true,sensitivity:'base'}) ||
+        String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
+    }
+
+    if(sort==='date'){
+      return parseCampusDate(b.dateIn)-parseCampusDate(a.dateIn) ||
+        String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
+    }
+
+    return String(a.fio||'').localeCompare(String(b.fio||''),'ru',{sensitivity:'base'});
+  });
+
+  return rows;
+}
+
+function currentStudentBaseList(){
+  const mode=state.studentView?.mode||'active';
+  return state.studentLists[mode] || [];
+}
+
+function studentFilterChanged(){
+  state.studentView=state.studentView||{};
+
+  state.studentView.room=$('#studentRoomFilter')?.value||'';
+  state.studentView.faculty=$('#studentFacultyFilter')?.value||'';
+  state.studentView.sort=$('#studentSort')?.value||'name';
+
+  drawStudentView(currentStudentBaseList());
+}
+
+function drawStudentView(baseList){
+  const rows=applyStudentFilters(baseList);
+  drawStudents(rows);
+
+  const count=$('#studentResultCount');
+  const label=$('#studentResultLabel');
+
+  if(count)count.textContent=String(rows.length);
+
+  if(label){
+    const mode=state.studentView?.mode||'active';
+    label.textContent=mode==='evicted'?'Выселенные':mode==='all'?'Все студенты':'Заселённые';
+  }
+}
+
 function drawStudents(list){
-  const el=$('#studentList'); if(!el)return;
-  if(!list?.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
-  el.innerHTML=list.map(s=>`<button class="row-card clickable" type="button" onclick="openStudent(${Number(s.rowNumber)})"><span class="avatar">${esc(initials(s.fio))}</span><span class="row-main"><b>${esc(s.fio)}</b><small>Комната ${esc(s.room||'—')} · ${esc(s.faculty||'Факультет не указан')}</small></span><span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span></button>`).join('');
+  const el=$('#studentList');
+  if(!el)return;
+
+  if(!list?.length){
+    el.innerHTML='<div class="empty">По выбранным параметрам ничего не найдено</div>';
+    return;
+  }
+
+  el.innerHTML=list.map(s=>`
+    <button class="row-card clickable student-row" type="button" onclick="openStudent(${Number(s.rowNumber)})">
+      <span class="avatar">${esc(initials(s.fio))}</span>
+      <span class="row-main">
+        <b>${esc(s.fio)}</b>
+        <small><span class="student-room-inline">№${esc(s.room||'—')}</span> ${esc(s.faculty||'Факультет не указан')}</small>
+        ${s.dateIn?`<small class="student-date-inline">Заселение: ${esc(s.dateIn)}</small>`:''}
+      </span>
+      <span class="student-row-end">
+        <span class="badge ${s.active?'':'red'}">${s.active?'Заселен':'Выселен'}</span>
+        <span class="mini-chevron">${icon('chevron')}</span>
+      </span>
+    </button>`).join('');
 }
+
 function studentSearchInput(value){
   clearTimeout(state.searchTimer);
   const q=String(value||'').trim();
+
+  state.studentView=state.studentView||{};
+  state.studentView.query=q;
+
   state.searchTimer=setTimeout(()=>{
     if(state.currentPage!=='students')return;
+
     const hint=$('#studentSearchHint');
+
     if(!q){
       if(hint)hint.textContent='';
-      const list=state.studentLists.active||state.studentLists.all||[];
-      drawStudents(list);
+      drawStudentView(currentStudentBaseList());
       return;
     }
-    const local=localStudentSearch(q);
+
+    const local=applyStudentFilters(currentStudentBaseList());
+
     if(local.length){
       drawStudents(local);
       if(hint)hint.textContent=`Мгновенный поиск · найдено ${local.length}`;
+      const count=$('#studentResultCount');
+      if(count)count.textContent=String(local.length);
     }else{
+      drawStudents([]);
       if(hint)hint.textContent='В локальном кэше совпадений нет · нажмите «Найти» для проверки базы';
     }
-  },120);
+  },100);
 }
+
 function studentSearchSubmit(e){
   e.preventDefault();
   doStudentSearch($('#studentSearch')?.value.trim()||'',state.renderSeq);
 }
-async function doStudentSearch(q,seq=state.renderSeq){
-  if(!q){ return renderStudents('active','',seq); }
 
-  const local=localStudentSearch(q);
+async function doStudentSearch(q,seq=state.renderSeq){
+  state.studentView=state.studentView||{};
+  state.studentView.query=q||'';
+
+  if(!q){
+    drawStudentView(currentStudentBaseList());
+    return;
+  }
+
+  const local=applyStudentFilters(currentStudentBaseList());
   const hint=$('#studentSearchHint');
+
   if(local.length){
     drawStudents(local);
     if(hint)hint.textContent=`Найдено ${local.length} · уточняем в базе…`;
   }else{
-    const el=$('#studentList'); if(el) el.innerHTML=studentSkeletons();
+    const el=$('#studentList');
+    if(el)el.innerHTML=studentSkeletons();
     if(hint)hint.textContent='Проверяем базу…';
   }
 
   try{
     const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:12000,force:true});
     if(!pageAlive('students',seq))return;
-    indexStudents(list); drawStudents(list);
-    if(hint)hint.textContent=`База проверена · найдено ${(list||[]).length}`;
+
+    indexStudents(list);
+
+    let rows=[...(list||[])];
+
+    if(state.studentView.room){
+      rows=rows.filter(s=>String(s.room||'')===String(state.studentView.room));
+    }
+
+    if(state.studentView.faculty){
+      rows=rows.filter(s=>String(s.faculty||'')===String(state.studentView.faculty));
+    }
+
+    rows=applyStudentFilters(rows);
+
+    drawStudents(rows);
+
+    const count=$('#studentResultCount');
+    if(count)count.textContent=String(rows.length);
+
+    if(hint)hint.textContent=`База проверена · найдено ${rows.length}`;
+    renderRecentStudents();
   }catch(e){
     if(pageAlive('students',seq)){
       if(local.length){
@@ -446,15 +838,130 @@ async function doStudentSearch(q,seq=state.renderSeq){
   }
 }
 
+function copyStudentValue(value,label='Значение'){
+  const text=String(value||'').trim();
+  if(!text)return toast('Нет данных для копирования');
+
+  const done=()=>{
+    toast(`${label} скопировано`);
+    try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}
+  };
+
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopyStudent(text,done));
+  }else{
+    fallbackCopyStudent(text,done);
+  }
+}
+
+function fallbackCopyStudent(text,done){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';
+  ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.select();
+
+  try{
+    document.execCommand('copy');
+    done();
+  }catch(e){
+    toast('Не удалось скопировать');
+  }
+
+  ta.remove();
+}
+
+function openStudentRoom(room){
+  if(!room)return toast('Комната не указана');
+  closeModal();
+  render('rooms');
+  setTimeout(()=>openRoom(room),80);
+}
+
 async function openStudent(row){
   try{
     let s=state.studentMap.get(Number(row));
-    if(!s){ s=await apiRequest('appGetStudent',[state.initData,row],{ttl:15000}); state.studentMap.set(Number(row),s); }
-    const actions=canManage()&&s.active?`<div class="button-row"><button class="btn btn-secondary" onclick="openMove(${s.rowNumber})">Переселить</button><button class="btn btn-danger" onclick="confirmEvict(${s.rowNumber})">Выселить</button></div>`:'';
-    showModal(`<div class="sheet-handle"></div><h3>${esc(s.fio)}</h3><span class="badge ${s.active?'':'red'}">${s.active?'Проживает':'Выселен'}</span><div class="kv"><div><small>Комната</small><b>${esc(s.room||'—')}</b></div><div><small>Факультет</small><b>${esc(s.faculty||'—')}</b></div><div><small>ИИН / паспорт</small><b>${esc(s.iin||'—')}</b></div><div><small>Заселение</small><b>${esc(s.dateIn||'—')}</b></div><div><small>Дата рождения</small><b>${esc(s.birthDate||'—')}</b></div><div><small>Прописка</small><b>${esc(s.registration||'—')}</b></div></div>${actions}<button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
-  }catch(e){toast(e.message)}
-}
 
+    if(!s){
+      s=await apiRequest('appGetStudent',[state.initData,row],{ttl:15000});
+      state.studentMap.set(Number(row),s);
+    }
+
+    rememberStudent(row);
+    renderRecentStudents();
+
+    const statusClass=s.active?'active':'evicted';
+    const statusText=s.active?'Проживает':'Выселен';
+
+    const roomAction=s.room
+      ? `<button class="student-room-action" type="button" onclick="openStudentRoom('${esc(s.room)}')">
+           <span>${icon('door')}</span>
+           <span><small>Комната</small><b>№${esc(s.room)}</b></span>
+           <span class="mini-chevron">${icon('chevron')}</span>
+         </button>`
+      : '';
+
+    const copyIin=s.iin
+      ? `<button class="student-copy-button" type="button" onclick="copyStudentValue('${esc(String(s.iin).replace(/'/g,"\\'"))}','ИИН / паспорт')">${icon('copy')}<span>Копировать</span></button>`
+      : '';
+
+    const actions=canManage()&&s.active
+      ? `<div class="student-action-row">
+           <button class="btn btn-secondary" onclick="openMove(${s.rowNumber})">${icon('swap')}<span>Переселить</span></button>
+           <button class="btn btn-danger" onclick="confirmEvict(${s.rowNumber})">${icon('logout')}<span>Выселить</span></button>
+         </div>`
+      : '';
+
+    showModal(`
+      <div class="sheet-handle"></div>
+
+      <div class="student-profile-head">
+        <span class="student-profile-avatar">${esc(initials(s.fio))}</span>
+        <div class="student-profile-copy">
+          <small>Карточка студента</small>
+          <h3>${esc(s.fio)}</h3>
+          <span class="student-status-pill ${statusClass}">${statusText}</span>
+        </div>
+      </div>
+
+      ${roomAction}
+
+      <div class="student-detail-grid">
+        <div class="student-detail-item">
+          <small>Факультет</small>
+          <b>${esc(s.faculty||'—')}</b>
+        </div>
+        <div class="student-detail-item">
+          <small>Дата заселения</small>
+          <b>${esc(s.dateIn||'—')}</b>
+        </div>
+        <div class="student-detail-item">
+          <small>Дата рождения</small>
+          <b>${esc(s.birthDate||'—')}</b>
+        </div>
+        <div class="student-detail-item">
+          <small>Прописка</small>
+          <b>${esc(s.registration||'—')}</b>
+        </div>
+      </div>
+
+      <div class="student-id-card">
+        <div>
+          <small>ИИН / паспорт</small>
+          <b>${esc(s.iin||'—')}</b>
+        </div>
+        ${copyIin}
+      </div>
+
+      ${actions}
+
+      <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>
+    `);
+  }catch(e){
+    toast(e.message);
+  }
+}
 
 function getRecentRooms(){
   try{
@@ -857,13 +1364,113 @@ function openMove(row){
   const s=state.studentMap.get(Number(row)); if(!s)return toast('Данные студента не загружены');
   showModal(`<div class="sheet-handle"></div><h3>Переселить</h3><p><b>${esc(s.fio)}</b><br><span style="color:var(--muted);font-size:12px">Текущая комната: ${esc(s.room||'—')}</span></p><div class="field"><label>Новая комната</label><select id="move_room"><option value="">Выберите комнату</option>${roomOptions('')}</select></div><button class="btn btn-primary btn-wide" onclick="saveMove(${row})">Подтвердить переселение</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
 }
-async function saveMove(row){ try{await apiRequest('appMoveStudent',[state.initData,row,$('#move_room').value],{ttl:0,force:true});closeModal();toast('Студент переселён');await refreshAfterMutation();render('students');}catch(e){toast(e.message)} }
+async function saveMove(row){
+  try{
+    const room=$('#move_room')?.value||'';
+    if(!room)return toast('Выберите новую комнату');
+
+    await apiRequest('appMoveStudent',[state.initData,row,room],{ttl:0,force:true});
+
+    const s=state.studentMap.get(Number(row));
+    if(s)s.room=room;
+
+    Object.values(state.studentLists).forEach(list=>{
+      const item=(list||[]).find(x=>Number(x.rowNumber)===Number(row));
+      if(item)item.room=room;
+    });
+
+    state.cache.clear();
+    state.roomData=null;
+    state.roomDataTime=0;
+
+    closeModal();
+    toast('Студент переселён');
+    render('students');
+    refreshAfterMutation();
+  }catch(e){
+    toast(e.message);
+  }
+}
 function confirmEvict(row){ const s=state.studentMap.get(Number(row)); showModal(`<div class="sheet-handle"></div><h3>Подтвердить выселение?</h3><p><b>${esc(s?.fio||'Студент')}</b></p><p style="color:var(--muted);font-size:12px">Действие будет записано в журнал.</p><button class="btn btn-danger btn-wide" onclick="doEvict(${row})">Выселить</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`); }
-async function doEvict(row){ try{await apiRequest('appEvictStudent',[state.initData,row],{ttl:0,force:true});closeModal();toast('Студент выселен');await refreshAfterMutation();render('students');}catch(e){toast(e.message)} }
+async function doEvict(row){
+  try{
+    await apiRequest('appEvictStudent',[state.initData,row],{ttl:0,force:true});
+
+    const s=state.studentMap.get(Number(row));
+    if(s)s.active=false;
+
+    if(state.studentLists.active){
+      state.studentLists.active=state.studentLists.active.filter(x=>Number(x.rowNumber)!==Number(row));
+    }
+
+    if(state.studentLists.all){
+      const item=state.studentLists.all.find(x=>Number(x.rowNumber)===Number(row));
+      if(item)item.active=false;
+    }
+
+    if(state.studentLists.evicted){
+      const item=state.studentMap.get(Number(row));
+      if(item&&!state.studentLists.evicted.some(x=>Number(x.rowNumber)===Number(row))){
+        state.studentLists.evicted.unshift(item);
+      }
+    }
+
+    state.cache.clear();
+    state.roomData=null;
+    state.roomDataTime=0;
+
+    closeModal();
+    toast('Студент выселен');
+    render('students');
+    refreshAfterMutation();
+  }catch(e){
+    toast(e.message);
+  }
+}
 async function refreshAfterMutation(){
-  invalidateData();
-  try{ const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true}); state.dashboard=data.dashboard;state.analytics=data.analytics;state.rooms=data.rooms||state.rooms; }catch(e){}
-  prefetchCore();
+  try{
+    state.cache.clear();
+
+    const [bootstrap,active,all,rooms]=await Promise.allSettled([
+      apiRequest('appBootstrap',[state.initData],{ttl:0,force:true}),
+      apiRequest('appGetStudents',[state.initData,'active'],{ttl:0,force:true}),
+      apiRequest('appGetStudents',[state.initData,'all'],{ttl:0,force:true}),
+      apiRequest('appGetRooms',[state.initData],{ttl:0,force:true})
+    ]);
+
+    if(bootstrap.status==='fulfilled'){
+      const data=bootstrap.value;
+      state.dashboard=data.dashboard;
+      state.analytics=data.analytics;
+      state.rooms=data.rooms||state.rooms;
+      state.lastCoreSync=Date.now();
+    }
+
+    if(active.status==='fulfilled'){
+      state.studentLists.active=active.value;
+      state.studentListTime.active=Date.now();
+      indexStudents(active.value);
+    }
+
+    if(all.status==='fulfilled'){
+      state.studentLists.all=all.value;
+      state.studentListTime.all=Date.now();
+      indexStudents(all.value);
+    }
+
+    if(rooms.status==='fulfilled'){
+      state.roomData=rooms.value;
+      state.roomDataTime=Date.now();
+    }
+
+    if(state.currentPage==='students'){
+      updateStudentSummary();
+      renderRecentStudents();
+      const base=currentStudentBaseList();
+      updateStudentFilterOptions(base);
+      drawStudentView(base);
+    }
+  }catch(e){}
 }
 
 function showModal(html){ $('#modalSheet').innerHTML=html; $('#modal').classList.remove('hidden'); document.body.style.overflow='hidden'; }
