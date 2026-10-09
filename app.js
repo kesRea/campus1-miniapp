@@ -1,6 +1,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
+/* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.9.0';
+const APP_VERSION = '13.9.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -15,7 +16,7 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.9.0';
+const UPDATE_CENTER_VERSION = '13.9.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
@@ -503,6 +504,7 @@ async function boot(){
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
+    syncSpecialButton(); // show shield immediately after Telegram-authenticated appBootstrap
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
     idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
   }catch(e){

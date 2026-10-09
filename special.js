@@ -1,17 +1,46 @@
 /* CAMPUS_SPECIAL_V13_9: privileged button; role verified by backend every time. */
+/* V13.9.1: show the entry to locally identified privileged Telegram users.
+   All protected pages still REQUIRE server-side appGetSpecialAccess. */
+function localSpecialCandidate(){
+ const id=String(state.user?.id||'');
+ const telegramId=String(tg?.initDataUnsafe?.user?.id||'');
+ // appBootstrap has already validated the signed Telegram initData.
+ return !!id && !!telegramId && id===telegramId &&
+   (state.user?.isOwner===true || id==='7272434463');
+}
+function syncSpecialButton(){
+ const btn=$('#specialBtn');
+ if(!btn)return;
+ const allowed=!!state.special?.canOpen || localSpecialCandidate();
+ btn.classList.toggle('hidden',!allowed);
+ btn.title=state.special?.checkError ? 'Панель управления — требуется проверка сервера' : 'Специальная панель';
+}
 async function loadSpecialAccess(){
  try{
   const result=await apiRequest('appGetSpecialAccess',[state.initData],{ttl:0,force:true});
-  state.special=result;
-  $('#specialBtn')?.classList.toggle('hidden',!result?.canOpen);
- }catch(e){state.special=null;$('#specialBtn')?.classList.add('hidden');}
+  if(!result || typeof result.canOpen!=='boolean')throw new Error('Некорректный ответ проверки прав.');
+  state.special={...result,checkError:''};
+ }catch(e){
+  state.special={canOpen:false,checkError:String(e?.message||e||'Неизвестная ошибка сервера')};
+  console.warn('Campus special access check:',e);
+ }
+ syncSpecialButton();
+ return state.special;
 }
 async function renderSpecial(){
  $('#view').innerHTML=pageHead('Панель управления','home')+'<div class="task-center-loading">Проверяем права…</div>';
  try{
   await loadSpecialAccess();
   const a=state.special;
-  if(!a?.canOpen){$('#view').innerHTML=pageHead('Нет доступа','home')+'<div class="task-empty">Раздел доступен только владельцу и разработчику.</div>';return;}
+  if(!a?.canOpen){
+   const message=a?.checkError
+     ? `Сервер не смог проверить права: ${esc(a.checkError)}. Проверьте, что Google Apps Script обновлён до V13.9.1 и запущен действующий deployment /exec.`
+     : localSpecialCandidate()
+       ? `Сервер не подтвердил доступ для Telegram ID ${esc(state.user?.id)}. Проверьте свой ID и настройку CAMPUS_DEVELOPER_ID.`
+       : 'Раздел доступен только владельцу и разработчику.';
+   $('#view').innerHTML=pageHead('Проверка доступа','home')+`<div class="task-empty"><b>Панель пока недоступна</b><p>${message}</p><button class="btn btn-secondary btn-wide" onclick="render('special')">Повторить проверку</button></div>`;
+   return;
+  }
   $('#view').innerHTML=`${pageHead('Специальная панель','home')}
    <div class="special-hero"><span class="special-hero-icon">${icon('shield')}</span><div><small>${a.isOwner?'ВЛАДЕЛЕЦ': 'РАЗРАБОТЧИК'}</small><h2>Центр управления Campus №1</h2><p>Отдельный раздел для технических настроек и администрирования</p></div></div>
    <div class="section-heading"><h2>Разделы</h2></div><div class="more-grid">
