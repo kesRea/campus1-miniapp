@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.12.5';
+const APP_VERSION = '13.12.6';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,10 +17,16 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.12.5';
+const UPDATE_CENTER_VERSION = '13.12.6';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
+{version:'13.12.6',date:'9 октября 2026',title:'Splash Light + Council Order',latest:true,items:[
+ 'Экран подключения и проверки доступа всегда отображается в светлой теме.',
+ 'Основная тема приложения после входа не изменяется.',
+ 'В Студсовете порядок: председатель, заместитель, Глава СДК, заместитель Главы СДК, затем остальные.'
+]},
+
 {version:'13.11',date:'9 октября 2026',title:'Unified Recovery',latest:false,items:[
  'Исправлен сервер задач: создание, делегирование, сроки, статусы, комментарии и поток событий.',
  'Панель владельца и разработчика теперь подтверждается сервером; developer ID 7272434463.',
@@ -1352,11 +1358,108 @@ async function renderGenericTable(title,fn,back,seq){
   el.innerHTML=data.rows.map(r=>{const vals=Object.entries(r).filter(([k,v])=>k!=='_rowNumber'&&String(v).trim()).slice(0,5);return `<div class="row-card"><span class="avatar">${esc(initials(vals[0]?.[1]||title))}</span><span class="row-main">${vals.map(([k,v],i)=>i===0?`<b>${esc(v)}</b>`:`<small>${esc(k)}: ${esc(v)}</small>`).join('')}</span></div>`}).join('');
 }
 async function renderCouncil(kind,seq){
+  /* CAMPUS_V13_12_6_COUNCIL_ORDER */
   const title=kind==='activists'?'Активисты':'Студенческий совет';
   $('#view').innerHTML=`${pageHead(title,'more')}<div id="generic" class="list">${studentSkeletons()}</div>`;
-  const data=await apiRequest('appGetCouncil',[state.initData,kind],{ttl:15000}); if(!pageAlive(state.currentPage,seq))return;
-  const el=$('#generic'); if(!data.rows?.length){el.innerHTML='<div class="empty">Список пока пустой.</div>';return;}
-  el.innerHTML=data.rows.map(r=>{const name=r['ФИО']||r['Имя']||Object.values(r).find(v=>v&&typeof v==='string')||'Участник';return `<div class="row-card"><span class="avatar">${esc(initials(name))}</span><span class="row-main"><b>${esc(name)}</b><small>${esc(r['Должность']||r['Роль']||r['Сектор']||'')}</small>${r['Комната']?`<small>Комната ${esc(r['Комната'])}</small>`:''}</span></div>`}).join('');
+
+  const data=await apiRequest(
+    'appGetCouncil',
+    [state.initData,kind],
+    {ttl:15000}
+  );
+
+  if(!pageAlive(state.currentPage,seq))return;
+
+  const el=$('#generic');
+
+  if(!data.rows?.length){
+    el.innerHTML='<div class="empty">Список пока пустой.</div>';
+    return;
+  }
+
+  const getName=r=>
+    r['ФИО'] ||
+    r['Имя'] ||
+    r['Аты-жөні'] ||
+    Object.values(r).find(v=>v&&typeof v==='string') ||
+    'Участник';
+
+  const getRole=r=>
+    r['Должность'] ||
+    r['Роль'] ||
+    r['Позиция'] ||
+    r['Сектор'] ||
+    '';
+
+  const norm=v=>
+    String(v||'')
+      .toLowerCase()
+      .replace(/ё/g,'е')
+      .replace(/[._–—-]+/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+
+  const councilPriority=role=>{
+    const r=norm(role);
+
+    if(
+      r.includes('заместитель главы сдк') ||
+      r.includes('зам главы сдк') ||
+      r.includes('заместитель главы сектора документации и контроля') ||
+      r.includes('зам главы сектора документации и контроля')
+    ) return 4;
+
+    if(
+      r==='глава сдк' ||
+      r.includes('глава сектора документации и контроля') ||
+      r.includes('руководитель сдк')
+    ) return 3;
+
+    if(
+      r.includes('заместитель председателя') ||
+      r.includes('зам председателя') ||
+      r.includes('зам председ')
+    ) return 2;
+
+    if(
+      r==='председатель' ||
+      r.includes('председатель студсовета') ||
+      r.includes('председатель студенческого совета')
+    ) return 1;
+
+    return 100;
+  };
+
+  const rows=[...data.rows];
+
+  if(kind==='council'){
+    rows.sort((a,b)=>{
+      const pa=councilPriority(getRole(a));
+      const pb=councilPriority(getRole(b));
+
+      if(pa!==pb)return pa-pb;
+
+      return getName(a).localeCompare(
+        getName(b),
+        'ru',
+        {sensitivity:'base'}
+      );
+    });
+  }
+
+  el.innerHTML=rows.map(r=>{
+    const name=getName(r);
+    const role=getRole(r);
+
+    return `<div class="row-card">
+      <span class="avatar">${esc(initials(name))}</span>
+      <span class="row-main">
+        <b>${esc(name)}</b>
+        <small>${esc(role)}</small>
+        ${r['Комната']?`<small>Комната ${esc(r['Комната'])}</small>`:''}
+      </span>
+    </div>`;
+  }).join('');
 }
 
 function roomOptions(selected){ return (state.rooms||[]).map(r=>`<option value="${esc(r)}" ${String(r)===String(selected)?'selected':''}>${esc(r)}</option>`).join(''); }

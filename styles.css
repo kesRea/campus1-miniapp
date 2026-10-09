@@ -1535,3 +1535,29 @@ html[data-theme="dark"] .winter-wire-v137 path{stroke:rgba(153,175,207,.42)}
 .release-ready-note{
   margin-top:10px;
 }
+
+
+/* CAMPUS_V13_12_6_SPLASH_ALWAYS_LIGHT */
+/* Authorization/loading screen is always light. App theme after login is untouched. */
+.splash{
+  color-scheme:light !important;
+  background:
+    radial-gradient(circle at 50% -20%,rgba(18,103,233,.12),transparent 35%),
+    #f5f8fd !important;
+  color:#14213a !important;
+}
+.splash-card{
+  background:#ffffff !important;
+  border-color:#e5ebf4 !important;
+  color:#14213a !important;
+  box-shadow:0 14px 34px rgba(21,58,107,.08) !important;
+}
+.splash-kicker{color:#1267e9 !important}
+.splash h1{color:#14213a !important}
+.splash p,
+.splash-note{color:#7a8799 !important}
+.splash .btn-primary{
+  background:linear-gradient(135deg,#1267e9,#2386ff) !important;
+  color:#ffffff !important;
+  box-shadow:0 10px 26px rgba(18,103,233,.23) !important;
+}
