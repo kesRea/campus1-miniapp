@@ -70,3 +70,109 @@
     linear-gradient(135deg,#102a52,#0d5fc0);
   box-shadow:0 16px 34px rgba(8,61,126,.18);
 }
+
+/* ===== CAMPUS V14.2 / TASKS NATIVE REDESIGN ===== */
+.task-tagline{
+  margin-top:-9px;
+  color:var(--muted);
+  font-size:10.5px;
+}
+.task-tabs,.task-filters{
+  gap:6px;
+  padding-bottom:10px;
+}
+.task-tab,.task-filter{
+  border-color:var(--v142-hairline,var(--border));
+  box-shadow:none;
+}
+.task-tab{
+  min-height:38px;
+  padding:9px 12px;
+  border-radius:12px;
+  font-size:10.5px;
+}
+.task-tab.selected{
+  background:color-mix(in srgb,var(--blue-soft) 82%,var(--surface));
+  border-color:color-mix(in srgb,var(--blue) 22%,var(--border));
+  color:var(--blue);
+}
+.task-filter{
+  padding:8px 11px;
+  font-size:10px;
+}
+.task-summary{
+  gap:7px;
+  margin:5px 0 12px;
+}
+.task-summary>div{
+  padding:12px;
+  border-radius:17px;
+  border-color:var(--v142-hairline,var(--border));
+  box-shadow:0 6px 18px rgba(31,64,112,.045);
+}
+.task-summary strong{
+  font-size:22px;
+  letter-spacing:-.04em;
+}
+.task-summary span{
+  margin-top:6px;
+  font-size:9.5px;
+}
+.task-list{gap:8px}
+.task-item,.task-project,.task-template,.task-event{
+  padding:13px;
+  border-radius:18px;
+  border-color:var(--v142-hairline,var(--border));
+  box-shadow:0 6px 18px rgba(31,64,112,.045);
+}
+.task-item-top strong{
+  font-size:13.5px;
+  letter-spacing:-.015em;
+}
+.task-item p{
+  margin:7px 0 9px;
+  font-size:11px;
+}
+.task-item-meta{
+  margin-top:8px;
+  gap:5px 11px;
+  font-size:9px;
+}
+.task-status{
+  padding:5px 7px;
+  font-size:9px;
+}
+.task-fab{
+  width:55px;
+  height:55px;
+  right:max(16px,calc((100vw - 790px)/2));
+  bottom:calc(84px + var(--safe-bottom));
+  border-radius:18px;
+  box-shadow:0 12px 30px rgba(18,103,233,.26);
+}
+.task-calendar,.task-detail-card,.task-timeline{
+  border-color:var(--v142-hairline,var(--border));
+  box-shadow:var(--v142-shadow-card,var(--shadow-soft));
+}
+.task-calendar{border-radius:21px}
+.task-detail-card{
+  border-radius:22px;
+  padding:16px;
+}
+.task-detail-card h2{
+  font-size:21px;
+  letter-spacing:-.035em;
+}
+.task-project-icon{
+  width:39px;
+  height:39px;
+  border-radius:12px;
+}
+.task-center-loading,.task-empty{
+  border-radius:20px;
+  border-color:var(--v142-hairline,var(--border));
+}
+.special-hero{
+  border-radius:24px !important;
+  box-shadow:var(--v142-shadow-card,var(--shadow-soft)) !important;
+}

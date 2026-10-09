@@ -2,7 +2,8 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.1.3';
+const APP_VERSION = '14.2.0';
+const BACKEND_COMPAT_VERSION = '14.1.3';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +18,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.1.3';
+const UPDATE_CENTER_VERSION = '14.2.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.1.3',date:'9 октября 2026',title:'Server Hotfix',latest:true,items:[
+{version:'14.2.0',date:'9 октября 2026',title:'Native UI Redesign',latest:true,items:[
+ 'Интерфейс переработан ближе к полноценному мобильному приложению.',
+ 'Главная, карточки, поиск, комнаты, студенты и раздел «Ещё» стали компактнее и чище.',
+ 'Нижняя навигация получила новый плавающий dock и более спокойные активные состояния.',
+ 'Задачи, модальные окна и панель управления оформлены в единой системе.',
+ 'Убрана зимняя гирлянда; сезонные эффекты и всегда светлый экран входа сохранены.'
+]},
+{version:'14.1.3',date:'9 октября 2026',title:'Server Hotfix',latest:false,items:[
  'Ускорен старт Campus API без изменения рабочих функций.',
  'Убрана автоматическая фоновая загрузка списков студентов и комнат после входа.',
  'Структура Студсовета теперь читается одним проходом вместо повторных чтений таблицы.',

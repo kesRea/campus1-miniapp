@@ -11,3 +11,48 @@
 }
 .role-person{border-radius:18px}
 #maintenanceMessage{border-radius:15px;background:var(--surface-2,#f7faff)}
+
+/* ===== CAMPUS V14.2 / MANAGEMENT REDESIGN ===== */
+.maintenance-overlay{
+  background:
+    radial-gradient(circle at 50% 0,rgba(18,103,233,.08),transparent 35%),
+    var(--bg,#f5f8fd);
+}
+.maintenance-card{
+  width:min(100%,430px);
+  padding:34px 24px;
+  border-radius:28px;
+  border-color:var(--v142-hairline,var(--border,#e1e7ef));
+  box-shadow:0 24px 70px rgba(19,44,80,.14);
+}
+.maintenance-symbol{
+  width:64px;
+  height:64px;
+  margin:0 auto;
+  display:grid;
+  place-items:center;
+  border-radius:21px;
+  background:color-mix(in srgb,var(--blue,#1267e9) 10%,var(--surface,#fff));
+  font-size:34px;
+}
+.maintenance-card h1{
+  margin:16px 0 9px;
+  font-size:23px;
+  letter-spacing:-.04em;
+}
+.maintenance-card p{font-size:12.5px}
+.role-person{
+  border-radius:18px;
+  border-color:var(--v142-hairline,var(--border,#e1e7ef));
+  box-shadow:0 6px 18px rgba(31,64,112,.035);
+}
+.role-edit{
+  padding:5px 8px;
+  border-radius:9px;
+  background:color-mix(in srgb,var(--blue,#287af3) 8%,transparent);
+}
+#maintenanceMessage{
+  border-radius:14px;
+  border-color:var(--v142-hairline,var(--border,#e1e7ef));
+  background:var(--surface-2,#f7faff);
+}

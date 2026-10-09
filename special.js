@@ -366,13 +366,13 @@ async function runReleaseTester(){
       !!diagnostic?.maintenance?.enabled;
 
     add(
-      serverVersion===APP_VERSION
+      serverVersion===BACKEND_COMPAT_VERSION
         ? 'pass'
         : 'fail',
       'Версии frontend / backend',
-      serverVersion===APP_VERSION
-        ? `Обе версии v${APP_VERSION}.`
-        : `Frontend v${APP_VERSION}, backend v${serverVersion||'—'}.`
+      serverVersion===BACKEND_COMPAT_VERSION
+        ? `Frontend v${APP_VERSION} совместим с backend v${serverVersion}.`
+        : `Frontend v${APP_VERSION}, ожидаемый backend v${BACKEND_COMPAT_VERSION}, получен v${serverVersion||'—'}.`
     );
 
     add(
