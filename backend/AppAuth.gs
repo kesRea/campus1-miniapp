@@ -1,4 +1,4 @@
-
+/* CAMPUS_BACKEND_AUTH_V13_11 */
 function campusHmacSha256_(value, key) {
   var valueBytes = Array.isArray(value)
     ? value
@@ -15,50 +15,45 @@ function validateTelegramInitData_(initData) {
   if (!initData) return { ok: false, error: 'Mini App открыт не через Telegram.' };
   if (typeof TOKEN === 'undefined' || !TOKEN) return { ok: false, error: 'TOKEN не настроен.' };
 
-  const params = {};
+  var params = {};
   String(initData).split('&').forEach(function(part) {
-    const idx = part.indexOf('=');
-    const key = decodeURIComponent(idx >= 0 ? part.substring(0, idx) : part);
-    const value = decodeURIComponent((idx >= 0 ? part.substring(idx + 1) : '').replace(/\+/g, '%20'));
+    var idx = part.indexOf('=');
+    var key = decodeURIComponent(idx >= 0 ? part.substring(0, idx) : part);
+    var value = decodeURIComponent((idx >= 0 ? part.substring(idx + 1) : '').replace(/\+/g, '%20'));
     params[key] = value;
   });
 
-  const receivedHash = params.hash || '';
+  var receivedHash = params.hash || '';
   if (!receivedHash) return { ok: false, error: 'Telegram hash отсутствует.' };
 
-  const authDate = Number(params.auth_date || 0);
-  const now = Math.floor(Date.now() / 1000);
+  var authDate = Number(params.auth_date || 0);
+  var now = Math.floor(Date.now() / 1000);
   if (!authDate || Math.abs(now - authDate) > CAMPUS_APP.telegramAuthMaxAgeSeconds) {
     return { ok: false, error: 'Сессия Telegram устарела. Откройте приложение заново.' };
   }
 
-  const dataCheckString = Object.keys(params)
+  var dataCheckString = Object.keys(params)
     .filter(function(key) { return key !== 'hash'; })
     .sort()
     .map(function(key) { return key + '=' + params[key]; })
     .join('\n');
 
-  // Telegram Mini Apps validation:
-  // secret_key = HMAC_SHA256(bot_token, key="WebAppData")
-  // hash       = HMAC_SHA256(data_check_string, key=secret_key)
-  // Apps Script cannot mix String and byte[] in one HMAC call,
-  // therefore BOTH arguments are explicitly byte[].
-  const tokenBytes = Utilities.newBlob(String(TOKEN), 'text/plain').getBytes();
-  const webAppDataBytes = Utilities.newBlob('WebAppData', 'text/plain').getBytes();
-  const dataCheckBytes = Utilities.newBlob(String(dataCheckString), 'text/plain').getBytes();
+  var tokenBytes = Utilities.newBlob(String(TOKEN), 'text/plain').getBytes();
+  var webAppDataBytes = Utilities.newBlob('WebAppData', 'text/plain').getBytes();
+  var dataCheckBytes = Utilities.newBlob(String(dataCheckString), 'text/plain').getBytes();
 
-  const secretKey = Utilities.computeHmacSha256Signature(
+  var secretKey = Utilities.computeHmacSha256Signature(
     tokenBytes,
     webAppDataBytes
   );
 
-  const signature = Utilities.computeHmacSha256Signature(
+  var signature = Utilities.computeHmacSha256Signature(
     dataCheckBytes,
     secretKey
   );
 
-  const calculatedHash = signature.map(function(byte) {
-    const v = (byte < 0 ? byte + 256 : byte).toString(16);
+  var calculatedHash = signature.map(function(byte) {
+    var v = (byte < 0 ? byte + 256 : byte).toString(16);
     return v.length === 1 ? '0' + v : v;
   }).join('');
 
@@ -66,7 +61,7 @@ function validateTelegramInitData_(initData) {
     return { ok: false, error: 'Не удалось подтвердить данные Telegram. [HMAC-V2]' };
   }
 
-  let user = null;
+  var user = null;
   try { user = params.user ? JSON.parse(params.user) : null; } catch (e) {}
   if (!user || !user.id) return { ok: false, error: 'Telegram user отсутствует.' };
 
@@ -74,29 +69,60 @@ function validateTelegramInitData_(initData) {
 }
 
 function constantTimeEquals_(a, b) {
-  a = String(a || ''); b = String(b || '');
+  a = String(a || '');
+  b = String(b || '');
   if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
 
-function getAppSession_(initData) {
-  const verified = validateTelegramInitData_(initData);
+function getAppIdentity_(initData) {
+  var verified = validateTelegramInitData_(initData);
   if (!verified.ok) throw new Error(verified.error);
 
-  const id = String(verified.user.id);
-  const owner = typeof OWNER_ID !== 'undefined' && id === String(OWNER_ID);
-  const allowed = owner || (typeof isAllowed === 'function' && isAllowed(id));
+  var id = String(verified.user.id);
+  var owner = typeof OWNER_ID !== 'undefined' && id === String(OWNER_ID);
+  var developer = typeof isCampusDeveloperId_ === 'function'
+    ? isCampusDeveloperId_(id)
+    : id === '7272434463';
+
+  var allowed = owner || developer || (typeof isAllowed === 'function' && isAllowed(id));
   if (!allowed) throw new Error('У вас нет доступа к Campus №1. Запросите доступ через бота.');
 
-  let role = owner ? 'Владелец' : 'Пользователь';
-  let permission = owner ? 'manage_students' : 'view';
-  if (!owner && typeof getUserRole === 'function') role = getUserRole(id) || role;
-  if (!owner && typeof getUserPermission === 'function') permission = getUserPermission(id) || permission;
+  var accessRole = owner ? 'Владелец' : (developer ? 'Разработчик' : 'Пользователь');
+  var permission = owner ? 'owner' : (developer ? 'developer' : 'view');
 
-  const canManage = owner || permission === 'manage_students' ||
+  if (!owner && !developer && typeof getUserRole === 'function') {
+    accessRole = getUserRole(id) || accessRole;
+  }
+  if (!owner && !developer && typeof getUserPermission === 'function') {
+    permission = getUserPermission(id) || permission;
+  }
+
+  var canManageStudents =
+    owner ||
+    developer ||
+    permission === 'manage_students' ||
     (typeof hasPermission === 'function' && hasPermission(id, 'manage_students'));
+
+  var position = typeof getCouncilPosition_ === 'function'
+    ? getCouncilPosition_(id)
+    : { roleId: 'member', sector: '', label: accessRole };
+
+  var positionRole = String(position && position.roleId || '');
+  var displayRole = position && position.label ? position.label : accessRole;
+
+  var canAssignRoles = owner || developer || permission === 'manage_students';
+  var canCreateTasks =
+    owner ||
+    developer ||
+    canManageStudents ||
+    positionRole === 'chair' ||
+    positionRole === 'vice_chair' ||
+    positionRole === 'sector_head';
+
+  var canManageTasks = owner || developer || canManageStudents;
 
   return {
     id: id,
@@ -104,13 +130,42 @@ function getAppSession_(initData) {
     lastName: verified.user.last_name || '',
     username: verified.user.username || '',
     photoUrl: verified.user.photo_url || '',
-    role: role,
+    role: displayRole,
+    accessRole: accessRole,
     permission: permission,
-    canManage: !!canManage,
-    isOwner: owner
+    position: position,
+    canManage: !!canManageStudents,
+    canAssignRoles: !!canAssignRoles,
+    canCreateTasks: !!canCreateTasks,
+    canManageTasks: !!canManageTasks,
+    canOpenSpecial: !!(owner || developer),
+    isOwner: !!owner,
+    isDeveloper: !!developer
   };
 }
 
+function getAppSession_(initData) {
+  var session = getAppIdentity_(initData);
+
+  if (
+    typeof getMaintenanceState_ === 'function' &&
+    !session.isOwner &&
+    !session.isDeveloper
+  ) {
+    var maintenance = getMaintenanceState_();
+    if (maintenance.enabled) {
+      throw new Error(
+        'CAMPUS_MAINTENANCE|' +
+        String(maintenance.message || 'Происходят технические работы. Пожалуйста, подождите.')
+      );
+    }
+  }
+
+  return session;
+}
+
 function requireManage_(session) {
-  if (!session || !session.canManage) throw new Error('Недостаточно прав для изменения данных.');
+  if (!session || !session.canManage) {
+    throw new Error('Недостаточно прав для изменения данных.');
+  }
 }

@@ -1,13 +1,14 @@
+/* CAMPUS_MINIAPP_API_V13_11 — AI removed, tasks + management enabled */
 function handleCampusMiniAppApi_(e) {
   try {
-    const raw = e && e.postData ? String(e.postData.contents || '') : '';
+    var raw = e && e.postData ? String(e.postData.contents || '') : '';
     if (!raw) throw new Error('Пустой API-запрос.');
 
-    const request = JSON.parse(raw);
-    const method = String(request.method || '');
-    const args = Array.isArray(request.args) ? request.args : [];
+    var request = JSON.parse(raw);
+    var method = String(request.method || '');
+    var args = Array.isArray(request.args) ? request.args : [];
 
-    const api = {
+    var api = {
       appBootstrap: appBootstrap,
       appGetDashboard: appGetDashboard,
       appGetAnalytics: appGetAnalytics,
@@ -24,16 +25,28 @@ function handleCampusMiniAppApi_(e) {
       appGetCouncil: appGetCouncil,
       appGetControl: appGetControl,
       appGetJournal: appGetJournal,
-      appAskAI: appAskAI,
-      appAIStatus: appAIStatus,
-      appSetAIConfig: appSetAIConfig,
-      appClearAIConfig: appClearAIConfig,
-      appExecuteAIAction: appExecuteAIAction
+
+      appGetTasks: appGetTasks,
+      appGetTaskUsers: appGetTaskUsers,
+      appCreateTask: appCreateTask,
+      appGetTaskDetails: appGetTaskDetails,
+      appDelegateTask: appDelegateTask,
+      appSetTaskStatus: appSetTaskStatus,
+      appCommentTask: appCommentTask,
+      appGetTaskFeed: appGetTaskFeed,
+
+      appGetSpecialAccess: appGetSpecialAccess,
+      appGetMaintenanceStatus: appGetMaintenanceStatus,
+      appSetMaintenance: appSetMaintenance,
+      appGetCouncilRoles: appGetCouncilRoles,
+      appSetCouncilRole: appSetCouncilRole
     };
 
-    if (!api[method]) throw new Error('Неизвестный API-метод: ' + method);
+    if (!api[method]) {
+      throw new Error('Неизвестный API-метод: ' + method);
+    }
 
-    const result = api[method].apply(null, args);
+    var result = api[method].apply(null, args);
 
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true, result: result }))

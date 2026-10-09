@@ -34,7 +34,7 @@ async function renderTasks(){
 }
 function drawTaskCenter(){
  if(state.currentPage!=='tasks')return;
- const add=canManage()?`<button class="task-fab" type="button" onclick="openTaskCreate()" aria-label="Создать задачу">+</button>`:'';
+ const add=state.user?.canCreateTasks?`<button class="task-fab" type="button" onclick="openTaskCreate()" aria-label="Создать задачу">+</button>`:'';
  const base=taskHeader()+taskCounts();
  let inner='';
  if(taskUI.tab==='tasks'){
@@ -81,16 +81,43 @@ function taskCalendarHtml(){
   ${taskUI.selectedDate?(list.length?`<div class="task-list">${list.map(taskCard).join('')}</div>`:'<div class="task-empty compact">На этот день задач нет.</div>'):''}`;
 }
 function taskSelectDate(iso){taskUI.selectedDate=iso;drawTaskCenter();}
-function taskUserOptions(selected,emptyTitle){return `${emptyTitle?`<option value="">${esc(emptyTitle)}</option>`:''}${taskUI.users.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(selected)?'selected':''}>${esc(u.name)}${u.role&&u.role!=='Без роли'?' — '+esc(u.role):''}</option>`).join('')}`;}
+function taskEligibleLeadUsers(){
+ const self=String(state.user?.id||'');
+ const pos=state.user?.position||{};
+ if(state.user?.canManageTasks)return taskUI.users;
+ if(pos.roleId==='chair'||pos.roleId==='vice_chair')return taskUI.users.filter(u=>u.position?.roleId==='sector_head');
+ if(pos.roleId==='sector_head')return taskUI.users.filter(u=>String(u.id)===self);
+ return [];
+}
+function taskDelegateUsers(task){
+ const leadId=String(task?.leadId||'');
+ if(state.user?.canManageTasks)return taskUI.users.filter(u=>String(u.id)!==leadId);
+ const lead=taskUI.users.find(u=>String(u.id)===leadId);
+ const sector=lead?.position?.sector||'';
+ if(!sector)return [];
+ return taskUI.users.filter(u=>{
+   const role=u.position?.roleId;
+   return String(u.id)!==leadId &&
+     String(u.position?.sector||'')===String(sector) &&
+     ['sector_deputy','member','activist'].includes(role);
+ });
+}
+function taskUserOptions(selected,emptyTitle,pool){
+ const users=Array.isArray(pool)?pool:taskUI.users;
+ return `${emptyTitle?`<option value="">${esc(emptyTitle)}</option>`:''}${users.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(selected)?'selected':''}>${esc(u.name)}${u.role?' — '+esc(u.role):''}</option>`).join('')}`;
+}
 function openTaskCreate(titleEncoded='',priority='normal'){
- if(!canManage())return toast('Создавать задачи может администрация');
+ if(!state.user?.canCreateTasks)return toast('Недостаточно прав для создания задач');
  const title=titleEncoded?decodeURIComponent(titleEncoded):'';
  const self=String(state.user?.id||'');
+ const leads=taskEligibleLeadUsers();
+ const preferred=(state.user?.position?.roleId==='sector_head'?self:String(leads[0]?.id||self));
+ if(!leads.length)return toast('Нет доступных глав для назначения задачи');
  showModal(`<div class="sheet-handle"></div><h3>Новое поручение</h3>
    <div class="field"><label>Название задачи *</label><input id="task_title" maxlength="120" value="${esc(title)}" placeholder="Что нужно сделать?"></div>
    <div class="field"><label>Описание</label><textarea id="task_desc" rows="4" maxlength="2500" placeholder="Подробности поручения"></textarea></div>
    <div class="field"><label>Проект (необязательно)</label><input id="task_project" maxlength="90" placeholder="Например: Документация"></div>
-   <div class="field"><label>Главный ответственный / глава</label><select id="task_lead">${taskUserOptions(self)}</select><small class="task-hint">Именно глава будет отвечать за задачу, даже если делегирует её.</small></div>
+   <div class="field"><label>Главный ответственный / глава</label><select id="task_lead">${taskUserOptions(preferred,'',leads)}</select><small class="task-hint">Глава остаётся главным ответственным даже после делегирования.</small></div>
    <div class="field"><label>Приоритет</label><select id="task_priority"><option value="normal" ${priority==='normal'?'selected':''}>Обычный</option><option value="high" ${priority==='high'?'selected':''}>Срочный</option><option value="low">Низкий</option></select></div>
    <div class="task-bottom-deadline"><label>📅 Срок выполнения</label><input type="date" id="task_due"></div>
    <button class="btn btn-primary btn-wide" id="task_create_btn" onclick="submitTaskCreate()">Создать задачу</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
@@ -108,7 +135,7 @@ async function openTask(id){
  catch(e){if(state.currentPage==='task-detail')$('#view').innerHTML=pageHead('Задача','tasks')+`<div class="task-empty">${esc(e.message)}</div>`;}
 }
 function drawTaskDetail(t,events){
- const self=String(state.user?.id),manager=!!state.user?.isOwner||self===t.leadId||self===t.createdBy,executor=t.assigneeId===self;
+ const self=String(state.user?.id),manager=!!state.user?.canManageTasks||self===t.leadId,executor=t.assigneeId===self;
  const statusBtns=manager?['new','in_progress','review','completed','cancelled']:executor?['in_progress','review']:[];
  $('#view').innerHTML=`${pageHead('Поручение','tasks')}
  <article class="task-detail-card"><div class="task-detail-tags"><span class="task-status status-${esc(t.status)}">${esc(TASK_STATUS[t.status]||t.status)}</span><span class="task-priority ${t.priority==='high'?'high':''}">${esc(TASK_PRIORITY[t.priority]||'Обычный')}</span></div>
@@ -122,8 +149,9 @@ function drawTaskDetail(t,events){
 }
 function openTaskDelegate(id,assigneeId,due){
  const task=taskUI.items.find(t=>t.id===id);if(!task)return;
+ const candidates=taskDelegateUsers(task);
  showModal(`<div class="sheet-handle"></div><h3>Делегировать задачу</h3><p class="task-muted">Главный руководитель: <b>${esc(taskName(task.leadId))}</b>. Он остаётся ответственным за результат.</p>
-   <div class="field"><label>Исполнитель (подчинённый)</label><select id="task_delegate_user"><option value="">Не выбирать — оставить главу</option>${taskUserOptions(assigneeId)}</select><small class="task-hint">Если оставить пустым, выполнение остаётся за главным руководителем.</small></div>
+   <div class="field"><label>Исполнитель (подчинённый)</label><select id="task_delegate_user"><option value="">Не выбирать — оставить главу</option>${taskUserOptions(assigneeId,'',candidates)}</select><small class="task-hint">${candidates.length?'Доступны подчинённые этого сектора.':'Подчинённые сектора пока не назначены — оставьте задачу за главой.'}</small></div>
    <div class="task-bottom-deadline"><label>📅 Срок выполнения</label><input type="date" id="task_delegate_due" value="${esc(due||'')}"></div>
    <button class="btn btn-primary btn-wide" id="task_delegate_btn" onclick="submitTaskDelegate('${esc(id)}')">Сохранить делегирование</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
  $('#task_delegate_user').value=assigneeId===task.leadId?'':assigneeId;

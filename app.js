@@ -1,8 +1,8 @@
-/* CAMPUS_UI_MANAGEMENT_V13_10 */
+/* CAMPUS_UI_MANAGEMENT_V13_11 */
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.10';
+const APP_VERSION = '13.11.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.10';
+const UPDATE_CENTER_VERSION = '13.11.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'13.10',date:'9 октября 2026',title:'Технические работы и роли',latest:true,items:[
+{version:'13.11',date:'9 октября 2026',title:'Unified Recovery',latest:true,items:[
+ 'Исправлен сервер задач: создание, делегирование, сроки, статусы, комментарии и поток событий.',
+ 'Панель владельца и разработчика теперь подтверждается сервером; developer ID 7272434463.',
+ 'Технические работы реально блокируют всех остальных на сервере и снимаются автоматически после выключения.',
+ 'Исправлены должности и сектора без потери прав доступа. Владелец по умолчанию — Глава СДК.',
+ 'ИИ удалён из API; вкладка задач остаётся основной.'
+]},
+{version:'13.10',date:'9 октября 2026',title:'Технические работы и роли',latest:false,items:[
  'Владелец и разработчик вручную включают технические работы для всех остальных.',
  'Приложение автоматически открывается после завершения работ.',
  'Председатель, заместители, главы, участники и активисты; секторы СДК, SMM, ОПМ и САН.',
@@ -477,7 +484,14 @@ async function apiRequest(method,args=[],options={}){
       try{ data=JSON.parse(text); }
       catch(e){ throw new Error('Campus API вернул не JSON. Обновите приложение.'); }
       if(data.code==='CAMPUS_MAINTENANCE') {maintenanceOverlay({message:data.error});beginMaintenancePolling();}
-      if(!response.ok || !data.ok) throw new Error(data?.error || 'Ошибка Campus API.');
+      if(!response.ok || !data.ok){
+        let message=data?.error || 'Ошибка Campus API.';
+        if(String(message).startsWith('CAMPUS_MAINTENANCE|')){
+          message=String(message).slice('CAMPUS_MAINTENANCE|'.length);
+          try{setTimeout(()=>pollMaintenance(),0)}catch(_e){}
+        }
+        throw new Error(message);
+      }
       if(ttl) state.cache.set(key,{time:Date.now(),value:data.result});
       return data.result;
     }catch(e){

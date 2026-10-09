@@ -1164,3 +1164,13 @@ html[data-theme="dark"] .winter-wire-v137 path{stroke:rgba(153,175,207,.42)}
   .documents-hero{padding:14px}
   .document-preview-actions{grid-template-columns:1fr}
 }
+
+/* CAMPUS_V13_11_COMPACT_OWNER_TOOLS */
+@media(max-width:430px){
+  .top-actions{gap:5px}
+  .icon-button,.profile-button{width:35px;height:35px;border-radius:12px}
+  .profile-button{border-radius:50%}
+  .brand-button,.brand-button img{width:38px;height:38px}
+  .brand-copy span{font-size:15px}
+  .brand-copy small{font-size:9px}
+}
