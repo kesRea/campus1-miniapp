@@ -3,3 +3,11 @@
 .maintenance-card h1{font-size:25px;margin:18px 0 12px}.maintenance-card p{line-height:1.6;overflow-wrap:anywhere}.maintenance-card small{display:block;color:var(--muted,#69768a);line-height:1.5;margin:18px 0}.maintenance-symbol{font-size:48px}
 .role-person{width:100%;text-align:left;background:var(--surface,#fff);color:var(--text,#172033);border:1px solid var(--border,#e1e7ef);cursor:pointer;font:inherit}.role-person small{line-height:1.6}.role-edit{margin-left:auto;font-size:12px;color:var(--blue,#287af3)}
 #maintenanceMessage{width:100%;min-height:100px;padding:12px;border-radius:12px;border:1px solid var(--border,#e1e7ef);background:var(--bg,#f5f8fd);color:inherit;font:inherit;box-sizing:border-box}
+
+/* ===== CAMPUS MANAGEMENT V14.1 / VISUAL REFRESH ===== */
+.maintenance-card{
+  border-radius:30px;padding:38px 27px;
+  box-shadow:0 20px 58px rgba(15,39,72,.12)
+}
+.role-person{border-radius:18px}
+#maintenanceMessage{border-radius:15px;background:var(--surface-2,#f7faff)}

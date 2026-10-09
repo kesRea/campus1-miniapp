@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.0.0';
+const APP_VERSION = '14.1.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.0.0';
+const UPDATE_CENTER_VERSION = '14.1.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.0.0',date:'9 октября 2026',title:'Telegram Avatars + Foreigners',latest:true,items:[
+{version:'14.1.0',date:'9 октября 2026',title:'Visual Refresh',latest:true,items:[
+ 'Обновлён внешний вид без изменения рабочей логики и данных.',
+ 'Карточки, поиск, верхняя панель и нижняя навигация стали компактнее и современнее.',
+ 'Светлая и тёмная темы получили более чистые поверхности, тени и контраст.',
+ 'Комнаты, студенты, задачи и раздел «Ещё» оформлены единообразно.',
+ 'Экран входа по-прежнему всегда светлый, а сезонные эффекты сохранены.'
+]},
+{version:'14.0.0',date:'9 октября 2026',title:'Telegram Avatars + Foreigners',latest:false,items:[
  'Возвращены Telegram-аватарки в профиль, Студсовет, Активисты и управление ролями.',
  'Фото Telegram сохраняется при входе пользователя в Mini App и затем показывается в списках.',
  'Раздел «Иностранцы» автоматически дополняется студентами с зарубежной резиденцией из поля «Прописка».',
