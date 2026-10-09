@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_8_DOCUMENTS_PLUS */
+/* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.8.0';
+const APP_VERSION = '13.9.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -10,23 +10,36 @@ const state = {
   initData:'', user:null, dashboard:null, analytics:null, rooms:[],
   currentPage:'home', renderSeq:0, roomData:null, roomDataTime:0,
   studentLists:{}, studentListTime:{}, studentMap:new Map(),
-  cache:new Map(), inflight:new Map(), aiMessages:[], aiStatus:null, aiBusy:false,
-  aiDraft:'', searchTimer:null, theme:'light', lastCoreSync:0,
+  cache:new Map(), inflight:new Map(), special:null,
+  searchTimer:null, theme:'light', lastCoreSync:0,
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.8.0';
+const UPDATE_CENTER_VERSION = '13.9.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
+{
+  version:'13.9',
+  date:'9 октября 2026',
+  title:'Задачи и панель управления',
+  latest:true,
+  items:[
+    'Раздел задач вместо прежней вкладки: задачи, проекты, потоки, шаблоны и календарь.',
+    'Руководитель делегирует исполнителю с сохранением ответственности и сроков.',
+    'Статусы, протокол изменений, комментарии и оповещения в Telegram.',
+    'Появилась отдельная защищённая панель для владельца и разработчика.'
+  ]
+},
+
 
 {
   version:'13.8',
   date:'9 октября 2026',
   title:'Documents+',
-  latest:true,
+  latest:false,
   items:[
-    'Добавлен полноценный раздел документов без подключения ИИ.',
+    'Добавлен полноценный раздел документов.',
     'Добавлены шаблоны объявлений, докладных, актов проверки и служебных записок.',
     'Документ собирается из формы и сразу показывается в предпросмотре.',
     'Можно копировать текст, делиться через системное меню и сохранять черновики на устройстве.',
@@ -85,17 +98,7 @@ const CAMPUS_UPDATES = [
       'Карточки комнат стали информативнее и быстрее фильтруются без запросов к серверу.'
     ]
   },
-  {
-    version:'13.2',
-    date:'9 октября 2026',
-    title:'Campus AI — режим разработки',
-    latest:false,
-    items:[
-      'Campus AI временно отключён от рабочего интерфейса.',
-      'Вкладка ИИ сохранена и теперь показывает статус «В разработке».',
-      'Остальные разделы Campus №1 продолжают работать без изменений.'
-    ]
-  },
+  
   {
     version:'13.1',
     date:'9 октября 2026',
@@ -114,20 +117,11 @@ const CAMPUS_UPDATES = [
     items:[
       'Студенты и комнаты открываются быстрее благодаря кэшу.',
       'Поиск сначала работает локально, без лишнего ожидания сервера.',
-      'Campus AI сохраняет текущий диалог и черновик сообщения.',
+      'Улучшено хранение настроек и стабильность навигации.',
       'Доработаны анимации, нажатия и тёмная тема.'
     ]
   },
-  {
-    version:'11.1',
-    date:'9 октября 2026',
-    title:'Campus AI',
-    items:[
-      'Добавлен полноценный экран Campus AI.',
-      'Локальные запросы по базе работают без внешнего ИИ.',
-      'Поддержано безопасное подключение OpenAI через backend.'
-    ]
-  },
+  
   {
     version:'10.3',
     date:'9 октября 2026',
@@ -195,23 +189,6 @@ function localStudentSearch(q){
     }
     return false;
   });
-}
-function persistAIChat(){
-  try{
-    const safe=state.aiMessages.filter(m=>!m.pending&&m.text).slice(-24).map(m=>({
-      role:m.role==='user'?'user':'bot',
-      text:String(m.text).slice(0,12000),
-      source:m.source||'',
-      model:m.model||''
-    }));
-    sessionStorage.setItem('campus-ai-chat-v13',JSON.stringify(safe));
-  }catch(e){}
-}
-function restoreAIChat(){
-  try{
-    const arr=JSON.parse(sessionStorage.getItem('campus-ai-chat-v13')||'[]');
-    if(Array.isArray(arr))state.aiMessages=arr.slice(-24);
-  }catch(e){}
 }
 function coreIsFresh(ts,maxAge=60000){ return !!ts && Date.now()-ts<maxAge; }
 
@@ -523,12 +500,11 @@ async function boot(){
     const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true});
     state.user=data.user; state.dashboard=data.dashboard; state.analytics=data.analytics; state.rooms=data.rooms||[];
     state.lastCoreSync=Date.now();
-    restoreAIChat();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
-    idle(()=>{prefetchCore();checkRemoteUpdate(true);});
+    idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
   }catch(e){
     btn.disabled=false; btn.textContent='Повторить вход'; btn.onclick=boot;
     $('#splashText').textContent=e?.message || String(e);
@@ -553,7 +529,6 @@ async function prefetchCore(){
     }catch(e){}
   },900);
 
-  setTimeout(()=>loadAIStatus().catch(()=>{}),1400);
 }
 
 function indexStudents(list){ (list||[]).forEach(s=>state.studentMap.set(Number(s.rowNumber),s)); }
@@ -569,7 +544,11 @@ async function render(page,opts={}){
     if(page==='home') return renderHome();
     if(page==='students') return renderStudents(opts.mode||'active',opts.query||'',seq);
     if(page==='rooms') return renderRooms(seq);
-    if(page==='ai') return renderAI();
+    if(page==='tasks') return renderTasks();
+    if(page==='special') return renderSpecial();
+    if(page==='special-users') return renderSpecialUsers();
+    if(page==='special-diagnostics') return renderSpecialDiagnostics();
+    if(page==='special-design') return renderSpecialDesign();
     if(page==='more') return renderMore();
     if(page==='analytics') return renderAnalytics();
     if(page==='foreigners') return renderGenericTable('Иностранные студенты','appGetForeigners','more',seq);
@@ -629,9 +608,9 @@ function renderHome(){
       <div class="capacity-meta"><span>${d.currentStudents||0} проживающих</span><span>${d.freeRooms||0} свободно</span></div>
     </div>
 
-    <button class="ai-promo fade-in" type="button" onclick="render('ai')">
-      <span class="action-icon">${icon('spark')}</span>
-      <span class="ai-promo-copy"><b>Campus AI</b><small>В разработке · позже вернёмся к нему</small></span>
+    <button class="task-promo fade-in" type="button" onclick="render('tasks')">
+      <span class="action-icon">${icon('clipboard')}</span>
+      <span class="task-promo-copy"><b>Задачи и проекты</b><small>Поручения, делегирование и сроки</small></span>
       <span class="arrow">›</span>
     </button>`;
 }
@@ -1072,7 +1051,7 @@ function renderDocuments(){
       <div>
         <small>Campus №1</small>
         <h2>Быстрые документы</h2>
-        <p>Шаблоны работают без ИИ. Заполни поля — приложение само соберёт аккуратный текст.</p>
+        <p>Заполните поля, а приложение подготовит текст по шаблону.</p>
       </div>
     </section>
 
@@ -1340,184 +1319,6 @@ async function renderCouncil(kind,seq){
   el.innerHTML=data.rows.map(r=>{const name=r['ФИО']||r['Имя']||Object.values(r).find(v=>v&&typeof v==='string')||'Участник';return `<div class="row-card"><span class="avatar">${esc(initials(name))}</span><span class="row-main"><b>${esc(name)}</b><small>${esc(r['Должность']||r['Роль']||r['Сектор']||'')}</small>${r['Комната']?`<small>Комната ${esc(r['Комната'])}</small>`:''}</span></div>`}).join('');
 }
 
-function renderAI(){
-  $('#view').innerHTML=`${pageHead('Campus AI','home')}
-    <div class="ai-dev-shell">
-      <div class="ai-dev-visual">
-        <span class="ai-dev-orb">${icon('spark')}</span>
-        <span class="ai-dev-badge">В разработке</span>
-      </div>
-
-      <div class="ai-dev-copy">
-        <h2>Campus AI пока готовится</h2>
-        <p>ИИ временно отключён от рабочего интерфейса. Сейчас приоритет — скорость, стабильность и основные функции Campus №1.</p>
-      </div>
-
-      <div class="ai-dev-progress">
-        <div class="ai-dev-progress-head"><span>Статус разработки</span><b>В процессе</b></div>
-        <div class="ai-dev-progress-bar"><span></span></div>
-      </div>
-
-      <div class="ai-dev-list">
-        <div><span class="ai-dev-check">${icon('check')}</span><span><b>Интерфейс</b><small>Экран и базовый UX подготовлены</small></span></div>
-        <div><span class="ai-dev-check">${icon('check')}</span><span><b>Безопасность</b><small>ИИ не имеет прямого доступа к базе</small></span></div>
-        <div><span class="ai-dev-wait">${icon('clock')}</span><span><b>Умные действия</b><small>Будут добавлены позже после тестирования</small></span></div>
-      </div>
-
-      <button class="btn btn-secondary btn-wide" type="button" onclick="render('home')">Вернуться на главную</button>
-    </div>`;
-}
-async function loadAIStatus(force=false){
-  if(state.aiStatus && !force){ updateAIStatusBadge(); return state.aiStatus; }
-  try{
-    state.aiStatus=await apiRequest('appAIStatus',[state.initData],{ttl:60000,force});
-  }catch(e){
-    state.aiStatus={configured:false,provider:'Campus Local',model:'local',mode:'local',error:e?.message||String(e)};
-  }
-  updateAIStatusBadge();
-  return state.aiStatus;
-}
-
-function updateAIStatusBadge(){
-  const el=$('#aiModeBadge'); if(!el)return;
-  const st=state.aiStatus;
-  el.className='ai-mode '+(st?.configured?'online':'local');
-  el.textContent=st?.configured ? (st.model||'OpenAI') : 'Локальный режим';
-}
-
-
-async function secretApiRequest(method,args=[]){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),22000);
-  try{
-    const response=await fetch(CAMPUS_API_URL,{
-      method:'POST',redirect:'follow',signal:controller.signal,
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({method,args})
-    });
-    const text=await response.text();
-    let data;
-    try{data=JSON.parse(text)}catch(e){throw new Error('Campus API вернул не JSON.')}
-    if(!response.ok||!data.ok)throw new Error(data?.error||'Ошибка Campus API.');
-    return data.result;
-  }catch(e){
-    if(e?.name==='AbortError')throw new Error('Сервер отвечает слишком долго.');
-    throw e;
-  }finally{clearTimeout(timer)}
-}
-
-function openAISetup(){
-  if(!state.user?.isOwner)return toast('Настройки доступны только владельцу');
-  const current=state.aiStatus?.model||'gpt-6-luna';
-  const configured=!!state.aiStatus?.configured;
-  showModal(`<div class="sheet-handle"></div><h3>Настройки Campus AI</h3>
-    <p style="color:var(--muted);font-size:12px;line-height:1.5;margin-top:-2px">Ключ хранится только в Script Properties Apps Script и не сохраняется в GitHub.</p>
-    <div class="field"><label>OpenAI API key</label><input id="ai_api_key" type="password" autocomplete="off" placeholder="sk-…"></div>
-    <div class="field"><label>Модель</label><select id="ai_model"><option value="gpt-6-luna" ${current==='gpt-6-luna'?'selected':''}>GPT-6 Luna — быстро и недорого</option><option value="gpt-6-sol" ${current==='gpt-6-sol'?'selected':''}>GPT-6 Sol — умнее</option><option value="gpt-5.6-sol" ${current==='gpt-5.6-sol'?'selected':''}>GPT-5.6 Sol</option></select></div>
-    <button class="btn btn-primary btn-wide" onclick="saveAISetup()">${configured?'Обновить настройки':'Подключить OpenAI'}</button>
-    ${configured?'<button class="btn btn-danger btn-wide" onclick="disconnectAI()">Отключить OpenAI</button>':''}
-    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
-}
-
-async function saveAISetup(){
-  const input=$('#ai_api_key'); const key=input?.value.trim()||''; const model=$('#ai_model')?.value||'gpt-6-luna';
-  if(!key)return toast('Вставьте OpenAI API key');
-  try{
-    const btn=$('.sheet .btn-primary'); if(btn){btn.disabled=true;btn.textContent='Сохраняем…'}
-    const result=await secretApiRequest('appSetAIConfig',[state.initData,key,model]);
-    if(input)input.value='';
-    state.aiStatus=result; state.cache.clear(); closeModal(); updateAIStatusBadge(); toast('OpenAI подключён');
-    if(state.currentPage==='ai')renderAI();
-  }catch(e){toast(e?.message||String(e))}
-}
-
-async function disconnectAI(){
-  try{
-    const result=await secretApiRequest('appClearAIConfig',[state.initData]);
-    state.aiStatus=result;state.cache.clear();closeModal();toast('OpenAI отключён');if(state.currentPage==='ai')renderAI();
-  }catch(e){toast(e?.message||String(e))}
-}
-
-function renderBubble(m,index){
-  if(m.pending){
-    return `<div class="ai-message bot"><div class="ai-avatar">${icon('spark')}</div><div class="ai-message-body"><div class="ai-bubble typing"><i></i><i></i><i></i></div></div></div>`;
-  }
-  const isUser=m.role==='user';
-  const source=m.source==='openai' ? (m.model||'OpenAI') : (m.source==='campus'?'Campus data':'');
-  return `<div class="ai-message ${isUser?'user':'bot'}">
-    ${isUser?'':`<div class="ai-avatar">${icon('spark')}</div>`}
-    <div class="ai-message-body">
-      <div class="ai-bubble">${esc(m.text)}</div>
-      <div class="ai-message-meta">
-        ${source?`<span>${esc(source)}</span>`:'<span></span>'}
-        ${isUser?'':`<button type="button" onclick="copyAIMessage(${index})">Копировать</button>`}
-      </div>
-    </div>
-  </div>`;
-}
-
-function copyAIMessage(index){
-  const text=state.aiMessages[index]?.text||''; if(!text)return;
-  const done=()=>{toast('Ответ скопирован');try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}};
-  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopyAI(text,done)); }
-  else fallbackCopyAI(text,done);
-}
-
-function fallbackCopyAI(text,done){
-  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
-  try{document.execCommand('copy');done();}catch(e){toast('Не удалось скопировать');}
-  ta.remove();
-}
-
-function confirmClearAI(){
-  showModal(`<div class="sheet-handle"></div><h3>Очистить диалог?</h3><p style="color:var(--muted);font-size:12px;line-height:1.5">История Campus AI удалится только на этом устройстве.</p><button class="btn btn-danger btn-wide" onclick="clearAIChat()">Очистить</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
-}
-function clearAIChat(){ state.aiMessages=[]; state.aiDraft=''; persistAIChat(); closeModal(); renderAI(); toast('Диалог очищен'); }
-
-function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px'}
-function aiKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI()}}
-function askQuick(text){ haptic('light'); const el=$('#aiInput'); if(el){el.value=text;state.aiDraft=text;el.dispatchEvent(new Event('input'));sendAI();} }
-
-async function sendAI(){
-  if(state.aiBusy)return;
-  const inp=$('#aiInput'); const text=inp?.value.trim(); if(!text)return;
-  haptic('light');
-  state.aiDraft='';
-
-  const history=state.aiMessages
-    .filter(m=>!m.pending && m.text && (m.role==='user'||m.role==='bot'))
-    .slice(-8)
-    .map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}));
-
-  state.aiMessages.push({role:'user',text});
-  persistAIChat();
-  state.aiMessages.push({role:'bot',text:'',pending:true,source:''});
-  state.aiBusy=true;
-  renderAI();
-  scrollChat(true);
-  const waitIndex=state.aiMessages.length-1;
-
-  try{
-    const r=await apiRequest('appAskAI',[state.initData,text,history],{ttl:0,force:true});
-    state.aiMessages[waitIndex]={role:'bot',text:r.text||'Ответ не получен.',source:r.source||'campus',model:r.model||''};
-    if(r.source==='openai') state.aiStatus={...(state.aiStatus||{}),configured:true,model:r.model||state.aiStatus?.model||'OpenAI'};
-  }catch(e){
-    state.aiMessages[waitIndex]={role:'bot',text:e?.message||String(e),source:'campus'};
-  }finally{
-    state.aiBusy=false;
-  }
-
-  persistAIChat();
-  if(state.currentPage==='ai'){renderAI();scrollChat(true)}
-}
-
-function scrollChat(smooth){
-  setTimeout(()=>{
-    const chat=$('#chat');
-    if(chat) window.scrollTo({top:document.body.scrollHeight,behavior:smooth?'smooth':'auto'});
-  },20);
-}
-
 function roomOptions(selected){ return (state.rooms||[]).map(r=>`<option value="${esc(r)}" ${String(r)===String(selected)?'selected':''}>${esc(r)}</option>`).join(''); }
 function openAddStudent(room=''){
   if(!canManage())return toast('Недостаточно прав');
@@ -1674,6 +1475,7 @@ function bindGlobalEvents(){
   }));
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
   $('#seasonBtn')?.addEventListener('click',()=>{haptic('light');openOwnerSeasonSettings()});
+  $('#specialBtn')?.addEventListener('click',()=>{haptic('light');render('special')});
   $('#updatesBtn')?.addEventListener('click',showWhatsNew);
   $('#profileBtn')?.addEventListener('click',()=>{haptic('light');showProfile()});
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
@@ -1687,6 +1489,3 @@ injectIcons();
 boot();
 
 
-function campusAIDevelopmentNotice(){
-  toast('Campus AI сейчас в разработке');
-}

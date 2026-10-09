@@ -10,9 +10,10 @@
   <meta http-equiv="Expires" content="0">
   <title>Campus №1 — База данных</title>
   <meta name="description" content="Campus №1 — система управления общежитием">
-  <!-- CAMPUS_GITHUB_UI_V13_8_DOCUMENTS_PLUS -->
+  <!-- CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL -->
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <link rel="stylesheet" href="styles.css?v=13.8.0">
+  <link rel="stylesheet" href="styles.css?v=13.9.0">
+  <link rel="stylesheet" href="tasks.css?v=13.9.0">
 </head>
 <body>
   <div id="splash" class="splash">
@@ -39,10 +40,8 @@
           <small>База данных</small>
         </div>
         <div class="top-actions">
+          <button id="specialBtn" class="icon-button hidden" type="button" aria-label="Управление" title="Специальная панель"><span data-icon="shield"></span></button>
           <button id="themeBtn" class="icon-button" type="button" aria-label="Переключить тему"></button>
-          <button id="seasonBtn" class="icon-button season-owner-button hidden" type="button" aria-label="Сменить сезон" title="Сезон">
-            <span id="seasonBtnGlyph" class="season-btn-glyph">🍂</span>
-          </button>
           <button id="updatesBtn" class="icon-button updates-button" type="button" aria-label="Что нового">
             <span data-icon="spark"></span>
             <span id="updatesDot" class="updates-dot" aria-hidden="true"></span>
@@ -61,7 +60,7 @@
     <button class="nav-item active" data-page="home" type="button"><span class="nav-icon" data-icon="home"></span><span>Главная</span></button>
     <button class="nav-item" data-page="students" type="button"><span class="nav-icon" data-icon="users"></span><span>Студенты</span></button>
     <button class="nav-item" data-page="rooms" type="button"><span class="nav-icon" data-icon="grid"></span><span>Комнаты</span></button>
-    <button class="nav-item" data-page="ai" type="button"><span class="nav-icon" data-icon="spark"></span><span>ИИ</span></button>
+    <button class="nav-item" data-page="tasks" type="button"><span class="nav-icon" data-icon="clipboard"></span><span>Задачи</span></button>
     <button class="nav-item" data-page="more" type="button"><span class="nav-icon" data-icon="menu"></span><span>Ещё</span></button>
   </nav>
 
@@ -71,6 +70,8 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=13.8.0"></script>
+  <script src="tasks.js?v=13.9.0"></script>
+  <script src="special.js?v=13.9.0"></script>
+  <script src="app.js?v=13.9.0"></script>
 </body>
 </html>
