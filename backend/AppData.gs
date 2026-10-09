@@ -351,6 +351,23 @@ function appGetRooms(initData) {
   });
 }
 
+/* CAMPUS_WARM_CORE_V14_2_1 */
+function appWarmCore(initData) {
+  getAppSession_(initData);
+
+  const activeStudents=
+    getCurrentStudents_();
+
+  return {
+    activeStudents:
+      activeStudents,
+    roomData:
+      buildRoomDataFromStudents_(
+        activeStudents
+      )
+  };
+}
+
 function appGetRoom(initData, room) {
   getAppSession_(initData);
   const r = String(room);
