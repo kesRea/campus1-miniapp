@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.11.0';
+const APP_VERSION = '13.12.3';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,11 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.11.0';
+const UPDATE_CENTER_VERSION = '13.12.3';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'13.11',date:'9 октября 2026',title:'Unified Recovery',latest:true,items:[
+{version:'13.11',date:'9 октября 2026',title:'Unified Recovery',latest:false,items:[
  'Исправлен сервер задач: создание, делегирование, сроки, статусы, комментарии и поток событий.',
  'Панель владельца и разработчика теперь подтверждается сервером; developer ID 7272434463.',
  'Технические работы реально блокируют всех остальных на сервере и снимаются автоматически после выключения.',
@@ -532,6 +532,8 @@ async function boot(){
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
     clearMaintenanceOverlay();
+    startAutomaticUpdateWatch();
+    clearFinishedAutoUpdateAttempt();
     syncSpecialButton(); // show shield immediately after Telegram-authenticated appBootstrap
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
     idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
@@ -632,7 +634,7 @@ function renderHome(){
     <div class="action-grid fade-in">
       ${canManage()?actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
       ${actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
-      ${actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
+      ${canManage()?actionCard('swap','Переселить','Найти студента и сменить комнату',"openQuickMove()"):actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
       ${actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
     </div>
 
@@ -1366,6 +1368,156 @@ async function saveNewStudent(){
     closeModal(); toast('Студент добавлен'); await refreshAfterMutation(); render(state.currentPage==='rooms'?'rooms':'home');
   }catch(e){toast(e.message)}
 }
+let quickMoveTimer=null;
+
+function openQuickMove(){
+  if(!canManage()){
+    return toast(
+      'Недостаточно прав для переселения'
+    );
+  }
+
+  showModal(`<div class="sheet-handle"></div>
+    <div class="quick-move-head">
+      <span class="quick-move-icon">${icon('swap')}</span>
+      <div>
+        <small>Быстрое действие</small>
+        <h3>Переселить студента</h3>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Найти студента</label>
+      <input
+        id="quickMoveQuery"
+        autocomplete="off"
+        placeholder="ФИО, ИИН или комната"
+        oninput="quickMoveInput(this.value)"
+      >
+      <small>Введите минимум 2 символа.</small>
+    </div>
+
+    <div
+      id="quickMoveResults"
+      class="quick-move-results"
+    >
+      <div class="quick-move-empty">
+        Начните вводить ФИО, ИИН или номер комнаты.
+      </div>
+    </div>
+
+    <button
+      class="btn btn-secondary btn-wide"
+      onclick="closeModal()"
+    >
+      Закрыть
+    </button>
+  `);
+
+  setTimeout(
+    ()=>$('#quickMoveQuery')?.focus(),
+    80
+  );
+}
+
+function quickMoveInput(value){
+  clearTimeout(quickMoveTimer);
+
+  const query=
+    String(value||'').trim();
+
+  const target=
+    $('#quickMoveResults');
+
+  if(!target)return;
+
+  if(query.length<2){
+    target.innerHTML=
+      '<div class="quick-move-empty">Введите минимум 2 символа.</div>';
+
+    return;
+  }
+
+  target.innerHTML=
+    '<div class="task-center-loading">Ищем студента…</div>';
+
+  quickMoveTimer=setTimeout(
+    ()=>quickMoveSearch(query),
+    220
+  );
+}
+
+async function quickMoveSearch(query){
+  const target=
+    $('#quickMoveResults');
+
+  if(!target)return;
+
+  try{
+    const list=await apiRequest(
+      'appSearchStudents',
+      [state.initData,query],
+      {ttl:0,force:true}
+    );
+
+    const active=
+      (list||[]).filter(
+        student=>
+          student.active!==false
+      );
+
+    indexStudents(active);
+
+    if(!active.length){
+      target.innerHTML=
+        '<div class="quick-move-empty">Заселённый студент не найден.</div>';
+
+      return;
+    }
+
+    target.innerHTML=
+      active.slice(0,12).map(
+        student=>`
+          <button
+            class="quick-move-student"
+            type="button"
+            onclick="quickMoveChoose(${Number(student.rowNumber)})"
+          >
+            <span class="avatar">
+              ${esc(initials(student.fio))}
+            </span>
+
+            <span class="quick-move-copy">
+              <b>${esc(student.fio)}</b>
+              <small>
+                Комната ${esc(student.room||'—')}
+                ·
+                ${esc(student.faculty||'факультет не указан')}
+              </small>
+            </span>
+
+            <span class="mini-chevron">
+              ${icon('chevron')}
+            </span>
+          </button>
+        `
+      ).join('');
+
+  }catch(e){
+    target.innerHTML=
+      `<div class="quick-move-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function quickMoveChoose(row){
+  closeModal();
+
+  setTimeout(
+    ()=>openMove(row),
+    70
+  );
+}
+
 function openMove(row){
   const s=state.studentMap.get(Number(row)); if(!s)return toast('Данные студента не загружены');
   showModal(`<div class="sheet-handle"></div><h3>Переселить</h3><p><b>${esc(s.fio)}</b><br><span style="color:var(--muted);font-size:12px">Текущая комната: ${esc(s.room||'—')}</span></p><div class="field"><label>Новая комната</label><select id="move_room"><option value="">Выберите комнату</option>${roomOptions('')}</select></div><button class="btn btn-primary btn-wide" onclick="saveMove(${row})">Подтвердить переселение</button><button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
@@ -1410,21 +1562,192 @@ function markUpdatesSeen(){
   try{ localStorage.setItem(updateSeenKey(),UPDATE_CENTER_VERSION); }catch(e){}
   updateUpdatesBadge();
 }
+
+const AUTO_UPDATE_CHECK_MS = 60000;
+const AUTO_UPDATE_RETRY_GUARD_MS = 180000;
+let autoUpdateWatchTimer = null;
+let autoUpdateInstalling = false;
+
+function autoUpdateAttemptKey(){
+  return 'campus-auto-update-attempt-v2';
+}
+
+function readAutoUpdateAttempt(){
+  try{
+    const raw=localStorage.getItem(autoUpdateAttemptKey());
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){
+    return null;
+  }
+}
+
+function clearFinishedAutoUpdateAttempt(){
+  try{
+    const attempt=readAutoUpdateAttempt();
+
+    if(
+      attempt?.target &&
+      !isNewerVersion(
+        String(attempt.target),
+        APP_VERSION
+      )
+    ){
+      localStorage.removeItem(
+        autoUpdateAttemptKey()
+      );
+    }
+  }catch(e){}
+}
+
+function showAutomaticUpdateOverlay(version){
+  let layer=$('#autoUpdateOverlay');
+
+  if(!layer){
+    layer=document.createElement('section');
+    layer.id='autoUpdateOverlay';
+    layer.className='auto-update-overlay-v1312';
+    layer.setAttribute('role','status');
+    document.body.appendChild(layer);
+  }
+
+  layer.innerHTML=`<div class="auto-update-card-v1312">
+    <span class="auto-update-icon-v1312">${icon('spark')}</span>
+    <div>
+      <small>Доступно обновление</small>
+      <h3>Обновляем Campus №1</h3>
+      <p>Версия ${esc(version)} установится автоматически. Ничего нажимать не нужно.</p>
+    </div>
+    <span class="auto-update-spinner-v1312"></span>
+  </div>`;
+}
+
+function maybeAutoInstallRemoteUpdate(manifest){
+  if(autoUpdateInstalling)return false;
+
+  if(
+    !manifest?.version ||
+    !isNewerVersion(
+      String(manifest.version),
+      APP_VERSION
+    )
+  ){
+    return false;
+  }
+
+  if(document.hidden)return false;
+
+  const target=String(manifest.version);
+  const now=Date.now();
+  const previous=readAutoUpdateAttempt();
+
+  if(
+    previous?.target===target &&
+    now-Number(previous.at||0)<
+      AUTO_UPDATE_RETRY_GUARD_MS
+  ){
+    return false;
+  }
+
+  try{
+    localStorage.setItem(
+      autoUpdateAttemptKey(),
+      JSON.stringify({
+        target,
+        from:APP_VERSION,
+        at:now
+      })
+    );
+  }catch(e){}
+
+  autoUpdateInstalling=true;
+  showAutomaticUpdateOverlay(target);
+
+  setTimeout(()=>{
+    const url=
+      CLOUD_APP_URL+
+      '?v='+encodeURIComponent(target)+
+      '&autoupdate=1&cb='+Date.now();
+
+    location.replace(url);
+  },1100);
+
+  return true;
+}
+
+function startAutomaticUpdateWatch(){
+  clearFinishedAutoUpdateAttempt();
+
+  if(autoUpdateWatchTimer)return;
+
+  autoUpdateWatchTimer=setInterval(()=>{
+    if(
+      !document.hidden &&
+      !autoUpdateInstalling
+    ){
+      checkRemoteUpdate(true);
+    }
+  },AUTO_UPDATE_CHECK_MS);
+}
+
+function checkUpdateWhenVisible(){
+  if(document.hidden || autoUpdateInstalling)return;
+
+  if(
+    Date.now()-
+      Number(state.updateCheckTime||0)>
+      15000
+  ){
+    checkRemoteUpdate(true);
+  }
+}
+
 async function checkRemoteUpdate(silent=false){
   try{
-    const r=await fetch(UPDATE_MANIFEST_URL+'?t='+Date.now(),{
-      cache:'no-store',
-      headers:{'cache-control':'no-cache','pragma':'no-cache'}
-    });
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const m=await r.json();
-    if(!m || !m.version)throw new Error('Некорректный manifest');
-    state.remoteManifest=m;
+    const response=await fetch(
+      UPDATE_MANIFEST_URL+'?t='+Date.now(),
+      {
+        cache:'no-store',
+        headers:{
+          'cache-control':'no-cache',
+          'pragma':'no-cache'
+        }
+      }
+    );
+
+    if(!response.ok){
+      throw new Error(
+        'HTTP '+response.status
+      );
+    }
+
+    const manifest=await response.json();
+
+    if(!manifest || !manifest.version){
+      throw new Error(
+        'Некорректный manifest'
+      );
+    }
+
+    state.remoteManifest=manifest;
     state.updateCheckTime=Date.now();
+
     updateUpdatesBadge();
-    return m;
+
+    if(hasRemoteUpdate()){
+      maybeAutoInstallRemoteUpdate(
+        manifest
+      );
+    }
+
+    return manifest;
+
   }catch(e){
-    if(!silent)toast('Не удалось проверить обновления');
+    if(!silent){
+      toast(
+        'Не удалось проверить обновления'
+      );
+    }
+
     return null;
   }
 }
@@ -1487,11 +1810,19 @@ async function checkUpdatesFromSheet(){
   if(m)setTimeout(showWhatsNew,80);
 }
 function installRemoteUpdate(){
-  const m=state.remoteManifest;
-  if(!m?.version)return;
-  try{localStorage.setItem('campus-last-update-target',String(m.version))}catch(e){}
-  const url=CLOUD_APP_URL+'?v='+encodeURIComponent(m.version)+'&cb='+Date.now();
-  location.replace(url);
+  const manifest=state.remoteManifest;
+
+  if(!manifest?.version)return;
+
+  try{
+    localStorage.removeItem(
+      autoUpdateAttemptKey()
+    );
+  }catch(e){}
+
+  maybeAutoInstallRemoteUpdate(
+    manifest
+  );
 }
 
 function showProfile(){
@@ -1517,6 +1848,8 @@ function bindGlobalEvents(){
   $('#homeLogoBtn')?.addEventListener('click',()=>{haptic('light');render('home')});
   $('#modal')?.addEventListener('click',e=>{ if(e.target?.hasAttribute('data-close-modal'))closeModal(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeModal(); });
+
+  document.addEventListener('visibilitychange',checkUpdateWhenVisible);
 }
 
 initTheme();

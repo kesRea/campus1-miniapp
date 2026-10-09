@@ -61,7 +61,7 @@ async function renderCouncilRoles(back='more'){
   $('#view').innerHTML=pageHead('Роли и секторы',back)+'<div class="task-center-loading">Загружаем участников…</div>';
   try {
     councilRolesData=await apiRequest('appGetCouncilRoles',[state.initData],{ttl:0,force:true});
-    $('#view').innerHTML=pageHead('Роли и секторы',back)+`<div class="task-note">Должность в студсовете учитывается отдельно от прав доступа. Назначение главы или председателя сохраняет текущий доступ пользователя.</div><div class="task-list">${councilRolesData.users.map(u=>`<button class="task-person role-person" onclick="editCouncilRole('${esc(u.id)}')"><span class="avatar">${esc(initials(u.name))}</span><span><b>${esc(u.name)}</b><small>${esc(u.role)}<br>${esc(u.accessRole)} · ${esc(u.id)}</small></span><span class="role-edit">Изменить</span></button>`).join('')}</div>`;
+    $('#view').innerHTML=pageHead('Роли и секторы',back)+`<div class="task-note">Должность учитывается отдельно от прав доступа. После сохранения Campus проверяет новую роль на сервере.</div><div class="task-list">${councilRolesData.users.map(u=>`<button class="task-person role-person" onclick="editCouncilRole('${esc(u.id)}')"><span class="avatar">${esc(initials(u.name))}</span><span><b>${esc(u.name)}</b><small>${esc(u.role)}<br>${esc(u.accessRole)} · ${esc(u.id)}</small></span><span class="role-edit">Изменить</span></button>`).join('')}</div>`;
   }catch(e){toast(e.message);}
 }
 function editCouncilRole(id){
@@ -78,12 +78,134 @@ function syncCouncilSector(){
   if(disabled)$('#councilSector').value='';
 }
 async function saveCouncilRole(id){
-  const role=$('#councilRole').value,sector=$('#councilSector').value;
-  if((role==='sector_head'||role==='sector_deputy')&&!sector)return toast('Выберите сектор');
-  const btn=$('#saveCouncilRole');btn.disabled=true;
-  try {
-    const result=await apiRequest('appSetCouncilRole',[state.initData,id,role,sector],{ttl:0,force:true});
-    if(String(state.user.id)===id){state.user.role=result.role;state.user.position=result.position;}
-    closeModal();toast('Роль сохранена');await renderCouncilRoles(state.currentPage==='special-users'?'special':'more');
-  }catch(e){toast(e.message);btn.disabled=false;}
+  const role=
+    $('#councilRole')?.value||'';
+
+  const sector=
+    $('#councilSector')?.value||'';
+
+  if(
+    (role==='sector_head'||
+     role==='sector_deputy') &&
+    !sector
+  ){
+    return toast(
+      'Выберите сектор'
+    );
+  }
+
+  const btn=
+    $('#saveCouncilRole');
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='Сохраняем…';
+  }
+
+  try{
+    await apiRequest(
+      'appSetCouncilRole',
+      [
+        state.initData,
+        id,
+        role,
+        sector
+      ],
+      {
+        ttl:0,
+        force:true
+      }
+    );
+
+    const fresh=
+      await apiRequest(
+        'appGetCouncilRoles',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    const saved=
+      fresh?.users?.find(
+        user=>
+          String(user.id)===
+          String(id)
+      );
+
+    if(
+      !saved ||
+      saved.position?.roleId!==role
+    ){
+      throw new Error(
+        'Сервер не подтвердил новую роль.'
+      );
+    }
+
+    if(
+      (role==='sector_head'||
+       role==='sector_deputy') &&
+      String(
+        saved.position?.sector||''
+      )!==String(sector)
+    ){
+      throw new Error(
+        'Сервер не подтвердил выбранный сектор.'
+      );
+    }
+
+    councilRolesData=fresh;
+
+    if(
+      String(state.user?.id)===
+      String(id)
+    ){
+      state.user.role=
+        saved.role;
+
+      state.user.position=
+        saved.position;
+
+      try{
+        const boot=
+          await apiRequest(
+            'appBootstrap',
+            [state.initData],
+            {
+              ttl:0,
+              force:true
+            }
+          );
+
+        if(boot?.user){
+          state.user=boot.user;
+        }
+      }catch(e){}
+    }
+
+    closeModal();
+
+    toast(
+      'Сохранено: '+
+      saved.role
+    );
+
+    const back=
+      state.currentPage===
+        'special-users'
+        ? 'special'
+        : 'more';
+
+    await renderCouncilRoles(back);
+
+  }catch(e){
+    toast(e.message);
+
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=
+        'Сохранить роль';
+    }
+  }
 }
