@@ -2,10 +2,66 @@ function getStudentSheet_() {
   return getConfiguredSheet_('students', false);
 }
 
+/* CAMPUS_BACKEND_STUDENT_CACHE_V13_13 */
+const CAMPUS_STUDENT_CACHE_KEY_ =
+  'campus_students_display_v13_13';
+
+function invalidateCampusStudentCache_() {
+  try {
+    CacheService
+      .getScriptCache()
+      .remove(CAMPUS_STUDENT_CACHE_KEY_);
+  } catch (e) {}
+}
+
 function getStudentDisplayRows_() {
   const sheet = getStudentSheet_();
-  const values = sheet.getDataRange().getDisplayValues();
-  return { sheet: sheet, values: values };
+  let values = null;
+
+  try {
+    const cached =
+      CacheService
+        .getScriptCache()
+        .get(CAMPUS_STUDENT_CACHE_KEY_);
+
+    if (cached) {
+      values = JSON.parse(cached);
+    }
+  } catch (e) {}
+
+  if (!Array.isArray(values)) {
+    values =
+      sheet
+        .getDataRange()
+        .getDisplayValues();
+
+    try {
+      const json = JSON.stringify(values);
+      const bytes =
+        Utilities
+          .newBlob(
+            json,
+            'application/json'
+          )
+          .getBytes()
+          .length;
+
+      if (bytes < 90000) {
+        CacheService
+          .getScriptCache()
+          .put(
+            CAMPUS_STUDENT_CACHE_KEY_,
+            json,
+            10
+          );
+      }
+    } catch (e) {}
+  }
+
+  return {
+    sheet: sheet,
+    values: values
+  };
 }
 
 function mapStudentRow_(row, rowNumber) {
@@ -35,15 +91,49 @@ function getCurrentStudents_() {
   return result;
 }
 
+function buildRoomDataFromStudents_(students) {
+  const byRoom = {};
+
+  (students || []).forEach(function(s) {
+    if (!byRoom[s.room]) {
+      byRoom[s.room] = [];
+    }
+    byRoom[s.room].push(s);
+  });
+
+  return getCampusRooms_().map(function(room) {
+    const list =
+      byRoom[String(room)] || [];
+
+    return {
+      room: String(room),
+      occupants: list.length,
+      names: list
+        .slice(0, 3)
+        .map(function(s) {
+          return s.fio;
+        })
+    };
+  });
+}
+
 function appBootstrap(initData) {
   const session = getAppSession_(initData);
+  const activeStudents =
+    getCurrentStudents_();
+
   return {
     ok: true,
     app: CAMPUS_APP,
     user: session,
     rooms: getCampusRooms_(),
     dashboard: buildDashboard_(),
-    analytics: null
+    analytics: null,
+    activeStudents: activeStudents,
+    roomData:
+      buildRoomDataFromStudents_(
+        activeStudents
+      )
   };
 }
 
@@ -286,6 +376,7 @@ function appAddStudent(initData, payload) {
     number, fio, payload.dateIn || '', payload.birthDate || '', payload.iin || '',
     payload.faculty || '', room, payload.registration || '', payload.payment || '', ''
   ]);
+  invalidateCampusStudentCache_();
   if (typeof logAction === 'function') logAction('➕ Добавление (Mini App)', fio, 'Комната: ' + room);
   return { ok: true, message: 'Студент добавлен.' };
 }
@@ -304,6 +395,7 @@ function appUpdateStudent(initData, rowNumber, payload) {
   });
   if (next[6] && getCampusRooms_().map(String).indexOf(String(next[6])) === -1) throw new Error('Такой комнаты нет в Campus №1.');
   sheet.getRange(rowNumber, 1, 1, 10).setValues([next]);
+  invalidateCampusStudentCache_();
   if (typeof logAction === 'function') logAction('✏️ Редактирование (Mini App)', String(next[1] || ''), 'Строка: ' + rowNumber);
   return { ok: true };
 }
@@ -317,6 +409,7 @@ function appMoveStudent(initData, rowNumber, newRoom) {
   const current = mapStudentRow_(sheet.getRange(rowNumber, 1, 1, 10).getDisplayValues()[0], rowNumber);
   if (!current.active) throw new Error('Студент уже выселен.');
   sheet.getRange(rowNumber, 7).setValue(room);
+  invalidateCampusStudentCache_();
   if (typeof logAction === 'function') logAction('🔄 Переселение (Mini App)', current.fio, current.room + ' → ' + room);
   return { ok: true };
 }
@@ -331,6 +424,7 @@ function appEvictStudent(initData, rowNumber) {
   const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
   sheet.getRange(rowNumber, 10).setValue(today);
   sheet.getRange(rowNumber, 1, 1, 10).setBackground('#fde8e8');
+  invalidateCampusStudentCache_();
   if (typeof logAction === 'function') logAction('📤 Выселение (Mini App)', current.fio, 'Комната: ' + current.room);
   return { ok: true, date: today };
 }

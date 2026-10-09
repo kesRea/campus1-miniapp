@@ -1,4 +1,4 @@
-/* CAMPUS_TASKS_UI_V13_9 — all tasks are stored on backend, not in browser. */
+/* CAMPUS_TASKS_UI_V13_13_SPEED — fast cached task center. */
 const taskUI={tab:'tasks',filter:'active',items:[],users:[],ready:false,selectedDate:'',calendarMonth:new Date().getMonth(),calendarYear:new Date().getFullYear(),project:''};
 const TASK_STATUS={new:'Новая',in_progress:'В работе',review:'На проверке',completed:'Выполнено',cancelled:'Отменено'};
 const TASK_PRIORITY={low:'Низкий',normal:'Обычный',high:'Срочно'};
@@ -24,13 +24,51 @@ function selectTaskTab(tab){taskUI.tab=tab;taskUI.project='';haptic('light');dra
 function selectTaskFilter(filter){taskUI.filter=filter;drawTaskCenter();}
 function taskVisibleItems(){const id=String(state.user?.id),f=taskUI.filter;return taskUI.items.filter(t=>f==='active'?!['completed','cancelled'].includes(t.status):f==='mine'?t.assigneeId===id:f==='issued'?t.createdBy===id||t.leadId===id:f==='done'?['completed','cancelled'].includes(t.status):true);}
 async function renderTasks(){
+ /* CAMPUS_TASKS_UI_V13_13_SPEED */
  if(taskUI.tab==='projects-detail')taskUI.tab='projects';
- $('#view').innerHTML=taskHeader()+'<div class="task-center-loading">Загружаем задачи…</div>';
+
+ if(taskUI.ready){
+   drawTaskCenter();
+ }else{
+   $('#view').innerHTML=
+     taskHeader()+
+     '<div class="task-center-loading">Загружаем задачи…</div>';
+ }
+
  try{
-   const result=await Promise.all([apiRequest('appGetTasks',[state.initData],{ttl:0,force:true}),apiRequest('appGetTaskUsers',[state.initData],{ttl:30000})]);
-   taskUI.items=result[0]||[];taskUI.users=result[1]||[];taskUI.ready=true;
-   if(state.currentPage==='tasks')drawTaskCenter();
- }catch(e){if(state.currentPage==='tasks')$('#view').innerHTML=taskHeader()+`<div class="task-empty"><b>Не получилось загрузить задачи</b><p>${esc(e.message)}</p><button class="btn btn-primary" onclick="render('tasks')">Повторить</button></div>`;}
+   const result=await Promise.all([
+     apiRequest(
+       'appGetTasks',
+       [state.initData],
+       {ttl:15000}
+     ),
+     apiRequest(
+       'appGetTaskUsers',
+       [state.initData],
+       {ttl:60000}
+     )
+   ]);
+
+   taskUI.items=result[0]||[];
+   taskUI.users=result[1]||[];
+   taskUI.ready=true;
+
+   if(state.currentPage==='tasks'){
+     drawTaskCenter();
+   }
+ }catch(e){
+   if(state.currentPage!=='tasks')return;
+
+   if(taskUI.ready){
+     toast(
+       'Показаны сохранённые задачи · обновим позже'
+     );
+   }else{
+     $('#view').innerHTML=
+       taskHeader()+
+       `<div class="task-empty"><b>Не получилось загрузить задачи</b><p>${esc(e.message)}</p><button class="btn btn-primary" onclick="render('tasks')">Повторить</button></div>`;
+   }
+ }
 }
 function drawTaskCenter(){
  if(state.currentPage!=='tasks')return;

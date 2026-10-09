@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.12.6';
+const APP_VERSION = '13.13.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,19 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.12.6';
+const UPDATE_CENTER_VERSION = '13.13.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'13.12.6',date:'9 октября 2026',title:'Splash Light + Council Order',latest:true,items:[
+{version:'13.13.0',date:'9 октября 2026',title:'Speed+',latest:true,items:[
+ 'Ускорен запуск: убран лишний последовательный запрос к Apps Script.',
+ 'Студенты и комнаты приходят уже в первом bootstrap-ответе.',
+ 'Вкладки прогреваются при касании нижней навигации.',
+ 'Повторные поиски, комнаты и справочные разделы используют быстрый кэш.',
+ 'Backend получил короткий безопасный кэш сессии и данных студентов.'
+]},
+
+{version:'13.12.6',date:'9 октября 2026',title:'Splash Light + Council Order',latest:false,items:[
  'Экран подключения и проверки доступа всегда отображается в светлой теме.',
  'Основная тема приложения после входа не изменяется.',
  'В Студсовете порядок: председатель, заместитель, Глава СДК, заместитель Главы СДК, затем остальные.'
@@ -494,11 +502,20 @@ async function apiRequest(method,args=[],options={}){
         let message=data?.error || 'Ошибка Campus API.';
         if(String(message).startsWith('CAMPUS_MAINTENANCE|')){
           message=String(message).slice('CAMPUS_MAINTENANCE|'.length);
-          try{setTimeout(()=>pollMaintenance(),0)}catch(_e){}
+          try{
+            maintenanceOverlay({message});
+            beginMaintenancePolling();
+          }catch(_e){
+            try{setTimeout(()=>pollMaintenance(),0)}catch(__e){}
+          }
         }
         throw new Error(message);
       }
-      if(ttl) state.cache.set(key,{time:Date.now(),value:data.result});
+      if(ttl){
+        state.cache.set(key,{time:Date.now(),value:data.result});
+      }else if(!readOnly){
+        state.cache.clear();
+      }
       return data.result;
     }catch(e){
       if(e?.name==='AbortError') throw new Error('Сервер отвечает слишком долго. Повторите попытку.');
@@ -528,11 +545,23 @@ async function boot(){
     }
     btn.disabled=true; btn.textContent='Проверяем доступ…';
     beginMaintenancePolling();
-    const maintenance=await apiRequest('appGetMaintenanceStatus',[state.initData],{ttl:0,force:true});
-    if(maintenance.blocked){maintenanceOverlay(maintenance);btn.disabled=false;return false;}
     maintenanceBlocked=false;
+    // CAMPUS_V13_13_SPEED_PLUS
+    // appBootstrap already checks maintenance on the backend.
     const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true});
     state.user=data.user; state.dashboard=data.dashboard; state.analytics=data.analytics; state.rooms=data.rooms||[];
+
+    if(Array.isArray(data.activeStudents)){
+      state.studentLists.active=data.activeStudents;
+      state.studentListTime.active=Date.now();
+      indexStudents(data.activeStudents);
+    }
+
+    if(Array.isArray(data.roomData)){
+      state.roomData=data.roomData;
+      state.roomDataTime=Date.now();
+    }
+
     state.lastCoreSync=Date.now();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
@@ -541,7 +570,7 @@ async function boot(){
     startAutomaticUpdateWatch();
     clearFinishedAutoUpdateAttempt();
     syncSpecialButton(); // show shield immediately after Telegram-authenticated appBootstrap
-    const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
+    const idle=window.requestIdleCallback || (fn=>setTimeout(fn,180));
     idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
     return true;
   }catch(e){
@@ -552,23 +581,104 @@ async function boot(){
 }
 
 async function prefetchCore(){
-  try{
-    const [students,rooms]=await Promise.all([
-      apiRequest('appGetStudents',[state.initData,'active'],{ttl:60000}),
-      apiRequest('appGetRooms',[state.initData],{ttl:60000})
-    ]);
-    state.studentLists.active=students; state.studentListTime.active=Date.now(); indexStudents(students);
-    state.roomData=rooms; state.roomDataTime=Date.now();
-  }catch(e){}
+  const jobs=[];
+
+  if(!state.studentLists.active){
+    jobs.push(
+      apiRequest(
+        'appGetStudents',
+        [state.initData,'active'],
+        {ttl:60000}
+      ).then(students=>{
+        state.studentLists.active=students;
+        state.studentListTime.active=Date.now();
+        indexStudents(students);
+      })
+    );
+  }
+
+  if(!state.roomData){
+    jobs.push(
+      apiRequest(
+        'appGetRooms',
+        [state.initData],
+        {ttl:60000}
+      ).then(rooms=>{
+        state.roomData=rooms;
+        state.roomDataTime=Date.now();
+      })
+    );
+  }
+
+  if(jobs.length){
+    try{await Promise.all(jobs)}catch(e){}
+  }
 
   setTimeout(async()=>{
     try{
       if(state.studentLists.all)return;
-      const all=await apiRequest('appGetStudents',[state.initData,'all'],{ttl:90000});
-      state.studentLists.all=all; state.studentListTime.all=Date.now(); indexStudents(all);
+      const all=await apiRequest(
+        'appGetStudents',
+        [state.initData,'all'],
+        {ttl:90000}
+      );
+      state.studentLists.all=all;
+      state.studentListTime.all=Date.now();
+      indexStudents(all);
     }catch(e){}
-  },900);
+  },650);
+}
 
+function warmPage(page){
+  try{
+    if(page==='students' && !state.studentLists.active){
+      apiRequest(
+        'appGetStudents',
+        [state.initData,'active'],
+        {ttl:60000}
+      ).then(list=>{
+        state.studentLists.active=list;
+        state.studentListTime.active=Date.now();
+        indexStudents(list);
+      }).catch(()=>{});
+      return;
+    }
+
+    if(page==='rooms' && !state.roomData){
+      apiRequest(
+        'appGetRooms',
+        [state.initData],
+        {ttl:60000}
+      ).then(list=>{
+        state.roomData=list;
+        state.roomDataTime=Date.now();
+      }).catch(()=>{});
+      return;
+    }
+
+    if(
+      page==='tasks' &&
+      typeof taskUI!=='undefined' &&
+      !taskUI.ready
+    ){
+      Promise.all([
+        apiRequest(
+          'appGetTasks',
+          [state.initData],
+          {ttl:15000}
+        ),
+        apiRequest(
+          'appGetTaskUsers',
+          [state.initData],
+          {ttl:60000}
+        )
+      ]).then(result=>{
+        taskUI.items=result[0]||[];
+        taskUI.users=result[1]||[];
+        taskUI.ready=true;
+      }).catch(()=>{});
+    }
+  }catch(e){}
 }
 
 function indexStudents(list){ (list||[]).forEach(s=>state.studentMap.set(Number(s.rowNumber),s)); }
@@ -580,7 +690,10 @@ async function render(page,opts={}){
   if(maintenanceBlocked)return;
   state.currentPage=page; state.renderSeq++; const seq=state.renderSeq; setNav(page);
   const view=$('#view'); if(!view) return;
-  view.classList.remove('fade-in'); void view.offsetWidth; view.classList.add('fade-in');
+  view.classList.remove('fade-in');
+  requestAnimationFrame(
+    ()=>view.classList.add('fade-in')
+  );
   try{
     if(page==='special-release-test') return renderReleaseTester();
 
@@ -714,7 +827,7 @@ function studentSearchInput(value){
     }else{
       if(hint)hint.textContent='В локальном кэше совпадений нет · нажмите «Найти» для проверки базы';
     }
-  },120);
+  },45);
 }
 function studentSearchSubmit(e){
   e.preventDefault();
@@ -734,7 +847,7 @@ async function doStudentSearch(q,seq=state.renderSeq){
   }
 
   try{
-    const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:12000,force:true});
+    const list=await apiRequest('appSearchStudents',[state.initData,q],{ttl:20000});
     if(!pageAlive('students',seq))return;
     indexStudents(list); drawStudents(list);
     if(hint)hint.textContent=`База проверена · найдено ${(list||[]).length}`;
@@ -915,7 +1028,7 @@ async function openRoom(room){
     const active=state.studentLists.active;
     if(active) occupants=active.filter(s=>String(s.room)===String(room));
     if(!occupants){
-      occupants=(await apiRequest('appGetRoom',[state.initData,room],{ttl:15000})).occupants||[];
+      occupants=(await apiRequest('appGetRoom',[state.initData,room],{ttl:60000})).occupants||[];
       indexStudents(occupants);
     }
 
@@ -1353,7 +1466,7 @@ function moreCard(iconName,title,sub,onclick){ return `<button class="more-item"
 
 async function renderGenericTable(title,fn,back,seq){
   $('#view').innerHTML=`${pageHead(title,back)}<div id="generic" class="list">${studentSkeletons()}</div>`;
-  const data=await apiRequest(fn,[state.initData],{ttl:15000}); if(!pageAlive(state.currentPage,seq))return;
+  const data=await apiRequest(fn,[state.initData],{ttl:60000}); if(!pageAlive(state.currentPage,seq))return;
   const el=$('#generic'); if(!data.rows?.length){el.innerHTML='<div class="empty">Таблица пока пустая или не подключена.</div>';return;}
   el.innerHTML=data.rows.map(r=>{const vals=Object.entries(r).filter(([k,v])=>k!=='_rowNumber'&&String(v).trim()).slice(0,5);return `<div class="row-card"><span class="avatar">${esc(initials(vals[0]?.[1]||title))}</span><span class="row-main">${vals.map(([k,v],i)=>i===0?`<b>${esc(v)}</b>`:`<small>${esc(k)}: ${esc(v)}</small>`).join('')}</span></div>`}).join('');
 }
@@ -1362,11 +1475,7 @@ async function renderCouncil(kind,seq){
   const title=kind==='activists'?'Активисты':'Студенческий совет';
   $('#view').innerHTML=`${pageHead(title,'more')}<div id="generic" class="list">${studentSkeletons()}</div>`;
 
-  const data=await apiRequest(
-    'appGetCouncil',
-    [state.initData,kind],
-    {ttl:15000}
-  );
+  const data=await apiRequest('appGetCouncil',[state.initData,kind],{ttl:60000});
 
   if(!pageAlive(state.currentPage,seq))return;
 
@@ -1936,15 +2045,28 @@ function showProfile(){
 }
 
 function bindGlobalEvents(){
-  $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>{
-    haptic('light');
-    const page=btn.dataset.page;
-    if(page===state.currentPage){
-      window.scrollTo({top:0,behavior:'smooth'});
-      return;
-    }
-    render(page);
-  }));
+  $$('.nav-item').forEach(btn=>{
+    btn.addEventListener(
+      'pointerdown',
+      ()=>warmPage(btn.dataset.page),
+      {passive:true}
+    );
+
+    btn.addEventListener('click',()=>{
+      haptic('light');
+      const page=btn.dataset.page;
+
+      if(page===state.currentPage){
+        window.scrollTo({
+          top:0,
+          behavior:'smooth'
+        });
+        return;
+      }
+
+      render(page);
+    });
+  });
   $('#themeBtn')?.addEventListener('click',()=>{haptic('light');toggleTheme()});
   $('#seasonBtn')?.addEventListener('click',()=>{haptic('light');openOwnerSeasonSettings()});
   $('#specialBtn')?.addEventListener('click',()=>{haptic('light');render('special')});

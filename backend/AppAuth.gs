@@ -144,19 +144,77 @@ function getAppIdentity_(initData) {
   };
 }
 
-function getAppSession_(initData) {
-  var session = getAppIdentity_(initData);
+/* CAMPUS_BACKEND_SESSION_CACHE_V13_13 */
+function campusSessionCacheKey_(initData) {
+  try {
+    var bytes =
+      Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_256,
+        String(initData || ''),
+        Utilities.Charset.UTF_8
+      );
 
+    return (
+      'campus_session_v13_13_' +
+      Utilities
+        .base64EncodeWebSafe(bytes)
+        .substring(0, 44)
+    );
+  } catch (e) {
+    return '';
+  }
+}
+
+function getAppSession_(initData) {
+  var session = null;
+  var cacheKey =
+    campusSessionCacheKey_(initData);
+
+  if (cacheKey) {
+    try {
+      var cached =
+        CacheService
+          .getScriptCache()
+          .get(cacheKey);
+
+      if (cached) {
+        session = JSON.parse(cached);
+      }
+    } catch (e) {}
+  }
+
+  if (!session) {
+    session = getAppIdentity_(initData);
+
+    if (cacheKey) {
+      try {
+        CacheService
+          .getScriptCache()
+          .put(
+            cacheKey,
+            JSON.stringify(session),
+            10
+          );
+      } catch (e) {}
+    }
+  }
+
+  // Maintenance remains live on every request.
   if (
     typeof getMaintenanceState_ === 'function' &&
     !session.isOwner &&
     !session.isDeveloper
   ) {
-    var maintenance = getMaintenanceState_();
+    var maintenance =
+      getMaintenanceState_();
+
     if (maintenance.enabled) {
       throw new Error(
         'CAMPUS_MAINTENANCE|' +
-        String(maintenance.message || 'Происходят технические работы. Пожалуйста, подождите.')
+        String(
+          maintenance.message ||
+          'Происходят технические работы. Пожалуйста, подождите.'
+        )
       );
     }
   }

@@ -1561,3 +1561,16 @@ html[data-theme="dark"] .winter-wire-v137 path{stroke:rgba(153,175,207,.42)}
   color:#ffffff !important;
   box-shadow:0 10px 26px rgba(18,103,233,.23) !important;
 }
+
+
+/* CAMPUS_V13_13_SPEED_TOUCH */
+button,
+[role="button"],
+.clickable,
+.nav-item,
+.room-card,
+.more-item,
+.action-card,
+.stat-card{
+  touch-action:manipulation;
+}
