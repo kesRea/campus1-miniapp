@@ -1,7 +1,8 @@
+/* CAMPUS_UI_MANAGEMENT_V13_10 */
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.9.1';
+const APP_VERSION = '13.10';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -16,15 +17,21 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.9.1';
+const UPDATE_CENTER_VERSION = '13.10';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
+{version:'13.10',date:'9 октября 2026',title:'Технические работы и роли',latest:true,items:[
+ 'Владелец и разработчик вручную включают технические работы для всех остальных.',
+ 'Приложение автоматически открывается после завершения работ.',
+ 'Председатель, заместители, главы, участники и активисты; секторы СДК, SMM, ОПМ и САН.',
+ 'Должности учитываются отдельно от прав доступа. Назначение доступно администрации, владельцу и разработчику.'
+]},
 {
   version:'13.9',
   date:'9 октября 2026',
   title:'Задачи и панель управления',
-  latest:true,
+  latest:false,
   items:[
     'Раздел задач вместо прежней вкладки: задачи, проекты, потоки, шаблоны и календарь.',
     'Руководитель делегирует исполнителю с сохранением ответственности и сроков.',
@@ -447,7 +454,8 @@ function ownerSeasonChoice(mode,glyph,title,sub){
 
 
 async function apiRequest(method,args=[],options={}){
-  const readOnly = !/^app(Add|Update|Move|Evict)/.test(method);
+  if(maintenanceBlocked && method!=='appGetMaintenanceStatus')throw new Error('Происходят технические работы.');
+  const readOnly = !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
   const key = method+'|'+JSON.stringify(args);
   const now=Date.now();
@@ -468,6 +476,7 @@ async function apiRequest(method,args=[],options={}){
       let data;
       try{ data=JSON.parse(text); }
       catch(e){ throw new Error('Campus API вернул не JSON. Обновите приложение.'); }
+      if(data.code==='CAMPUS_MAINTENANCE') {maintenanceOverlay({message:data.error});beginMaintenancePolling();}
       if(!response.ok || !data.ok) throw new Error(data?.error || 'Ошибка Campus API.');
       if(ttl) state.cache.set(key,{time:Date.now(),value:data.result});
       return data.result;
@@ -498,18 +507,25 @@ async function boot(){
       return;
     }
     btn.disabled=true; btn.textContent='Проверяем доступ…';
+    beginMaintenancePolling();
+    const maintenance=await apiRequest('appGetMaintenanceStatus',[state.initData],{ttl:0,force:true});
+    if(maintenance.blocked){maintenanceOverlay(maintenance);btn.disabled=false;return false;}
+    maintenanceBlocked=false;
     const data=await apiRequest('appBootstrap',[state.initData],{ttl:0,force:true});
     state.user=data.user; state.dashboard=data.dashboard; state.analytics=data.analytics; state.rooms=data.rooms||[];
     state.lastCoreSync=Date.now();
     $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
+    clearMaintenanceOverlay();
     syncSpecialButton(); // show shield immediately after Telegram-authenticated appBootstrap
     const idle=window.requestIdleCallback || (fn=>setTimeout(fn,250));
     idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
+    return true;
   }catch(e){
     btn.disabled=false; btn.textContent='Повторить вход'; btn.onclick=boot;
     $('#splashText').textContent=e?.message || String(e);
+    return false;
   }
 }
 
@@ -539,6 +555,7 @@ function setNav(page){ $$('.nav-item').forEach(b=>b.classList.toggle('active',b.
 function pageHead(title,back){ return `<div class="page-head"><button class="back-button" type="button" onclick="render('${back||'home'}')">${icon('back')}</button><h1>${esc(title)}</h1></div>`; }
 
 async function render(page,opts={}){
+  if(maintenanceBlocked)return;
   state.currentPage=page; state.renderSeq++; const seq=state.renderSeq; setNav(page);
   const view=$('#view'); if(!view) return;
   view.classList.remove('fade-in'); void view.offsetWidth; view.classList.add('fade-in');
@@ -548,7 +565,9 @@ async function render(page,opts={}){
     if(page==='rooms') return renderRooms(seq);
     if(page==='tasks') return renderTasks();
     if(page==='special') return renderSpecial();
-    if(page==='special-users') return renderSpecialUsers();
+    if(page==='special-users') return renderCouncilRoles('special');
+    if(page==='special-maintenance') return renderMaintenanceSettings();
+    if(page==='council-roles') return renderCouncilRoles('more');
     if(page==='special-diagnostics') return renderSpecialDiagnostics();
     if(page==='special-design') return renderSpecialDesign();
     if(page==='more') return renderMore();
@@ -921,6 +940,7 @@ function renderMore(){
     <div class="more-grid">
       ${moreCard('globe','Иностранцы','Отдельный список',"render('foreigners')")}
       ${moreCard('council','Студсовет','Состав и сектора',"render('council')")}
+      ${state.user?.canAssignRoles?moreCard('users','Роли и секторы','Назначение должностей',"render('council-roles')"):''}
       ${moreCard('users','Активисты','Список активистов',"render('activists')")}
       ${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}
       ${moreCard('clipboard','Журнал','История действий',"render('journal')")}

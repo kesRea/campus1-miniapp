@@ -1,0 +1,5 @@
+.maintenance-overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#f5f8fd);color:var(--text,#172033);display:grid;place-items:center;padding:24px;overflow:auto}
+.maintenance-card{width:min(100%,440px);text-align:center;background:var(--surface,#fff);border:1px solid var(--border,#e1e7ef);border-radius:28px;padding:36px 26px;box-shadow:0 16px 60px #00000012}
+.maintenance-card h1{font-size:25px;margin:18px 0 12px}.maintenance-card p{line-height:1.6;overflow-wrap:anywhere}.maintenance-card small{display:block;color:var(--muted,#69768a);line-height:1.5;margin:18px 0}.maintenance-symbol{font-size:48px}
+.role-person{width:100%;text-align:left;background:var(--surface,#fff);color:var(--text,#172033);border:1px solid var(--border,#e1e7ef);cursor:pointer;font:inherit}.role-person small{line-height:1.6}.role-edit{margin-left:auto;font-size:12px;color:var(--blue,#287af3)}
+#maintenanceMessage{width:100%;min-height:100px;padding:12px;border-radius:12px;border:1px solid var(--border,#e1e7ef);background:var(--bg,#f5f8fd);color:inherit;font:inherit;box-sizing:border-box}
