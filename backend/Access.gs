@@ -212,24 +212,59 @@ function saveAllowedUsers(users) {
       JSON.stringify(users)
     );
 }
-function saveUserInfo(chatId, username, firstName, lastName) {
-
+/* CAMPUS_ACCESS_V14_PHOTO_MEMORY */
+function saveUserInfo(
+  chatId,
+  username,
+  firstName,
+  lastName,
+  photoUrl
+) {
   const id = String(chatId);
+
+  const props =
+    PropertiesService
+      .getScriptProperties();
+
+  let previous = {};
+
+  try {
+    previous =
+      JSON.parse(
+        props.getProperty(
+          'USER_INFO_' + id
+        ) || '{}'
+      );
+  } catch (e) {
+    previous = {};
+  }
 
   const info = {
     id: id,
-    username: username || '',
-    firstName: firstName || '',
-    lastName: lastName || ''
+    username:
+      username ||
+      previous.username ||
+      '',
+    firstName:
+      firstName ||
+      previous.firstName ||
+      '',
+    lastName:
+      lastName ||
+      previous.lastName ||
+      '',
+    photoUrl:
+      photoUrl ||
+      previous.photoUrl ||
+      ''
   };
 
-  PropertiesService
-    .getScriptProperties()
-    .setProperty(
-      'USER_INFO_' + id,
-      JSON.stringify(info)
-    );
+  props.setProperty(
+    'USER_INFO_' + id,
+    JSON.stringify(info)
+  );
 }
+
 function requestAccess(chatId, username, firstName) {
 
   const props =

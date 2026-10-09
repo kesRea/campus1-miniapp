@@ -1,3 +1,4 @@
+/* CAMPUS_TASKS_BACKEND_V14_AVATARS */
 /* CAMPUS_BACKEND_TASKS_V13_11 */
 var CAMPUS_TASK_SHEET_V13_11 = 'Campus_Задачи';
 var CAMPUS_TASK_EVENT_SHEET_V13_11 = 'Campus_Задачи_Журнал';
@@ -158,6 +159,7 @@ function getTaskUserDescriptor_(id) {
     id: id,
     name: info.name,
     username: info.username,
+    photoUrl: info.photoUrl,
     role: position.label,
     position: position,
     accessRole: getCampusAccessRole_(id)

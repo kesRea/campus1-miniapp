@@ -1,6 +1,6 @@
-/* CAMPUS_BACKEND_MANAGEMENT_V13_12_5 */
+/* CAMPUS_BACKEND_MANAGEMENT_V14 */
 var CAMPUS_DEVELOPER_ID_V13_12_5 = '7272434463';
-var CAMPUS_BACKEND_VERSION_V13_12_5 = '13.12.5';
+var CAMPUS_BACKEND_VERSION_V13_12_5 = '14.0.0';
 var CAMPUS_ROLE_SHEET_V13_12_5 = 'Campus_Роли';
 
 function isCampusDeveloperId_(id) {
@@ -309,7 +309,8 @@ function getCampusUserInfo_(id) {
   return {
     id: id,
     name: name,
-    username: String(info.username || '')
+    username: String(info.username || ''),
+    photoUrl: String(info.photoUrl || '')
   };
 }
 
@@ -446,6 +447,7 @@ function getCouncilDirectoryEntries_() {
       id: id,
       name: info.name,
       username: info.username,
+      photoUrl: info.photoUrl,
       accessRole: getCampusAccessRole_(id),
       position: position
     });
@@ -579,6 +581,7 @@ function appGetCouncilRoles(initData) {
       id: id,
       name: info.name,
       username: info.username,
+      photoUrl: info.photoUrl,
       role: position.label,
       accessRole: getCampusAccessRole_(id),
       position: position

@@ -1574,3 +1574,54 @@ button,
 .stat-card{
   touch-action:manipulation;
 }
+
+
+/* CAMPUS_V14_TELEGRAM_AVATARS */
+.avatar{
+  position:relative;
+  overflow:hidden;
+}
+
+.avatar-fallback{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+}
+
+.avatar-photo{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:inherit;
+}
+
+.avatar-large{
+  width:54px;
+  height:54px;
+  border-radius:18px;
+  font-size:15px;
+}
+
+.profile-button{
+  position:relative;
+  overflow:hidden;
+}
+
+.profile-fallback{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+}
+
+.profile-photo{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:50%;
+}

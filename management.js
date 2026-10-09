@@ -1,4 +1,4 @@
-/* CAMPUS_MANAGEMENT_V13_10 */
+/* CAMPUS_MANAGEMENT_V14_AVATARS */
 let maintenanceTimer=null, maintenanceBusy=false, maintenanceBlocked=false;
 function maintenanceOverlay(status){
   maintenanceBlocked=true;
@@ -141,7 +141,7 @@ async function renderCouncilRoles(back='more'){
   $('#view').innerHTML=pageHead('Роли и секторы',back)+'<div class="task-center-loading">Загружаем участников…</div>';
   try {
     councilRolesData=await apiRequest('appGetCouncilRoles',[state.initData],{ttl:0,force:true});
-    $('#view').innerHTML=pageHead('Роли и секторы',back)+`<div class="task-note">Должность учитывается отдельно от прав доступа. После сохранения Campus проверяет новую роль на сервере.</div><div class="task-list">${councilRolesData.users.map(u=>`<button class="task-person role-person" onclick="editCouncilRole('${esc(u.id)}')"><span class="avatar">${esc(initials(u.name))}</span><span><b>${esc(u.name)}</b><small>${esc(u.role)}<br>${esc(u.accessRole)} · ${esc(u.id)}</small></span><span class="role-edit">Изменить</span></button>`).join('')}</div>`;
+    $('#view').innerHTML=pageHead('Роли и секторы',back)+`<div class="task-note">Должность учитывается отдельно от прав доступа. После сохранения Campus проверяет новую роль на сервере.</div><div class="task-list">${councilRolesData.users.map(u=>`<button class="task-person role-person" onclick="editCouncilRole('${esc(u.id)}')">${avatarHtml(u.name,u.photoUrl)}<span><b>${esc(u.name)}</b><small>${esc(u.role)}<br>${esc(u.accessRole)} · ${esc(u.id)}</small></span><span class="role-edit">Изменить</span></button>`).join('')}</div>`;
   }catch(e){toast(e.message);}
 }
 function editCouncilRole(id){

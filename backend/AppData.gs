@@ -173,7 +173,7 @@ function buildDashboard_() {
   }).length;
 
   const foreigners =
-    readOptionalTable_('foreigners').rows.length;
+    buildForeignersTable_().rows.length;
 
   let council = 0;
   let activists = 0;
@@ -442,9 +442,439 @@ function readOptionalTable_(key) {
   return { headers: headers, rows: rows, configured: true };
 }
 
+/* CAMPUS_FOREIGNERS_V14_AUTO */
+function normalizeResidenceText_(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[.,;:()\[\]{}_\/\\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function residenceHasAny_(text, patterns) {
+  return patterns.some(function(pattern) {
+    return text.indexOf(pattern) !== -1;
+  });
+}
+
+function detectForeignCountry_(registration) {
+  const text =
+    normalizeResidenceText_(
+      registration
+    );
+
+  if (!text) return '';
+
+  const padded =
+    ' ' + text + ' ';
+
+  const kz = [
+    'казахстан',
+    'қазақстан',
+    'kazakhstan',
+    'республика казахстан',
+    'республика қазақстан'
+  ];
+
+  if (
+    residenceHasAny_(text, kz) ||
+    padded.indexOf(' рк ') !== -1 ||
+    padded.indexOf(' kz ') !== -1
+  ) {
+    return '';
+  }
+
+  const rules = [
+    ['Монголия',[
+      'монголия',
+      'mongolia',
+      'монгол улс',
+      'улан батор',
+      'улаанбаатар',
+      'ulaanbaatar'
+    ]],
+    ['Туркменистан',[
+      'туркменистан',
+      'туркмения',
+      'turkmenistan',
+      'ашхабад',
+      'ashgabat'
+    ]],
+    ['Узбекистан',[
+      'узбекистан',
+      'uzbekistan',
+      'o‘zbekiston',
+      'ташкент',
+      'tashkent'
+    ]],
+    ['Кыргызстан',[
+      'кыргызстан',
+      'киргизия',
+      'kyrgyzstan',
+      'бишкек',
+      'bishkek'
+    ]],
+    ['Таджикистан',[
+      'таджикистан',
+      'tajikistan',
+      'душанбе',
+      'dushanbe'
+    ]],
+    ['Россия',[
+      'россия',
+      'российская федерация',
+      'russia',
+      'москва',
+      'moscow',
+      'санкт петербург'
+    ]],
+    ['Китай',[
+      'китай',
+      'кнр',
+      'china',
+      'синьцзян',
+      'xinjiang',
+      'пекин',
+      'beijing',
+      'урумчи',
+      'urumqi'
+    ]],
+    ['Афганистан',[
+      'афганистан',
+      'afghanistan',
+      'кабул',
+      'kabul'
+    ]],
+    ['Индия',[
+      'индия',
+      'india',
+      'new delhi',
+      'нью дели'
+    ]],
+    ['Пакистан',[
+      'пакистан',
+      'pakistan',
+      'исламабад',
+      'islamabad'
+    ]],
+    ['Иран',[
+      'иран',
+      'iran',
+      'тегеран',
+      'tehran'
+    ]],
+    ['Азербайджан',[
+      'азербайджан',
+      'azerbaijan',
+      'баку',
+      'baku'
+    ]],
+    ['Армения',[
+      'армения',
+      'armenia',
+      'ереван',
+      'yerevan'
+    ]],
+    ['Грузия',[
+      'грузия',
+      'georgia',
+      'тбилиси',
+      'tbilisi'
+    ]],
+    ['Беларусь',[
+      'беларусь',
+      'белоруссия',
+      'belarus',
+      'минск',
+      'minsk'
+    ]],
+    ['Украина',[
+      'украина',
+      'ukraine',
+      'киев',
+      'kyiv',
+      'kiev'
+    ]],
+    ['Молдова',[
+      'молдова',
+      'moldova',
+      'кишинев',
+      'chisinau'
+    ]],
+    ['Турция',[
+      'турция',
+      'turkey',
+      'türkiye',
+      'turkiye',
+      'анкара',
+      'ankara'
+    ]],
+    ['Южная Корея',[
+      'южная корея',
+      'республика корея',
+      'south korea',
+      'сеул',
+      'seoul'
+    ]],
+    ['Вьетнам',[
+      'вьетнам',
+      'vietnam',
+      'ханой',
+      'hanoi'
+    ]],
+    ['Индонезия',[
+      'индонезия',
+      'indonesia',
+      'джакарта',
+      'jakarta'
+    ]],
+    ['Палестина',[
+      'палестина',
+      'palestine'
+    ]],
+    ['Сирия',[
+      'сирия',
+      'syria',
+      'дамаск',
+      'damascus'
+    ]],
+    ['Ирак',[
+      'ирак',
+      'iraq',
+      'багдад',
+      'baghdad'
+    ]],
+    ['Египет',[
+      'египет',
+      'egypt',
+      'каир',
+      'cairo'
+    ]],
+    ['Сомали',[
+      'сомали',
+      'somalia',
+      'могадишо',
+      'mogadishu'
+    ]],
+    ['Танзания',[
+      'танзания',
+      'tanzania',
+      'додома',
+      'dodoma'
+    ]],
+    ['Эфиопия',[
+      'эфиопия',
+      'ethiopia',
+      'аддис абеба',
+      'addis ababa'
+    ]],
+    ['Кения',[
+      'кения',
+      'kenya',
+      'найроби',
+      'nairobi'
+    ]],
+    ['Нигерия',[
+      'нигерия',
+      'nigeria',
+      'абуджа',
+      'abuja'
+    ]],
+    ['Бангладеш',[
+      'бангладеш',
+      'bangladesh',
+      'дакка',
+      'dhaka'
+    ]],
+    ['Непал',[
+      'непал',
+      'nepal',
+      'катманду',
+      'kathmandu'
+    ]],
+    ['Шри-Ланка',[
+      'шри ланка',
+      'sri lanka'
+    ]],
+    ['Судан',[
+      'судан',
+      'sudan',
+      'хартум',
+      'khartoum'
+    ]],
+    ['Йемен',[
+      'йемен',
+      'yemen',
+      'сана',
+      'sanaa'
+    ]],
+    ['Иордания',[
+      'иордания',
+      'jordan',
+      'амман',
+      'amman'
+    ]],
+    ['ОАЭ',[
+      'оаэ',
+      'объединенные арабские эмираты',
+      'united arab emirates',
+      'дубай',
+      'dubai',
+      'абу даби',
+      'abu dhabi'
+    ]],
+    ['Саудовская Аравия',[
+      'саудовская аравия',
+      'saudi arabia',
+      'эр рияд',
+      'riyadh'
+    ]]
+  ];
+
+  for (
+    let i = 0;
+    i < rules.length;
+    i++
+  ) {
+    if (
+      residenceHasAny_(
+        text,
+        rules[i][1]
+      )
+    ) {
+      return rules[i][0];
+    }
+  }
+
+  return '';
+}
+
+function foreignRowKey_(row) {
+  const id =
+    String(
+      row['ИИН / паспорт'] ||
+      row['ИИН'] ||
+      row['Паспорт'] ||
+      ''
+    )
+      .replace(/\s+/g, '')
+      .toLowerCase();
+
+  if (id) {
+    return 'id:' + id;
+  }
+
+  const fio =
+    String(
+      row['ФИО'] ||
+      row['Имя'] ||
+      ''
+    )
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  return fio
+    ? 'name:' + fio
+    : '';
+}
+
+function buildForeignersTable_() {
+  const manual =
+    readOptionalTable_(
+      'foreigners'
+    );
+
+  const rows = [];
+  const index = {};
+
+  function addRow(row) {
+    const copy =
+      Object.assign({}, row);
+
+    const key =
+      foreignRowKey_(copy);
+
+    if (
+      key &&
+      Object.prototype
+        .hasOwnProperty
+        .call(index, key)
+    ) {
+      const existing =
+        rows[index[key]];
+
+      Object.keys(copy)
+        .forEach(function(k) {
+          if (
+            !existing[k] &&
+            copy[k]
+          ) {
+            existing[k] =
+              copy[k];
+          }
+        });
+
+      return;
+    }
+
+    if (key) {
+      index[key] =
+        rows.length;
+    }
+
+    rows.push(copy);
+  }
+
+  (manual.rows || [])
+    .forEach(addRow);
+
+  getCurrentStudents_()
+    .forEach(function(student) {
+      const country =
+        detectForeignCountry_(
+          student.registration
+        );
+
+      if (!country) return;
+
+      addRow({
+        'ФИО': student.fio,
+        'Страна': country,
+        'Комната': student.room,
+        'Факультет':
+          student.faculty,
+        'Резиденция':
+          student.registration,
+        'ИИН / паспорт':
+          student.iin,
+        '_studentRow':
+          student.rowNumber,
+        '_auto': true
+      });
+    });
+
+  return {
+    headers: [
+      'ФИО',
+      'Страна',
+      'Комната',
+      'Факультет',
+      'Резиденция',
+      'ИИН / паспорт'
+    ],
+    rows: rows,
+    configured:
+      !!manual.configured,
+    auto: true
+  };
+}
+
 function appGetForeigners(initData) {
   getAppSession_(initData);
-  return readOptionalTable_('foreigners');
+  return buildForeignersTable_();
 }
 
 function normalizeCouncilName_(value) {
@@ -490,7 +920,9 @@ function roleDirectoryRows_(kind) {
         'Сектор':
           item.position.sector || '',
         'Доступ':
-          item.accessRole || ''
+          item.accessRole || '',
+        'Фото':
+          item.photoUrl || ''
       };
     });
 }
@@ -504,10 +936,10 @@ function mergeCouncilRows_(
       ? originalRows.slice()
       : [];
 
-  const ids = {};
-  const names = {};
+  const idIndex = {};
+  const nameIndex = {};
 
-  rows.forEach(function(row) {
+  rows.forEach(function(row, idx) {
     const id = String(
       row['Telegram ID'] ||
       row['TelegramID'] ||
@@ -515,39 +947,79 @@ function mergeCouncilRows_(
       ''
     ).trim();
 
-    const name = normalizeCouncilName_(
-      row['ФИО'] ||
-      row['Имя'] ||
-      ''
-    );
-
-    if (id) ids[id] = true;
-    if (name) names[name] = true;
-  });
-
-  (roleRows || []).forEach(function(row) {
-    const id =
-      String(
-        row['Telegram ID'] || ''
-      ).trim();
-
     const name =
       normalizeCouncilName_(
-        row['ФИО'] || ''
+        row['ФИО'] ||
+        row['Имя'] ||
+        ''
       );
 
-    if (
-      (id && ids[id]) ||
-      (name && names[name])
-    ) {
-      return;
-    }
-
-    rows.push(row);
-
-    if (id) ids[id] = true;
-    if (name) names[name] = true;
+    if (id) idIndex[id] = idx;
+    if (name) nameIndex[name] = idx;
   });
+
+  (roleRows || [])
+    .forEach(function(row) {
+      const id =
+        String(
+          row['Telegram ID'] || ''
+        ).trim();
+
+      const name =
+        normalizeCouncilName_(
+          row['ФИО'] || ''
+        );
+
+      let idx = -1;
+
+      if (
+        id &&
+        Object.prototype
+          .hasOwnProperty
+          .call(idIndex, id)
+      ) {
+        idx = idIndex[id];
+      } else if (
+        name &&
+        Object.prototype
+          .hasOwnProperty
+          .call(nameIndex, name)
+      ) {
+        idx = nameIndex[name];
+      }
+
+      if (idx >= 0) {
+        const existing =
+          rows[idx];
+
+        [
+          'Telegram',
+          'Telegram ID',
+          'Должность',
+          'Сектор',
+          'Доступ',
+          'Фото'
+        ].forEach(function(key) {
+          if (
+            row[key] &&
+            !existing[key]
+          ) {
+            existing[key] =
+              row[key];
+          }
+        });
+
+        return;
+      }
+
+      rows.push(row);
+
+      const added =
+        rows.length - 1;
+
+      if (id) idIndex[id] = added;
+      if (name) nameIndex[name] = added;
+    });
 
   return rows;
 }
@@ -577,7 +1049,8 @@ function buildCouncilDirectoryTable_(kind) {
       'Telegram ID',
       'Должность',
       'Сектор',
-      'Доступ'
+      'Доступ',
+      'Фото'
     ];
   }
 

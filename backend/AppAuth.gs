@@ -90,6 +90,22 @@ function getAppIdentity_(initData) {
   var allowed = owner || developer || (typeof isAllowed === 'function' && isAllowed(id));
   if (!allowed) throw new Error('У вас нет доступа к Campus №1. Запросите доступ через бота.');
 
+  /* CAMPUS_AUTH_V14_REMEMBER_PHOTO */
+  try {
+    if (
+      typeof saveUserInfo ===
+      'function'
+    ) {
+      saveUserInfo(
+        id,
+        verified.user.username || '',
+        verified.user.first_name || '',
+        verified.user.last_name || '',
+        verified.user.photo_url || ''
+      );
+    }
+  } catch (e) {}
+
   var accessRole = owner ? 'Владелец' : (developer ? 'Разработчик' : 'Пользователь');
   var permission = owner ? 'owner' : (developer ? 'developer' : 'view');
 
@@ -155,7 +171,7 @@ function campusSessionCacheKey_(initData) {
       );
 
     return (
-      'campus_session_v13_13_' +
+      'campus_session_v14_' +
       Utilities
         .base64EncodeWebSafe(bytes)
         .substring(0, 44)

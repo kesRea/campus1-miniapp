@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.13.0';
+const APP_VERSION = '14.0.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,19 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.13.0';
+const UPDATE_CENTER_VERSION = '14.0.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'13.13.0',date:'9 октября 2026',title:'Speed+',latest:true,items:[
+{version:'14.0.0',date:'9 октября 2026',title:'Telegram Avatars + Foreigners',latest:true,items:[
+ 'Возвращены Telegram-аватарки в профиль, Студсовет, Активисты и управление ролями.',
+ 'Фото Telegram сохраняется при входе пользователя в Mini App и затем показывается в списках.',
+ 'Раздел «Иностранцы» автоматически дополняется студентами с зарубежной резиденцией из поля «Прописка».',
+ 'Поддерживаются Монголия, Туркменистан, Узбекистан, Кыргызстан, Россия, Китай и другие страны.',
+ 'Ручная таблица иностранцев сохранена и объединяется с автоматическим списком без дублей.'
+]},
+
+{version:'13.13.0',date:'9 октября 2026',title:'Speed+',latest:false,items:[
  'Ускорен запуск: убран лишний последовательный запрос к Apps Script.',
  'Студенты и комнаты приходят уже в первом bootstrap-ответе.',
  'Вкладки прогреваются при касании нижней навигации.',
@@ -191,6 +199,50 @@ const ICONS = {
 function icon(name){ return ICONS[name] || ICONS.grid; }
 function injectIcons(){ $$('[data-icon]').forEach(el=>{ el.innerHTML=icon(el.dataset.icon); }); }
 function initials(name){ return String(name||'C1').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
+
+/* CAMPUS_V14_AVATARS_FOREIGNERS */
+function avatarHtml(
+  name,
+  photoUrl,
+  extraClass=''
+){
+  const fallback =
+    esc(initials(name));
+
+  const url =
+    String(photoUrl||'').trim();
+
+  return `<span class="avatar ${esc(extraClass)}">
+    <span class="avatar-fallback">${fallback}</span>
+    ${url
+      ? `<img class="avatar-photo" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+      : ''}
+  </span>`;
+}
+
+function syncProfileAvatar(){
+  const btn=$('#profileBtn');
+
+  if(!btn)return;
+
+  const u=state.user||{};
+  const name=
+    u.firstName||
+    u.username||
+    'C1';
+
+  const fallback=
+    esc(initials(name));
+
+  const url=
+    String(u.photoUrl||'').trim();
+
+  btn.innerHTML=
+    `<span class="profile-fallback">${fallback}</span>`+
+    (url
+      ? `<img class="profile-photo" src="${esc(url)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+      : '');
+}
 function roleLabel(u){ return u?.role || 'Пользователь'; }
 function canManage(){ return !!state.user?.canManage; }
 function formatCount(n,one,few,many){ n=Math.abs(Number(n)||0); const n10=n%10,n100=n%100; const word=(n10===1&&n100!==11)?one:(n10>=2&&n10<=4&&(n100<12||n100>14))?few:many; return `${n} ${word}`; }
@@ -563,7 +615,7 @@ async function boot(){
     }
 
     state.lastCoreSync=Date.now();
-    $('#profileInitials').textContent=initials(state.user.firstName || state.user.username || 'C1');
+    syncProfileAvatar();
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
     clearMaintenanceOverlay();
@@ -1466,10 +1518,57 @@ function moreCard(iconName,title,sub,onclick){ return `<button class="more-item"
 
 async function renderGenericTable(title,fn,back,seq){
   $('#view').innerHTML=`${pageHead(title,back)}<div id="generic" class="list">${studentSkeletons()}</div>`;
-  const data=await apiRequest(fn,[state.initData],{ttl:60000}); if(!pageAlive(state.currentPage,seq))return;
-  const el=$('#generic'); if(!data.rows?.length){el.innerHTML='<div class="empty">Таблица пока пустая или не подключена.</div>';return;}
-  el.innerHTML=data.rows.map(r=>{const vals=Object.entries(r).filter(([k,v])=>k!=='_rowNumber'&&String(v).trim()).slice(0,5);return `<div class="row-card"><span class="avatar">${esc(initials(vals[0]?.[1]||title))}</span><span class="row-main">${vals.map(([k,v],i)=>i===0?`<b>${esc(v)}</b>`:`<small>${esc(k)}: ${esc(v)}</small>`).join('')}</span></div>`}).join('');
+
+  const data=await apiRequest(
+    fn,
+    [state.initData],
+    {ttl:60000}
+  );
+
+  if(!pageAlive(state.currentPage,seq))return;
+
+  const el=$('#generic');
+
+  if(!data.rows?.length){
+    el.innerHTML='<div class="empty">Таблица пока пустая или не подключена.</div>';
+    return;
+  }
+
+  el.innerHTML=data.rows.map(r=>{
+    const vals=Object.entries(r)
+      .filter(([k,v])=>
+        k!=='_rowNumber'&&
+        k!=='Фото'&&
+        k!=='photoUrl'&&
+        !String(k).startsWith('_')&&
+        String(v).trim()
+      )
+      .slice(0,5);
+
+    const name=
+      r['ФИО']||
+      r['Имя']||
+      vals[0]?.[1]||
+      title;
+
+    const photo=
+      r['Фото']||
+      r.photoUrl||
+      '';
+
+    return `<div class="row-card">
+      ${avatarHtml(name,photo)}
+      <span class="row-main">
+        ${vals.map(([k,v],i)=>
+          i===0
+            ? `<b>${esc(v)}</b>`
+            : `<small>${esc(k)}: ${esc(v)}</small>`
+        ).join('')}
+      </span>
+    </div>`;
+  }).join('');
 }
+
 async function renderCouncil(kind,seq){
   /* CAMPUS_V13_12_6_COUNCIL_ORDER */
   const title=kind==='activists'?'Активисты':'Студенческий совет';
@@ -1561,7 +1660,7 @@ async function renderCouncil(kind,seq){
     const role=getRole(r);
 
     return `<div class="row-card">
-      <span class="avatar">${esc(initials(name))}</span>
+      ${avatarHtml(name,r['Фото']||r.photoUrl||'')}
       <span class="row-main">
         <b>${esc(name)}</b>
         <small>${esc(role)}</small>
@@ -2041,7 +2140,30 @@ function installRemoteUpdate(){
 
 function showProfile(){
   const u=state.user||{};
-  showModal(`<div class="sheet-handle"></div><div style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:54px;height:54px;font-size:15px">${esc(initials(u.firstName||u.username||'C1'))}</span><div><h3 style="margin:0 0 4px">${esc(u.firstName||'Пользователь')}</h3><span class="badge blue">${esc(roleLabel(u))}</span></div></div><div class="kv"><div><small>Telegram ID</small><b>${esc(u.id||'—')}</b></div><div><small>Доступ</small><b>${u.canManage?'Управление':'Просмотр'}</b></div></div><button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
+  const name=
+    u.firstName||
+    u.username||
+    'Пользователь';
+
+  showModal(`<div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      ${avatarHtml(name,u.photoUrl,'avatar-large')}
+      <div>
+        <h3 style="margin:0 0 4px">${esc(name)}</h3>
+        <span class="badge blue">${esc(roleLabel(u))}</span>
+      </div>
+    </div>
+    <div class="kv">
+      <div>
+        <small>Telegram ID</small>
+        <b>${esc(u.id||'—')}</b>
+      </div>
+      <div>
+        <small>Доступ</small>
+        <b>${u.canManage?'Управление':'Просмотр'}</b>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>`);
 }
 
 function bindGlobalEvents(){
