@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.12.3';
+const APP_VERSION = '13.12.5';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,7 +17,7 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.12.3';
+const UPDATE_CENTER_VERSION = '13.12.5';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
@@ -576,6 +576,8 @@ async function render(page,opts={}){
   const view=$('#view'); if(!view) return;
   view.classList.remove('fade-in'); void view.offsetWidth; view.classList.add('fade-in');
   try{
+    if(page==='special-release-test') return renderReleaseTester();
+
     if(page==='home') return renderHome();
     if(page==='students') return renderStudents(opts.mode||'active',opts.query||'',seq);
     if(page==='rooms') return renderRooms(seq);
@@ -1775,7 +1777,7 @@ function remoteUpdateCard(){
   const notes=Array.isArray(m.notes)?m.notes:[];
   return `<div class="cloud-update-card">
     <div class="cloud-update-head">
-      <span class="cloud-update-icon">${icon('download')}</span>
+      <span class="cloud-update-icon">${icon('spark')}</span>
       <span><small>Доступно обновление</small><b>Campus №1 v${esc(m.version)}</b></span>
     </div>
     ${m.title?`<div class="cloud-update-title">${esc(m.title)}</div>`:''}

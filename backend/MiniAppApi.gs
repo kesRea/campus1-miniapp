@@ -39,7 +39,8 @@ function handleCampusMiniAppApi_(e) {
       appGetMaintenanceStatus: appGetMaintenanceStatus,
       appSetMaintenance: appSetMaintenance,
       appGetCouncilRoles: appGetCouncilRoles,
-      appSetCouncilRole: appSetCouncilRole
+      appSetCouncilRole: appSetCouncilRole,
+      appRunReleaseDiagnostics: appRunReleaseDiagnostics
     };
 
     if (!api[method]) {

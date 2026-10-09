@@ -54,26 +54,58 @@ function appGetDashboard(initData) {
 
 function buildDashboard_() {
   const data = getStudentDisplayRows_().values;
-  let totalStudents = 0, currentStudents = 0, evictedStudents = 0;
+  let totalStudents = 0;
+  let currentStudents = 0;
+  let evictedStudents = 0;
   const occupied = {};
 
   for (let i = 1; i < data.length; i++) {
-    const s = mapStudentRow_(data[i], i + 1);
-    if (!s.fio) continue;
+    const student = mapStudentRow_(data[i], i + 1);
+
+    if (!student.fio) continue;
+
     totalStudents++;
-    if (s.active) {
+
+    if (student.active) {
       currentStudents++;
-      if (s.room) occupied[s.room] = true;
+
+      if (student.room) {
+        occupied[student.room] = true;
+      }
     } else {
       evictedStudents++;
     }
   }
 
   const rooms = getCampusRooms_().map(String);
-  const occupiedRooms = rooms.filter(function(r) { return occupied[r]; }).length;
-  const foreigners = readOptionalTable_('foreigners').rows.length;
-  const council = readOptionalTable_('council').rows.length;
-  const activists = readOptionalTable_('activists').rows.length || countActivistsFromAccess_();
+  const occupiedRooms = rooms.filter(function(room) {
+    return occupied[room];
+  }).length;
+
+  const foreigners =
+    readOptionalTable_('foreigners').rows.length;
+
+  let council = 0;
+  let activists = 0;
+
+  try {
+    council =
+      buildCouncilDirectoryTable_('council')
+        .rows.length;
+
+    activists =
+      buildCouncilDirectoryTable_('activists')
+        .rows.length;
+  } catch (e) {
+    council =
+      readOptionalTable_('council')
+        .rows.length;
+
+    activists =
+      readOptionalTable_('activists')
+        .rows.length ||
+      countActivistsFromAccess_();
+  }
 
   return {
     totalStudents: totalStudents,
@@ -81,7 +113,11 @@ function buildDashboard_() {
     evictedStudents: evictedStudents,
     totalRooms: rooms.length,
     occupiedRooms: occupiedRooms,
-    freeRooms: Math.max(0, rooms.length - occupiedRooms),
+    freeRooms:
+      Math.max(
+        0,
+        rooms.length - occupiedRooms
+      ),
     foreigners: foreigners,
     council: council,
     activists: activists
@@ -317,23 +353,154 @@ function appGetForeigners(initData) {
   return readOptionalTable_('foreigners');
 }
 
-function appGetCouncil(initData, kind) {
-  getAppSession_(initData);
-  const key = kind === 'activists' ? 'activists' : 'council';
-  const table = readOptionalTable_(key);
-  if (key === 'activists' && table.rows.length === 0 && typeof getAllowedUsers === 'function') {
-    try {
-      const props = PropertiesService.getScriptProperties();
-      table.rows = getAllowedUsers().filter(function(id){
-        return typeof getUserRole === 'function' && String(getUserRole(id) || '').indexOf('Актив') !== -1;
-      }).map(function(id){
-        let info = {}; try { info = JSON.parse(props.getProperty('USER_INFO_' + id) || '{}'); } catch(e){}
-        return { 'ФИО': [info.firstName || '', info.lastName || ''].filter(Boolean).join(' '), 'Telegram': info.username ? '@' + info.username : '', 'Роль': getUserRole(id) };
-      });
-    } catch (e) {}
+function normalizeCouncilName_(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function roleDirectoryRows_(kind) {
+  if (
+    typeof getCouncilDirectoryEntries_ !==
+    'function'
+  ) {
+    return [];
   }
+
+  const wantActivists =
+    kind === 'activists';
+
+  return getCouncilDirectoryEntries_()
+    .filter(function(item) {
+      const isActivist =
+        item.position &&
+        item.position.roleId ===
+          'activist';
+
+      return wantActivists
+        ? isActivist
+        : !isActivist;
+    })
+    .map(function(item) {
+      return {
+        'ФИО': item.name || 'Участник',
+        'Telegram':
+          item.username
+            ? '@' + item.username
+            : '',
+        'Telegram ID': item.id,
+        'Должность':
+          item.position.label || '',
+        'Сектор':
+          item.position.sector || '',
+        'Доступ':
+          item.accessRole || ''
+      };
+    });
+}
+
+function mergeCouncilRows_(
+  originalRows,
+  roleRows
+) {
+  const rows =
+    Array.isArray(originalRows)
+      ? originalRows.slice()
+      : [];
+
+  const ids = {};
+  const names = {};
+
+  rows.forEach(function(row) {
+    const id = String(
+      row['Telegram ID'] ||
+      row['TelegramID'] ||
+      row['ID'] ||
+      ''
+    ).trim();
+
+    const name = normalizeCouncilName_(
+      row['ФИО'] ||
+      row['Имя'] ||
+      ''
+    );
+
+    if (id) ids[id] = true;
+    if (name) names[name] = true;
+  });
+
+  (roleRows || []).forEach(function(row) {
+    const id =
+      String(
+        row['Telegram ID'] || ''
+      ).trim();
+
+    const name =
+      normalizeCouncilName_(
+        row['ФИО'] || ''
+      );
+
+    if (
+      (id && ids[id]) ||
+      (name && names[name])
+    ) {
+      return;
+    }
+
+    rows.push(row);
+
+    if (id) ids[id] = true;
+    if (name) names[name] = true;
+  });
+
+  return rows;
+}
+
+function buildCouncilDirectoryTable_(kind) {
+  const key =
+    kind === 'activists'
+      ? 'activists'
+      : 'council';
+
+  const table =
+    readOptionalTable_(key);
+
+  const generated =
+    roleDirectoryRows_(key);
+
+  table.rows =
+    mergeCouncilRows_(
+      table.rows,
+      generated
+    );
+
+  if (!table.headers.length) {
+    table.headers = [
+      'ФИО',
+      'Telegram',
+      'Telegram ID',
+      'Должность',
+      'Сектор',
+      'Доступ'
+    ];
+  }
+
   return table;
 }
+
+function appGetCouncil(initData, kind) {
+  getAppSession_(initData);
+
+  return buildCouncilDirectoryTable_(
+    kind === 'activists'
+      ? 'activists'
+      : 'council'
+  );
+}
+
+
 
 function appGetControl(initData) {
   getAppSession_(initData);

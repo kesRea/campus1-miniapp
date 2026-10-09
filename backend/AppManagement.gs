@@ -1,10 +1,10 @@
-/* CAMPUS_BACKEND_MANAGEMENT_V13_12_3 */
-var CAMPUS_DEVELOPER_ID_V13_12_3 = '7272434463';
-var CAMPUS_BACKEND_VERSION_V13_12_3 = '13.12.3';
-var CAMPUS_ROLE_SHEET_V13_12_3 = 'Campus_Роли';
+/* CAMPUS_BACKEND_MANAGEMENT_V13_12_5 */
+var CAMPUS_DEVELOPER_ID_V13_12_5 = '7272434463';
+var CAMPUS_BACKEND_VERSION_V13_12_5 = '13.12.5';
+var CAMPUS_ROLE_SHEET_V13_12_5 = 'Campus_Роли';
 
 function isCampusDeveloperId_(id) {
-  return String(id || '') === String(CAMPUS_DEVELOPER_ID_V13_12_3);
+  return String(id || '') === String(CAMPUS_DEVELOPER_ID_V13_12_5);
 }
 
 function getCouncilRoleDefinitions_() {
@@ -42,10 +42,10 @@ function councilPositionLabel_(roleId, sector) {
 
 function ensureCouncilRoleSheet_() {
   var ss = SpreadsheetApp.openById(SS_ID);
-  var sheet = ss.getSheetByName(CAMPUS_ROLE_SHEET_V13_12_3);
+  var sheet = ss.getSheetByName(CAMPUS_ROLE_SHEET_V13_12_5);
 
   if (!sheet) {
-    sheet = ss.insertSheet(CAMPUS_ROLE_SHEET_V13_12_3);
+    sheet = ss.insertSheet(CAMPUS_ROLE_SHEET_V13_12_5);
     sheet.getRange(1, 1, 1, 6).setValues([[
       'Telegram ID',
       'Role ID',
@@ -359,7 +359,7 @@ function getCampusKnownUserIds_() {
     ids.push(String(OWNER_ID));
   }
 
-  ids.push(String(CAMPUS_DEVELOPER_ID_V13_12_3));
+  ids.push(String(CAMPUS_DEVELOPER_ID_V13_12_5));
 
   var unique = {};
 
@@ -371,6 +371,107 @@ function getCampusKnownUserIds_() {
     unique[id] = true;
     return true;
   });
+}
+
+function getCouncilDirectoryEntries_() {
+  var ids = getCampusKnownUserIds_();
+  var entries = [];
+
+  ids.forEach(function(id) {
+    id = String(id || '');
+
+    var explicitPosition = readCouncilPositionFromSheet_(id);
+
+    if (!explicitPosition) {
+      var legacy = readLegacyCouncilPosition_(id);
+
+      if (legacy) {
+        try {
+          explicitPosition = writeCouncilPositionToSheet_(
+            id,
+            legacy,
+            'migration'
+          );
+        } catch (e) {
+          explicitPosition = legacy;
+        }
+      }
+    }
+
+    var include = false;
+    var position = explicitPosition;
+
+    if (position) {
+      include = true;
+    } else if (
+      typeof OWNER_ID !== 'undefined' &&
+      id === String(OWNER_ID)
+    ) {
+      position = {
+        roleId: 'sector_head',
+        sector: 'СДК',
+        label: 'Глава СДК',
+        source: 'owner-default'
+      };
+      include = true;
+    } else {
+      var accessRole = '';
+
+      try {
+        accessRole = typeof getUserRole === 'function'
+          ? String(getUserRole(id) || '')
+          : '';
+      } catch (e2) {}
+
+      if (
+        accessRole
+          .toLowerCase()
+          .indexOf('актив') !== -1
+      ) {
+        position = {
+          roleId: 'activist',
+          sector: '',
+          label: 'Активист',
+          source: 'access-role'
+        };
+        include = true;
+      }
+    }
+
+    if (!include || !position) return;
+
+    var info = getCampusUserInfo_(id);
+
+    entries.push({
+      id: id,
+      name: info.name,
+      username: info.username,
+      accessRole: getCampusAccessRole_(id),
+      position: position
+    });
+  });
+
+  entries.sort(function(a, b) {
+    return String(a.name).localeCompare(
+      String(b.name),
+      'ru'
+    );
+  });
+
+  return entries;
+}
+
+function getCouncilDirectoryCounts_() {
+  var entries = getCouncilDirectoryEntries_();
+
+  return {
+    council: entries.filter(function(item) {
+      return item.position.roleId !== 'activist';
+    }).length,
+    activists: entries.filter(function(item) {
+      return item.position.roleId === 'activist';
+    }).length
+  };
 }
 
 function getMaintenanceState_() {
@@ -457,7 +558,7 @@ function appGetSpecialAccess(initData) {
     isOwner: !!session.isOwner,
     isDeveloper: !!session.isDeveloper,
     id: String(session.id),
-    appVersion: CAMPUS_BACKEND_VERSION_V13_12_3
+    appVersion: CAMPUS_BACKEND_VERSION_V13_12_5
   };
 }
 
@@ -495,7 +596,7 @@ function appGetCouncilRoles(initData) {
     users: users,
     roles: getCouncilRoleDefinitions_(),
     sectors: getCouncilSectors_(),
-    storage: CAMPUS_ROLE_SHEET_V13_12_3
+    storage: CAMPUS_ROLE_SHEET_V13_12_5
   };
 }
 
@@ -533,6 +634,6 @@ function appSetCouncilRole(
     role: position.label,
     position: position,
     persisted: true,
-    storage: CAMPUS_ROLE_SHEET_V13_12_3
+    storage: CAMPUS_ROLE_SHEET_V13_12_5
   };
 }

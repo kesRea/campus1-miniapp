@@ -40,12 +40,92 @@ function beginMaintenancePolling(){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden && state.initData)pollMaintenance();});
 
 async function renderMaintenanceSettings(){
-  if(!specialAuthorized())return renderSpecial();
-  $('#view').innerHTML=pageHead('Технические работы','special')+'<div class="task-center-loading">Проверяем состояние…</div>';
-  try {
-    const status=await apiRequest('appGetMaintenanceStatus',[state.initData],{ttl:0,force:true});
-    $('#view').innerHTML=pageHead('Технические работы','special')+`<div class="panel"><div class="task-diagnostic"><b>Состояние</b><span class="badge">${status.enabled?'Работы включены':'Приложение открыто'}</span></div><p>Все остальные пользователи, включая администрацию, увидят экран технических работ. Доступ останется у владельца и разработчика.</p><div class="field"><label for="maintenanceMessage">Сообщение пользователям</label><textarea id="maintenanceMessage" maxlength="500">${esc(status.message)}</textarea></div><button id="maintenanceToggle" class="btn ${status.enabled?'btn-primary':'btn-danger'} btn-wide" onclick="saveMaintenance(${!status.enabled})">${status.enabled?'Выключить технические работы':'Включить технические работы'}</button><div class="task-note">Режим остаётся включённым до вашего ручного выключения. После выключения приложение у остальных восстановится автоматически.</div></div>`;
-  }catch(e){toast(e.message);renderSpecial();}
+  if(!specialAuthorized()){
+    return renderSpecial();
+  }
+
+  $('#view').innerHTML=
+    pageHead(
+      'Технические работы',
+      'special'
+    )+
+    '<div class="task-center-loading">Проверяем состояние…</div>';
+
+  try{
+    const status=
+      await apiRequest(
+        'appGetMaintenanceStatus',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    $('#view').innerHTML=
+      pageHead(
+        'Технические работы',
+        'special'
+      )+
+      `<div class="panel">
+        <div class="task-diagnostic">
+          <b>Состояние</b>
+          <span class="badge">
+            ${status.enabled
+              ? 'Работы включены'
+              : 'Приложение открыто'}
+          </span>
+        </div>
+
+        <p>
+          Все остальные пользователи,
+          включая администрацию и активистов,
+          блокируются. Доступ остаётся
+          у владельца и разработчика.
+        </p>
+
+        <div class="field">
+          <label for="maintenanceMessage">
+            Сообщение пользователям
+          </label>
+
+          <textarea
+            id="maintenanceMessage"
+            maxlength="500"
+          >${esc(status.message)}</textarea>
+        </div>
+
+        <button
+          class="btn btn-secondary btn-wide"
+          onclick="render('special-release-test')"
+        >
+          ✦ Проверить обновление
+        </button>
+
+        <button
+          id="maintenanceToggle"
+          class="btn ${status.enabled
+            ? 'btn-primary'
+            : 'btn-danger'} btn-wide"
+          onclick="saveMaintenance(${!status.enabled})"
+        >
+          ${status.enabled
+            ? 'Выключить технические работы'
+            : 'Включить технические работы'}
+        </button>
+
+        <div class="task-note">
+          Перед выключением рекомендуется
+          запустить «Тестер обновления».
+          После успешной проверки он сам
+          предложит открыть приложение для всех.
+        </div>
+      </div>`;
+
+  }catch(e){
+    toast(e.message);
+    renderSpecial();
+  }
 }
 async function saveMaintenance(enabled){
   const btn=$('#maintenanceToggle');if(btn)btn.disabled=true;
