@@ -1,6 +1,6 @@
-/* CAMPUS_GITHUB_UI_V13_7_SEASONS_REBORN */
+/* CAMPUS_GITHUB_UI_V13_8_DOCUMENTS_PLUS */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '13.7.0';
+const APP_VERSION = '13.8.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -15,16 +15,30 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '13.7.0';
+const UPDATE_CENTER_VERSION = '13.8.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
 
 {
+  version:'13.8',
+  date:'9 октября 2026',
+  title:'Documents+',
+  latest:true,
+  items:[
+    'Добавлен полноценный раздел документов без подключения ИИ.',
+    'Добавлены шаблоны объявлений, докладных, актов проверки и служебных записок.',
+    'Документ собирается из формы и сразу показывается в предпросмотре.',
+    'Можно копировать текст, делиться через системное меню и сохранять черновики на устройстве.',
+    'Добавлена история последних документов и быстрый повторный запуск шаблона.'
+  ]
+},
+
+{
   version:'13.7',
   date:'9 октября 2026',
   title:'Seasons Reborn',
-  latest:true,
+  latest:false,
   items:[
     'Вернулась приватная кнопка смены сезонов только для владельца.',
     'Осень сохранена с понравившимися жёлто-коричневыми листьями.',
@@ -563,6 +577,7 @@ async function render(page,opts={}){
     if(page==='activists') return renderCouncil('activists',seq);
     if(page==='control') return renderGenericTable('Контроль общежития','appGetControl','more',seq);
     if(page==='journal') return renderGenericTable('Журнал действий','appGetJournal','more',seq);
+    if(page==='documents') return renderDocuments();
   }catch(e){ if(pageAlive(page,seq)) view.innerHTML=`${pageHead('Ошибка','home')}<div class="empty">${esc(e.message)}</div>`; }
 }
 
@@ -929,7 +944,7 @@ function renderMore(){
       ${moreCard('shield','Контроль','Замечания и нарушения',"render('control')")}
       ${moreCard('clipboard','Журнал','История действий',"render('journal')")}
       ${moreCard('chart','Аналитика','Заселение и комнаты',"render('analytics')")}
-      ${moreCard('book','Документы','Подготовка документов',"toast('Раздел документов добавим следующим этапом')")}
+      ${moreCard('book','Документы','Шаблоны и быстрые документы',"render('documents')")}
     </div>
     <div class="section-heading"><h2>Настройки</h2></div>
     <div class="settings-card">
@@ -944,6 +959,371 @@ function renderMore(){
       </button>
     </div>`;
 }
+
+const DOC_TEMPLATES_V138 = {
+  announcement:{
+    title:'Объявление',
+    icon:'clipboard',
+    subtitle:'Сообщение студентам',
+    fields:[
+      ['title','Заголовок','text','Важное объявление'],
+      ['body','Текст объявления','textarea',''],
+      ['date','Дата / срок','text',''],
+      ['contact','Контакт / подпись','text','Администрация Campus №1']
+    ]
+  },
+  report:{
+    title:'Докладная о нарушении',
+    icon:'shield',
+    subtitle:'Фиксация нарушения',
+    fields:[
+      ['room','Комната','text',''],
+      ['students','ФИО студентов','textarea',''],
+      ['incident','Описание нарушения','textarea',''],
+      ['date','Дата и время','text',''],
+      ['author','Составил(а)','text','']
+    ]
+  },
+  inspection:{
+    title:'Акт проверки комнаты',
+    icon:'door',
+    subtitle:'Состояние комнаты',
+    fields:[
+      ['room','Комната','text',''],
+      ['students','Проживающие','textarea',''],
+      ['condition','Состояние комнаты','textarea',''],
+      ['issues','Замечания / повреждения','textarea',''],
+      ['date','Дата проверки','text',''],
+      ['author','Проверил(а)','text','']
+    ]
+  },
+  memo:{
+    title:'Служебная записка',
+    icon:'book',
+    subtitle:'Официальное обращение',
+    fields:[
+      ['to','Кому','text','Коменданту Campus №1'],
+      ['from','От кого','text',''],
+      ['subject','Тема','text',''],
+      ['body','Содержание','textarea',''],
+      ['date','Дата','text','']
+    ]
+  },
+  move:{
+    title:'Список на переселение',
+    icon:'swap',
+    subtitle:'Комнаты и студенты',
+    fields:[
+      ['students','ФИО / текущая комната / новая комната','textarea',''],
+      ['reason','Основание','textarea',''],
+      ['date','Дата','text',''],
+      ['author','Ответственный','text','']
+    ]
+  },
+  free:{
+    title:'Свободный документ',
+    icon:'book',
+    subtitle:'Без шаблона',
+    fields:[
+      ['title','Название','text','Документ'],
+      ['body','Текст','textarea',''],
+      ['author','Подпись','text',''],
+      ['date','Дата','text','']
+    ]
+  }
+};
+
+function docHistoryKey(){return 'campus-documents-v138'}
+
+function getDocumentHistory(){
+  try{
+    const arr=JSON.parse(localStorage.getItem(docHistoryKey())||'[]');
+    return Array.isArray(arr)?arr.slice(0,12):[];
+  }catch(e){return []}
+}
+
+function saveDocumentHistory(item){
+  try{
+    const arr=[item,...getDocumentHistory().filter(x=>x.id!==item.id)].slice(0,12);
+    localStorage.setItem(docHistoryKey(),JSON.stringify(arr));
+  }catch(e){}
+}
+
+function clearDocumentHistory(){
+  try{localStorage.removeItem(docHistoryKey())}catch(e){}
+  renderDocuments();
+  toast('История документов очищена');
+}
+
+function documentTemplateCard(key,t){
+  return `<button class="document-template-card" type="button" onclick="openDocumentBuilder('${key}')">
+    <span class="document-template-icon">${icon(t.icon)}</span>
+    <span class="document-template-copy"><b>${esc(t.title)}</b><small>${esc(t.subtitle)}</small></span>
+    <span class="mini-chevron">${icon('chevron')}</span>
+  </button>`;
+}
+
+function renderDocuments(){
+  const history=getDocumentHistory();
+
+  $('#view').innerHTML=`${pageHead('Документы','more')}
+    <section class="documents-hero">
+      <div class="documents-hero-icon">${icon('book')}</div>
+      <div>
+        <small>Campus №1</small>
+        <h2>Быстрые документы</h2>
+        <p>Шаблоны работают без ИИ. Заполни поля — приложение само соберёт аккуратный текст.</p>
+      </div>
+    </section>
+
+    <div class="section-heading"><h2>Создать документ</h2></div>
+    <div class="document-template-list">
+      ${Object.entries(DOC_TEMPLATES_V138).map(([key,t])=>documentTemplateCard(key,t)).join('')}
+    </div>
+
+    <div class="section-heading">
+      <h2>Недавние</h2>
+      ${history.length?'<button type="button" onclick="confirmClearDocumentHistory()">Очистить</button>':''}
+    </div>
+
+    <div class="document-history-list">
+      ${history.length
+        ? history.map(doc=>`<button class="document-history-card" type="button" onclick="openSavedDocument('${esc(doc.id)}')">
+            <span class="document-history-icon">${icon(DOC_TEMPLATES_V138[doc.template]?.icon||'book')}</span>
+            <span class="document-history-copy">
+              <b>${esc(doc.title||'Документ')}</b>
+              <small>${esc(doc.savedAt||'')}</small>
+            </span>
+            <span class="mini-chevron">${icon('chevron')}</span>
+          </button>`).join('')
+        : '<div class="documents-empty">Здесь появятся последние созданные документы.</div>'}
+    </div>`;
+}
+
+function confirmClearDocumentHistory(){
+  showModal(`<div class="sheet-handle"></div>
+    <h3>Очистить историю документов?</h3>
+    <p class="document-modal-note">Сами документы из буфера или отправленных сообщений не удалятся. Очистится только локальная история на этом устройстве.</p>
+    <button class="btn btn-danger btn-wide" onclick="closeModal();clearDocumentHistory()">Очистить историю</button>
+    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
+}
+
+function todayDocumentDate(){
+  try{
+    return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());
+  }catch(e){
+    return new Date().toLocaleDateString();
+  }
+}
+
+function openDocumentBuilder(templateKey,preset={}){
+  const t=DOC_TEMPLATES_V138[templateKey]||DOC_TEMPLATES_V138.free;
+
+  const fields=t.fields.map(([key,label,type,placeholder])=>{
+    const value=preset[key]||((key==='date'&&!preset[key])?todayDocumentDate():'');
+    if(type==='textarea'){
+      return `<div class="field document-field">
+        <label>${esc(label)}</label>
+        <textarea id="doc_${esc(key)}" rows="4" placeholder="${esc(placeholder||'')}">${esc(value)}</textarea>
+      </div>`;
+    }
+    return `<div class="field document-field">
+      <label>${esc(label)}</label>
+      <input id="doc_${esc(key)}" value="${esc(value)}" placeholder="${esc(placeholder||'')}" autocomplete="off">
+    </div>`;
+  }).join('');
+
+  showModal(`<div class="sheet-handle"></div>
+    <div class="document-builder-head">
+      <span class="document-builder-icon">${icon(t.icon)}</span>
+      <div><small>Новый документ</small><h3>${esc(t.title)}</h3></div>
+    </div>
+
+    <div class="document-builder-form">${fields}</div>
+
+    <button class="btn btn-primary btn-wide" onclick="previewDocument('${templateKey}')">Предпросмотр</button>
+    <button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>`);
+}
+
+function collectDocumentFields(templateKey){
+  const t=DOC_TEMPLATES_V138[templateKey]||DOC_TEMPLATES_V138.free;
+  const data={};
+  t.fields.forEach(([key])=>data[key]=$(`#doc_${key}`)?.value.trim()||'');
+  return data;
+}
+
+function buildDocumentText(templateKey,d){
+  const clean=v=>String(v||'').trim();
+  const lines=[];
+
+  if(templateKey==='announcement'){
+    lines.push((clean(d.title)||'ОБЪЯВЛЕНИЕ').toUpperCase());
+    lines.push('');
+    if(clean(d.body))lines.push(clean(d.body));
+    if(clean(d.date)){lines.push('');lines.push(`Дата / срок: ${clean(d.date)}`);}
+    if(clean(d.contact)){lines.push('');lines.push(clean(d.contact));}
+  }
+
+  if(templateKey==='report'){
+    lines.push('ДОКЛАДНАЯ О НАРУШЕНИИ');
+    lines.push('');
+    if(clean(d.date))lines.push(`Дата и время: ${clean(d.date)}`);
+    if(clean(d.room))lines.push(`Комната: ${clean(d.room)}`);
+    if(clean(d.students))lines.push(`Студенты: ${clean(d.students)}`);
+    lines.push('');
+    if(clean(d.incident))lines.push(clean(d.incident));
+    if(clean(d.author)){lines.push('');lines.push(`Составил(а): ${clean(d.author)}`);}
+  }
+
+  if(templateKey==='inspection'){
+    lines.push('АКТ ПРОВЕРКИ КОМНАТЫ');
+    lines.push('');
+    if(clean(d.date))lines.push(`Дата проверки: ${clean(d.date)}`);
+    if(clean(d.room))lines.push(`Комната: ${clean(d.room)}`);
+    if(clean(d.students))lines.push(`Проживающие: ${clean(d.students)}`);
+    lines.push('');
+    if(clean(d.condition))lines.push(`Состояние комнаты: ${clean(d.condition)}`);
+    if(clean(d.issues))lines.push(`Замечания / повреждения: ${clean(d.issues)}`);
+    if(clean(d.author)){lines.push('');lines.push(`Проверил(а): ${clean(d.author)}`);}
+  }
+
+  if(templateKey==='memo'){
+    if(clean(d.to))lines.push(clean(d.to));
+    if(clean(d.from))lines.push(`От: ${clean(d.from)}`);
+    lines.push('');
+    lines.push('СЛУЖЕБНАЯ ЗАПИСКА');
+    if(clean(d.subject))lines.push(`Тема: ${clean(d.subject)}`);
+    lines.push('');
+    if(clean(d.body))lines.push(clean(d.body));
+    if(clean(d.date)){lines.push('');lines.push(`Дата: ${clean(d.date)}`);}
+  }
+
+  if(templateKey==='move'){
+    lines.push('СПИСОК НА ПЕРЕСЕЛЕНИЕ');
+    lines.push('');
+    if(clean(d.date))lines.push(`Дата: ${clean(d.date)}`);
+    lines.push('');
+    if(clean(d.students))lines.push(clean(d.students));
+    if(clean(d.reason)){lines.push('');lines.push(`Основание: ${clean(d.reason)}`);}
+    if(clean(d.author)){lines.push('');lines.push(`Ответственный: ${clean(d.author)}`);}
+  }
+
+  if(templateKey==='free'){
+    lines.push((clean(d.title)||'ДОКУМЕНТ').toUpperCase());
+    lines.push('');
+    if(clean(d.body))lines.push(clean(d.body));
+    if(clean(d.author)){lines.push('');lines.push(clean(d.author));}
+    if(clean(d.date))lines.push(clean(d.date));
+  }
+
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function previewDocument(templateKey){
+  const t=DOC_TEMPLATES_V138[templateKey]||DOC_TEMPLATES_V138.free;
+  const data=collectDocumentFields(templateKey);
+  const text=buildDocumentText(templateKey,data);
+
+  if(!text)return toast('Заполни хотя бы одно поле');
+
+  const id='doc_'+Date.now();
+  const savedAt=new Intl.DateTimeFormat('ru-RU',{
+    day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
+  }).format(new Date());
+
+  const item={
+    id,
+    template:templateKey,
+    title:data.title||data.subject||t.title,
+    text,
+    data,
+    savedAt
+  };
+
+  saveDocumentHistory(item);
+
+  showDocumentPreview(item);
+}
+
+function showDocumentPreview(item){
+  showModal(`<div class="sheet-handle"></div>
+    <div class="document-preview-head">
+      <div><small>Предпросмотр</small><h3>${esc(item.title||'Документ')}</h3></div>
+      <span class="badge blue">Сохранено</span>
+    </div>
+
+    <pre id="documentPreviewText" class="document-preview-text">${esc(item.text||'')}</pre>
+
+    <div class="document-preview-actions">
+      <button class="btn btn-primary" type="button" onclick="copyDocumentText('${esc(item.id)}')">${icon('copy')}<span>Копировать</span></button>
+      <button class="btn btn-secondary" type="button" onclick="shareDocumentText('${esc(item.id)}')">${icon('swap')}<span>Поделиться</span></button>
+    </div>
+
+    <button class="btn btn-secondary btn-wide" type="button" onclick="editSavedDocument('${esc(item.id)}')">Изменить</button>
+    <button class="btn btn-secondary btn-wide" type="button" onclick="closeModal()">Закрыть</button>`);
+}
+
+function openSavedDocument(id){
+  const item=getDocumentHistory().find(x=>x.id===id);
+  if(!item)return toast('Документ не найден');
+  showDocumentPreview(item);
+}
+
+function editSavedDocument(id){
+  const item=getDocumentHistory().find(x=>x.id===id);
+  if(!item)return toast('Документ не найден');
+  openDocumentBuilder(item.template,item.data||{});
+}
+
+function getSavedDocument(id){
+  return getDocumentHistory().find(x=>x.id===id);
+}
+
+function copyDocumentText(id){
+  const item=getSavedDocument(id);
+  if(!item)return toast('Документ не найден');
+
+  const done=()=>{
+    toast('Текст документа скопирован');
+    try{tg?.HapticFeedback?.notificationOccurred('success')}catch(e){}
+  };
+
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(item.text).then(done).catch(()=>fallbackCopyDocument(item.text,done));
+  }else{
+    fallbackCopyDocument(item.text,done);
+  }
+}
+
+function fallbackCopyDocument(text,done){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';
+  ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.select();
+  try{document.execCommand('copy');done()}catch(e){toast('Не удалось скопировать')}
+  ta.remove();
+}
+
+async function shareDocumentText(id){
+  const item=getSavedDocument(id);
+  if(!item)return toast('Документ не найден');
+
+  try{
+    if(navigator.share){
+      await navigator.share({title:item.title||'Campus №1',text:item.text});
+      return;
+    }
+  }catch(e){
+    if(e?.name==='AbortError')return;
+  }
+
+  copyDocumentText(id);
+  toast('Системная отправка недоступна — текст скопирован');
+}
+
+
 function moreCard(iconName,title,sub,onclick){ return `<button class="more-item" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(sub)}</small></button>`; }
 
 async function renderGenericTable(title,fn,back,seq){
