@@ -209,7 +209,7 @@ function getAppSession_(initData) {
           .put(
             cacheKey,
             JSON.stringify(session),
-            60
+            10
           );
       } catch (e) {}
     }

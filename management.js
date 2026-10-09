@@ -14,8 +14,7 @@ function clearMaintenanceOverlay(){
 }
 function scheduleMaintenancePoll(){
   clearTimeout(maintenanceTimer);
-  const delay=maintenanceBlocked ? 10000 : 60000;
-  maintenanceTimer=setTimeout(pollMaintenance,delay);
+  maintenanceTimer=setTimeout(pollMaintenance,15000);
 }
 async function pollMaintenance(){
   if(maintenanceBusy || !state.initData)return;

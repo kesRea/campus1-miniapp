@@ -6,14 +6,11 @@ function getStudentSheet_() {
 const CAMPUS_STUDENT_CACHE_KEY_ =
   'campus_students_display_v13_13';
 
-const CAMPUS_DASHBOARD_CACHE_KEY_ =
-  'campus_dashboard_v14_1_3';
-
 function invalidateCampusStudentCache_() {
   try {
-    var cache=CacheService.getScriptCache();
-    cache.remove(CAMPUS_STUDENT_CACHE_KEY_);
-    cache.remove(CAMPUS_DASHBOARD_CACHE_KEY_);
+    CacheService
+      .getScriptCache()
+      .remove(CAMPUS_STUDENT_CACHE_KEY_);
   } catch (e) {}
 }
 
@@ -55,7 +52,7 @@ function getStudentDisplayRows_() {
           .put(
             CAMPUS_STUDENT_CACHE_KEY_,
             json,
-            60
+            10
           );
       }
     } catch (e) {}
@@ -122,6 +119,8 @@ function buildRoomDataFromStudents_(students) {
 
 function appBootstrap(initData) {
   const session = getAppSession_(initData);
+  const activeStudents =
+    getCurrentStudents_();
 
   return {
     ok: true,
@@ -129,7 +128,12 @@ function appBootstrap(initData) {
     user: session,
     rooms: getCampusRooms_(),
     dashboard: buildDashboard_(),
-    analytics: null
+    analytics: null,
+    activeStudents: activeStudents,
+    roomData:
+      buildRoomDataFromStudents_(
+        activeStudents
+      )
   };
 }
 
@@ -139,12 +143,6 @@ function appGetDashboard(initData) {
 }
 
 function buildDashboard_() {
-  try {
-    var cache=CacheService.getScriptCache();
-    var cached=cache.get(CAMPUS_DASHBOARD_CACHE_KEY_);
-    if(cached)return JSON.parse(cached);
-  } catch(e) {}
-
   const data = getStudentDisplayRows_().values;
   let totalStudents = 0;
   let currentStudents = 0;
@@ -153,13 +151,17 @@ function buildDashboard_() {
 
   for (let i = 1; i < data.length; i++) {
     const student = mapStudentRow_(data[i], i + 1);
+
     if (!student.fio) continue;
 
     totalStudents++;
 
     if (student.active) {
       currentStudents++;
-      if (student.room) occupied[student.room] = true;
+
+      if (student.room) {
+        occupied[student.room] = true;
+      }
     } else {
       evictedStudents++;
     }
@@ -170,45 +172,46 @@ function buildDashboard_() {
     return occupied[room];
   }).length;
 
-  const foreigners = buildForeignersTable_().rows.length;
+  const foreigners =
+    buildForeignersTable_().rows.length;
 
   let council = 0;
   let activists = 0;
 
   try {
-    const counts = getCouncilDirectoryCounts_();
-    council = Number(counts.council || 0);
-    activists = Number(counts.activists || 0);
-  } catch (e) {
-    council = readOptionalTable_('council').rows.length;
+    council =
+      buildCouncilDirectoryTable_('council')
+        .rows.length;
+
     activists =
-      readOptionalTable_('activists').rows.length ||
+      buildCouncilDirectoryTable_('activists')
+        .rows.length;
+  } catch (e) {
+    council =
+      readOptionalTable_('council')
+        .rows.length;
+
+    activists =
+      readOptionalTable_('activists')
+        .rows.length ||
       countActivistsFromAccess_();
   }
 
-  const result = {
+  return {
     totalStudents: totalStudents,
     currentStudents: currentStudents,
     evictedStudents: evictedStudents,
     totalRooms: rooms.length,
     occupiedRooms: occupiedRooms,
-    freeRooms: Math.max(0, rooms.length - occupiedRooms),
+    freeRooms:
+      Math.max(
+        0,
+        rooms.length - occupiedRooms
+      ),
     foreigners: foreigners,
     council: council,
     activists: activists
   };
-
-  try {
-    CacheService
-      .getScriptCache()
-      .put(
-        CAMPUS_DASHBOARD_CACHE_KEY_,
-        JSON.stringify(result),
-        60
-      );
-  } catch(e2) {}
-
-  return result;
 }
 
 function countActivistsFromAccess_() {
@@ -349,23 +352,6 @@ function appGetRooms(initData) {
     const list = byRoom[String(room)] || [];
     return { room: String(room), occupants: list.length, names: list.slice(0, 3).map(function(s){return s.fio;}) };
   });
-}
-
-/* CAMPUS_WARM_CORE_V14_2_1 */
-function appWarmCore(initData) {
-  getAppSession_(initData);
-
-  const activeStudents=
-    getCurrentStudents_();
-
-  return {
-    activeStudents:
-      activeStudents,
-    roomData:
-      buildRoomDataFromStudents_(
-        activeStudents
-      )
-  };
 }
 
 function appGetRoom(initData, room) {

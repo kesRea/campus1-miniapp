@@ -1,4 +1,4 @@
-/* CAMPUS_RELEASE_DIAGNOSTICS_V14_1_3_HOTFIX */
+/* CAMPUS_RELEASE_DIAGNOSTICS_V13_12_5 */
 function releaseDiagItem_(
   id,
   label,
@@ -14,8 +14,7 @@ function releaseDiagItem_(
 }
 
 function appRunReleaseDiagnostics(initData) {
-  var totalStarted=Date.now();
-  var session=getAppSession_(initData);
+  var session = getAppIdentity_(initData);
 
   if (
     !session.isOwner &&
@@ -26,8 +25,8 @@ function appRunReleaseDiagnostics(initData) {
     );
   }
 
-  var tests=[];
-  var maintenance=
+  var tests = [];
+  var maintenance =
     getMaintenanceState_();
 
   tests.push(
@@ -49,14 +48,13 @@ function appRunReleaseDiagnostics(initData) {
         ? 'pass'
         : 'warn',
       maintenance.enabled
-        ? 'Технические работы включены.'
+        ? 'Технические работы включены. Можно безопасно тестировать до открытия приложения для остальных.'
         : 'Технические работы выключены.'
     )
   );
 
   try {
-    var started=Date.now();
-    var roleSheet=
+    var roleSheet =
       ensureCouncilRoleSheet_();
 
     tests.push(
@@ -64,14 +62,11 @@ function appRunReleaseDiagnostics(initData) {
         'roles',
         'Хранилище ролей',
         'pass',
-        'Campus_Роли: '+
+        'Campus_Роли доступен. Записей: ' +
           Math.max(
             0,
-            roleSheet.getLastRow()-1
-          )+
-          ' записей · '+
-          (Date.now()-started)+
-          ' мс'
+            roleSheet.getLastRow() - 1
+          )
       )
     );
   } catch (e1) {
@@ -80,57 +75,31 @@ function appRunReleaseDiagnostics(initData) {
         'roles',
         'Хранилище ролей',
         'fail',
-        e1.message||String(e1)
+        e1.message || String(e1)
       )
     );
   }
 
   try {
-    var startedRoles=Date.now();
-    var roleUsers=
-      buildCouncilRoleUsersFast_();
+    var council =
+      buildCouncilDirectoryTable_(
+        'council'
+      );
 
-    tests.push(
-      releaseDiagItem_(
-        'role-users',
-        'Управление ролями',
-        'pass',
-        'Пользователей: '+
-          roleUsers.length+
-          ' · '+
-          (Date.now()-startedRoles)+
-          ' мс'
-      )
-    );
-  } catch (eRoleUsers) {
-    tests.push(
-      releaseDiagItem_(
-        'role-users',
-        'Управление ролями',
-        'fail',
-        eRoleUsers.message||
-          String(eRoleUsers)
-      )
-    );
-  }
-
-  try {
-    var startedCouncil=Date.now();
-    var counts=
-      getCouncilDirectoryCounts_();
+    var activists =
+      buildCouncilDirectoryTable_(
+        'activists'
+      );
 
     tests.push(
       releaseDiagItem_(
         'council-sync',
         'Студсовет и активисты',
         'pass',
-        'Студсовет: '+
-          counts.council+
-          ', активисты: '+
-          counts.activists+
-          ' · '+
-          (Date.now()-startedCouncil)+
-          ' мс'
+        'Студсовет: ' +
+          council.rows.length +
+          ', активисты: ' +
+          activists.rows.length
       )
     );
   } catch (e2) {
@@ -139,14 +108,13 @@ function appRunReleaseDiagnostics(initData) {
         'council-sync',
         'Студсовет и активисты',
         'fail',
-        e2.message||String(e2)
+        e2.message || String(e2)
       )
     );
   }
 
   try {
-    var startedRooms=Date.now();
-    var rooms=
+    var rooms =
       getCampusRooms_();
 
     tests.push(
@@ -156,11 +124,8 @@ function appRunReleaseDiagnostics(initData) {
         rooms.length
           ? 'pass'
           : 'fail',
-        'Доступно комнат: '+
-          rooms.length+
-          ' · '+
-          (Date.now()-startedRooms)+
-          ' мс'
+        'Доступно комнат: ' +
+          rooms.length
       )
     );
   } catch (e3) {
@@ -169,14 +134,13 @@ function appRunReleaseDiagnostics(initData) {
         'rooms',
         'Комнаты',
         'fail',
-        e3.message||String(e3)
+        e3.message || String(e3)
       )
     );
   }
 
   try {
-    var startedStudents=Date.now();
-    var studentValues=
+    var studentValues =
       getStudentDisplayRows_().values;
 
     tests.push(
@@ -184,14 +148,11 @@ function appRunReleaseDiagnostics(initData) {
         'students',
         'База студентов',
         'pass',
-        'Строк данных: '+
+        'Строк данных: ' +
           Math.max(
             0,
-            studentValues.length-1
-          )+
-          ' · '+
-          (Date.now()-startedStudents)+
-          ' мс'
+            studentValues.length - 1
+          )
       )
     );
   } catch (e4) {
@@ -200,14 +161,12 @@ function appRunReleaseDiagnostics(initData) {
         'students',
         'База студентов',
         'fail',
-        e4.message||String(e4)
+        e4.message || String(e4)
       )
     );
   }
 
   try {
-    var startedTasks=Date.now();
-
     if (
       typeof readAllTasks_ !==
       'function'
@@ -217,7 +176,7 @@ function appRunReleaseDiagnostics(initData) {
       );
     }
 
-    var tasks=
+    var tasks =
       readAllTasks_();
 
     tests.push(
@@ -225,11 +184,8 @@ function appRunReleaseDiagnostics(initData) {
         'tasks',
         'Задачи',
         'pass',
-        'Задач: '+
-          tasks.length+
-          ' · '+
-          (Date.now()-startedTasks)+
-          ' мс'
+        'Хранилище задач доступно. Задач: ' +
+          tasks.length
       )
     );
   } catch (e5) {
@@ -238,27 +194,25 @@ function appRunReleaseDiagnostics(initData) {
         'tasks',
         'Задачи',
         'fail',
-        e5.message||String(e5)
+        e5.message || String(e5)
       )
     );
   }
 
-  var failed=
+  var failed =
     tests.filter(function(item) {
-      return item.status==='fail';
+      return item.status === 'fail';
     }).length;
 
-  var warnings=
+  var warnings =
     tests.filter(function(item) {
-      return item.status==='warn';
+      return item.status === 'warn';
     }).length;
 
   return {
-    ok: failed===0,
+    ok: failed === 0,
     failed: failed,
     warnings: warnings,
-    durationMs:
-      Date.now()-totalStarted,
     serverVersion:
       CAMPUS_BACKEND_VERSION_V13_12_5,
     developerId:

@@ -1,6 +1,6 @@
 /* CAMPUS_BACKEND_MANAGEMENT_V14 */
 var CAMPUS_DEVELOPER_ID_V13_12_5 = '7272434463';
-var CAMPUS_BACKEND_VERSION_V13_12_5 = '14.1.3';
+var CAMPUS_BACKEND_VERSION_V13_12_5 = '14.0.0';
 var CAMPUS_ROLE_SHEET_V13_12_5 = 'Campus_Роли';
 
 function isCampusDeveloperId_(id) {
@@ -374,52 +374,33 @@ function getCampusKnownUserIds_() {
   });
 }
 
-function readCouncilPositionMapFast_() {
-  var result = {};
-  var sheet = ensureCouncilRoleSheet_();
-  var lastRow = sheet.getLastRow();
-
-  if (lastRow < 2) return result;
-
-  var values =
-    sheet
-      .getRange(2, 1, lastRow - 1, 6)
-      .getDisplayValues();
-
-  values.forEach(function(row) {
-    var id = String(row[0] || '').trim();
-    if (!id) return;
-
-    var position =
-      normalizeCouncilPosition_(
-        row[1],
-        row[2]
-      );
-
-    position.updatedAt = String(row[4] || '');
-    position.updatedBy = String(row[5] || '');
-    position.source = 'sheet';
-
-    result[id] = position;
-  });
-
-  return result;
-}
-
 function getCouncilDirectoryEntries_() {
   var ids = getCampusKnownUserIds_();
   var entries = [];
-  var positionMap = readCouncilPositionMapFast_();
 
   ids.forEach(function(id) {
     id = String(id || '');
 
-    var position = positionMap[id] || null;
-    var include = false;
+    var explicitPosition = readCouncilPositionFromSheet_(id);
 
-    if (!position) {
-      position = readLegacyCouncilPosition_(id);
+    if (!explicitPosition) {
+      var legacy = readLegacyCouncilPosition_(id);
+
+      if (legacy) {
+        try {
+          explicitPosition = writeCouncilPositionToSheet_(
+            id,
+            legacy,
+            'migration'
+          );
+        } catch (e) {
+          explicitPosition = legacy;
+        }
+      }
     }
+
+    var include = false;
+    var position = explicitPosition;
 
     if (position) {
       include = true;
@@ -438,10 +419,9 @@ function getCouncilDirectoryEntries_() {
       var accessRole = '';
 
       try {
-        accessRole =
-          typeof getUserRole === 'function'
-            ? String(getUserRole(id) || '')
-            : '';
+        accessRole = typeof getUserRole === 'function'
+          ? String(getUserRole(id) || '')
+          : '';
       } catch (e2) {}
 
       if (
@@ -584,91 +564,6 @@ function appGetSpecialAccess(initData) {
   };
 }
 
-/* CAMPUS_ROLE_USERS_FAST_HOTFIX_14_1_3 */
-function buildCouncilRoleUsersFast_() {
-  var positionMap=
-    readCouncilPositionMapFast_();
-
-  return getCampusKnownUserIds_()
-    .map(function(id) {
-      id=String(id||'');
-
-      var info=
-        getCampusUserInfo_(id);
-
-      var position=
-        positionMap[id]||null;
-
-      if(!position){
-        position=
-          readLegacyCouncilPosition_(id);
-      }
-
-      if(!position){
-        if(
-          typeof OWNER_ID!=='undefined' &&
-          id===String(OWNER_ID)
-        ){
-          position={
-            roleId:'sector_head',
-            sector:'СДК',
-            label:'Глава СДК',
-            source:'owner-default'
-          };
-        }else{
-          var accessRole='';
-
-          try{
-            accessRole=
-              typeof getUserRole==='function'
-                ? String(getUserRole(id)||'')
-                : '';
-          }catch(e){}
-
-          if(
-            accessRole
-              .toLowerCase()
-              .indexOf('актив')!==-1
-          ){
-            position={
-              roleId:'activist',
-              sector:'',
-              label:'Активист',
-              source:'access-role'
-            };
-          }else{
-            position={
-              roleId:'member',
-              sector:'',
-              label:
-                accessRole||
-                'Участник',
-              source:'default'
-            };
-          }
-        }
-      }
-
-      return {
-        id:id,
-        name:info.name,
-        username:info.username,
-        photoUrl:info.photoUrl,
-        role:position.label,
-        accessRole:
-          getCampusAccessRole_(id),
-        position:position
-      };
-    })
-    .sort(function(a,b) {
-      return String(a.name)
-        .localeCompare(
-          String(b.name),
-          'ru'
-        );
-    });
-}
-
 function appGetCouncilRoles(initData) {
   var session = getAppSession_(initData);
 
@@ -678,15 +573,33 @@ function appGetCouncilRoles(initData) {
     );
   }
 
+  var users = getCampusKnownUserIds_().map(function(id) {
+    var info = getCampusUserInfo_(id);
+    var position = getCouncilPosition_(id);
+
+    return {
+      id: id,
+      name: info.name,
+      username: info.username,
+      photoUrl: info.photoUrl,
+      role: position.label,
+      accessRole: getCampusAccessRole_(id),
+      position: position
+    };
+  });
+
+  users.sort(function(a, b) {
+    return String(a.name).localeCompare(
+      String(b.name),
+      'ru'
+    );
+  });
+
   return {
-    users:
-      buildCouncilRoleUsersFast_(),
-    roles:
-      getCouncilRoleDefinitions_(),
-    sectors:
-      getCouncilSectors_(),
-    storage:
-      CAMPUS_ROLE_SHEET_V13_12_5
+    users: users,
+    roles: getCouncilRoleDefinitions_(),
+    sectors: getCouncilSectors_(),
+    storage: CAMPUS_ROLE_SHEET_V13_12_5
   };
 }
 

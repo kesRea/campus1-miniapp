@@ -256,15 +256,19 @@ async function renderReleaseTester(){
     <div id="releaseTestFinish"></div>`;
 }
 
-/* CAMPUS_RELEASE_TEST_HOTFIX_14_1_3 */
 async function runReleaseTester(){
   if(!specialAuthorized()){
     return renderSpecial();
   }
 
-  const button=$('#runReleaseTestBtn');
-  const results=$('#releaseTestResults');
-  const summary=$('#releaseTestSummary');
+  const button=
+    $('#runReleaseTestBtn');
+
+  const results=
+    $('#releaseTestResults');
+
+  const summary=
+    $('#releaseTestSummary');
 
   if(button){
     button.disabled=true;
@@ -277,13 +281,19 @@ async function runReleaseTester(){
   }
 
   const tests=[];
+  let serverVersion='';
+  let manifestVersion='';
   let maintenanceEnabled=false;
 
-  const add=(status,label,detail)=>{
+  const add=(
+    status,
+    label,
+    detail
+  )=>{
     tests.push({
-      status:String(status||'fail'),
-      label:String(label||'Проверка'),
-      detail:String(detail||'')
+      status,
+      label,
+      detail
     });
   };
 
@@ -311,7 +321,7 @@ async function runReleaseTester(){
     const manifest=
       await response.json();
 
-    const manifestVersion=
+    manifestVersion=
       String(
         manifest?.version||''
       );
@@ -341,49 +351,95 @@ async function runReleaseTester(){
   }
 
   try{
-    const started=Date.now();
+    const access=
+      await apiRequest(
+        'appGetSpecialAccess',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
 
+    serverVersion=
+      String(
+        access?.appVersion||''
+      );
+
+    add(
+      access?.canOpen
+        ? 'pass'
+        : 'fail',
+      'Права панели',
+      access?.canOpen
+        ? (
+          access.isOwner
+            ? 'Подтверждён владелец.'
+            : 'Подтверждён разработчик.'
+        )
+        : 'Сервер не подтвердил специальный доступ.'
+    );
+
+    add(
+      serverVersion===APP_VERSION
+        ? 'pass'
+        : 'fail',
+      'Версии frontend / backend',
+      serverVersion===APP_VERSION
+        ? `Обе версии v${APP_VERSION}.`
+        : `Frontend v${APP_VERSION}, backend v${serverVersion||'—'}.`
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Специальный доступ / backend',
+      e.message||String(e)
+    );
+  }
+
+  try{
+    const maintenance=
+      await apiRequest(
+        'appGetMaintenanceStatus',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    maintenanceEnabled=
+      !!maintenance?.enabled;
+
+    add(
+      maintenanceEnabled
+        ? 'pass'
+        : 'warn',
+      'Технические работы',
+      maintenanceEnabled
+        ? 'Включены. Остальные пользователи заблокированы во время проверки.'
+        : 'Выключены. Проверять безопаснее при включённых техработах.'
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Технические работы',
+      e.message||String(e)
+    );
+  }
+
+  try{
     const diagnostic=
       await apiRequest(
         'appRunReleaseDiagnostics',
         [state.initData],
         {
           ttl:0,
-          force:true,
-          timeoutMs:35000
+          force:true
         }
       );
-
-    const latency=
-      Date.now()-started;
-
-    const serverVersion=
-      String(
-        diagnostic?.serverVersion||''
-      );
-
-    maintenanceEnabled=
-      !!diagnostic?.maintenance?.enabled;
-
-    add(
-      serverVersion===BACKEND_COMPAT_VERSION
-        ? 'pass'
-        : 'fail',
-      'Версии frontend / backend',
-      serverVersion===BACKEND_COMPAT_VERSION
-        ? `Frontend v${APP_VERSION} совместим с backend v${serverVersion}.`
-        : `Frontend v${APP_VERSION}, ожидаемый backend v${BACKEND_COMPAT_VERSION}, получен v${serverVersion||'—'}.`
-    );
-
-    add(
-      latency<8000
-        ? 'pass'
-        : latency<18000
-          ? 'warn'
-          : 'fail',
-      'Скорость backend',
-      `Полная серверная диагностика: ${latency} мс.`
-    );
 
     (diagnostic?.tests||[])
       .forEach(item=>{
@@ -397,7 +453,121 @@ async function runReleaseTester(){
   }catch(e){
     add(
       'fail',
-      'Backend / диагностика',
+      'Серверный тест',
+      e.message||String(e)
+    );
+  }
+
+  try{
+    const roles=
+      await apiRequest(
+        'appGetCouncilRoles',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    add(
+      'pass',
+      'Роли и секторы',
+      `Участников в управлении ролями: ${(roles?.users||[]).length}.`
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Роли и секторы',
+      e.message||String(e)
+    );
+  }
+
+  try{
+    const council=
+      await apiRequest(
+        'appGetCouncil',
+        [state.initData,'council'],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    const activists=
+      await apiRequest(
+        'appGetCouncil',
+        [state.initData,'activists'],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    add(
+      'pass',
+      'Отображение состава',
+      `Студсовет: ${(council?.rows||[]).length}, активисты: ${(activists?.rows||[]).length}.`
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Отображение состава',
+      e.message||String(e)
+    );
+  }
+
+  try{
+    const tasks=
+      await apiRequest(
+        'appGetTasks',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    add(
+      'pass',
+      'Задачи',
+      `API задач отвечает. Видимых задач: ${(tasks||[]).length}.`
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Задачи',
+      e.message||String(e)
+    );
+  }
+
+  try{
+    const rooms=
+      await apiRequest(
+        'appGetRooms',
+        [state.initData],
+        {
+          ttl:0,
+          force:true
+        }
+      );
+
+    add(
+      Array.isArray(rooms)
+        ? 'pass'
+        : 'fail',
+      'Комнаты',
+      Array.isArray(rooms)
+        ? `API комнат отвечает. Комнат: ${rooms.length}.`
+        : 'API комнат вернул неожиданный ответ.'
+    );
+
+  }catch(e){
+    add(
+      'fail',
+      'Комнаты',
       e.message||String(e)
     );
   }
