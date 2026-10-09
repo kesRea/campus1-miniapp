@@ -552,7 +552,15 @@ async function apiRequest(method,args=[],options={}){
 
   const promise=(async()=>{
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),22000);
+    /* CAMPUS_DIAG_TIMEOUT_HOTFIX_14_1_3 */
+    const timeoutMs=Math.max(
+      5000,
+      Number(options.timeoutMs)||22000
+    );
+    const timer=setTimeout(
+      ()=>controller.abort(),
+      timeoutMs
+    );
     try{
       const response=await fetch(CAMPUS_API_URL,{
         method:'POST', redirect:'follow', signal:controller.signal,

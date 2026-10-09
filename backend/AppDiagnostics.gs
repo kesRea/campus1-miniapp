@@ -1,4 +1,4 @@
-/* CAMPUS_RELEASE_DIAGNOSTICS_V13_12_5 */
+/* CAMPUS_RELEASE_DIAGNOSTICS_V14_1_3_HOTFIX */
 function releaseDiagItem_(
   id,
   label,
@@ -14,7 +14,8 @@ function releaseDiagItem_(
 }
 
 function appRunReleaseDiagnostics(initData) {
-  var session = getAppIdentity_(initData);
+  var totalStarted=Date.now();
+  var session=getAppSession_(initData);
 
   if (
     !session.isOwner &&
@@ -25,8 +26,8 @@ function appRunReleaseDiagnostics(initData) {
     );
   }
 
-  var tests = [];
-  var maintenance =
+  var tests=[];
+  var maintenance=
     getMaintenanceState_();
 
   tests.push(
@@ -48,13 +49,14 @@ function appRunReleaseDiagnostics(initData) {
         ? 'pass'
         : 'warn',
       maintenance.enabled
-        ? 'Технические работы включены. Можно безопасно тестировать до открытия приложения для остальных.'
+        ? 'Технические работы включены.'
         : 'Технические работы выключены.'
     )
   );
 
   try {
-    var roleSheet =
+    var started=Date.now();
+    var roleSheet=
       ensureCouncilRoleSheet_();
 
     tests.push(
@@ -62,11 +64,14 @@ function appRunReleaseDiagnostics(initData) {
         'roles',
         'Хранилище ролей',
         'pass',
-        'Campus_Роли доступен. Записей: ' +
+        'Campus_Роли: '+
           Math.max(
             0,
-            roleSheet.getLastRow() - 1
-          )
+            roleSheet.getLastRow()-1
+          )+
+          ' записей · '+
+          (Date.now()-started)+
+          ' мс'
       )
     );
   } catch (e1) {
@@ -75,31 +80,57 @@ function appRunReleaseDiagnostics(initData) {
         'roles',
         'Хранилище ролей',
         'fail',
-        e1.message || String(e1)
+        e1.message||String(e1)
       )
     );
   }
 
   try {
-    var council =
-      buildCouncilDirectoryTable_(
-        'council'
-      );
+    var startedRoles=Date.now();
+    var roleUsers=
+      buildCouncilRoleUsersFast_();
 
-    var activists =
-      buildCouncilDirectoryTable_(
-        'activists'
-      );
+    tests.push(
+      releaseDiagItem_(
+        'role-users',
+        'Управление ролями',
+        'pass',
+        'Пользователей: '+
+          roleUsers.length+
+          ' · '+
+          (Date.now()-startedRoles)+
+          ' мс'
+      )
+    );
+  } catch (eRoleUsers) {
+    tests.push(
+      releaseDiagItem_(
+        'role-users',
+        'Управление ролями',
+        'fail',
+        eRoleUsers.message||
+          String(eRoleUsers)
+      )
+    );
+  }
+
+  try {
+    var startedCouncil=Date.now();
+    var counts=
+      getCouncilDirectoryCounts_();
 
     tests.push(
       releaseDiagItem_(
         'council-sync',
         'Студсовет и активисты',
         'pass',
-        'Студсовет: ' +
-          council.rows.length +
-          ', активисты: ' +
-          activists.rows.length
+        'Студсовет: '+
+          counts.council+
+          ', активисты: '+
+          counts.activists+
+          ' · '+
+          (Date.now()-startedCouncil)+
+          ' мс'
       )
     );
   } catch (e2) {
@@ -108,13 +139,14 @@ function appRunReleaseDiagnostics(initData) {
         'council-sync',
         'Студсовет и активисты',
         'fail',
-        e2.message || String(e2)
+        e2.message||String(e2)
       )
     );
   }
 
   try {
-    var rooms =
+    var startedRooms=Date.now();
+    var rooms=
       getCampusRooms_();
 
     tests.push(
@@ -124,8 +156,11 @@ function appRunReleaseDiagnostics(initData) {
         rooms.length
           ? 'pass'
           : 'fail',
-        'Доступно комнат: ' +
-          rooms.length
+        'Доступно комнат: '+
+          rooms.length+
+          ' · '+
+          (Date.now()-startedRooms)+
+          ' мс'
       )
     );
   } catch (e3) {
@@ -134,13 +169,14 @@ function appRunReleaseDiagnostics(initData) {
         'rooms',
         'Комнаты',
         'fail',
-        e3.message || String(e3)
+        e3.message||String(e3)
       )
     );
   }
 
   try {
-    var studentValues =
+    var startedStudents=Date.now();
+    var studentValues=
       getStudentDisplayRows_().values;
 
     tests.push(
@@ -148,11 +184,14 @@ function appRunReleaseDiagnostics(initData) {
         'students',
         'База студентов',
         'pass',
-        'Строк данных: ' +
+        'Строк данных: '+
           Math.max(
             0,
-            studentValues.length - 1
-          )
+            studentValues.length-1
+          )+
+          ' · '+
+          (Date.now()-startedStudents)+
+          ' мс'
       )
     );
   } catch (e4) {
@@ -161,12 +200,14 @@ function appRunReleaseDiagnostics(initData) {
         'students',
         'База студентов',
         'fail',
-        e4.message || String(e4)
+        e4.message||String(e4)
       )
     );
   }
 
   try {
+    var startedTasks=Date.now();
+
     if (
       typeof readAllTasks_ !==
       'function'
@@ -176,7 +217,7 @@ function appRunReleaseDiagnostics(initData) {
       );
     }
 
-    var tasks =
+    var tasks=
       readAllTasks_();
 
     tests.push(
@@ -184,8 +225,11 @@ function appRunReleaseDiagnostics(initData) {
         'tasks',
         'Задачи',
         'pass',
-        'Хранилище задач доступно. Задач: ' +
-          tasks.length
+        'Задач: '+
+          tasks.length+
+          ' · '+
+          (Date.now()-startedTasks)+
+          ' мс'
       )
     );
   } catch (e5) {
@@ -194,25 +238,27 @@ function appRunReleaseDiagnostics(initData) {
         'tasks',
         'Задачи',
         'fail',
-        e5.message || String(e5)
+        e5.message||String(e5)
       )
     );
   }
 
-  var failed =
+  var failed=
     tests.filter(function(item) {
-      return item.status === 'fail';
+      return item.status==='fail';
     }).length;
 
-  var warnings =
+  var warnings=
     tests.filter(function(item) {
-      return item.status === 'warn';
+      return item.status==='warn';
     }).length;
 
   return {
-    ok: failed === 0,
+    ok: failed===0,
     failed: failed,
     warnings: warnings,
+    durationMs:
+      Date.now()-totalStarted,
     serverVersion:
       CAMPUS_BACKEND_VERSION_V13_12_5,
     developerId:
