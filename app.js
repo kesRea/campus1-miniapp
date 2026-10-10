@@ -540,15 +540,62 @@ async function apiRequest(method,args=[],options={}){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),22000);
     try{
-      const response=await fetch(CAMPUS_API_URL,{
-        method:'POST', redirect:'follow', signal:controller.signal,
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify({method,args})
-      });
-      const text=await response.text();
-      let data;
-      try{ data=JSON.parse(text); }
-      catch(e){ throw new Error('Campus API вернул не JSON. Обновите приложение.'); }
+      /* CAMPUS_V14_JSON_RETRY_HOTFIX
+         Retry exactly once ONLY for read-only requests when the proxy /
+         Apps Script temporarily returns HTML or another non-JSON body.
+         Write requests are never retried automatically to avoid duplicates. */
+      const fetchCampusAttempt=async()=>{
+        const response=await fetch(CAMPUS_API_URL,{
+          method:'POST',
+          redirect:'follow',
+          signal:controller.signal,
+          headers:{
+            'Content-Type':'text/plain;charset=utf-8'
+          },
+          body:JSON.stringify({method,args})
+        });
+
+        const text=await response.text();
+
+        let data=null;
+        let jsonOk=true;
+
+        try{
+          data=JSON.parse(text);
+        }catch(e){
+          jsonOk=false;
+        }
+
+        return {
+          response,
+          data,
+          jsonOk
+        };
+      };
+
+      let attempt=
+        await fetchCampusAttempt();
+
+      if(
+        !attempt.jsonOk &&
+        readOnly
+      ){
+        await new Promise(
+          resolve=>setTimeout(resolve,700)
+        );
+
+        attempt=
+          await fetchCampusAttempt();
+      }
+
+      if(!attempt.jsonOk){
+        throw new Error(
+          'Campus API временно вернул некорректный ответ. Повторите попытку.'
+        );
+      }
+
+      const response=attempt.response;
+      const data=attempt.data;
       if(data.code==='CAMPUS_MAINTENANCE') {maintenanceOverlay({message:data.error});beginMaintenancePolling();}
       if(!response.ok || !data.ok){
         let message=data?.error || 'Ошибка Campus API.';
