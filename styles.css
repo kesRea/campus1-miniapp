@@ -2086,3 +2086,64 @@ html[data-theme="dark"] .home-campus-mark{opacity:.20}
   }
   .campus-logo-name-v143{font-size:45px}
 }
+
+
+/* CAMPUS_V14_2_SEASONAL_HERO */
+.hero-panel-objects{
+  min-height:148px;
+  isolation:isolate;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(48,111,255,.16), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb,var(--surface) 97%,#fff), color-mix(in srgb,var(--surface-2) 84%, var(--blue-soft)));
+}
+html[data-theme="dark"] .hero-panel-objects{
+  background:
+    radial-gradient(circle at 100% 0%, rgba(48,111,255,.18), transparent 34%),
+    linear-gradient(145deg,#10192a 0%, #152339 62%, #0f2238 100%);
+}
+.hero-panel-objects::before{width:230px;height:230px;right:-98px;top:-98px;opacity:.78}
+.hero-panel-objects .hero-copy,
+.hero-panel-objects .hero-side{z-index:4}
+.hero-panel-objects .hero-copy{max-width:68%}
+.hero-panel-objects .hero-copy p{font-size:11px;margin-top:8px}
+
+.home-object-scene{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;border-radius:inherit}
+.home-orbit{position:absolute;border:1px solid color-mix(in srgb,var(--blue) 16%,transparent);border-radius:50%}
+.home-orbit-a{width:180px;height:180px;right:-58px;top:-86px}
+.home-orbit-b{width:126px;height:126px;right:-18px;bottom:-84px;border-color:color-mix(in srgb,var(--blue) 10%,transparent)}
+
+.home-campus-mark{position:absolute;right:28px;bottom:18px;width:98px;height:72px;opacity:.18}
+html[data-theme="dark"] .home-campus-mark{opacity:.22}
+.home-campus-roof-left,.home-campus-roof-right{position:absolute;top:10px;height:6px;background:var(--blue);border-radius:999px}
+.home-campus-roof-left{left:8px;width:40px;transform:rotate(-28deg);transform-origin:left center}
+.home-campus-roof-right{left:50px;width:40px;transform:rotate(28deg);transform-origin:right center}
+.home-campus-window{position:absolute;top:30px;width:14px;height:26px;background:var(--blue);border-radius:2px;opacity:.95}
+.home-campus-window.win-left{left:34px}
+.home-campus-window.win-right{left:52px}
+
+.home-object-dot{position:absolute;border-radius:50%;background:var(--blue);opacity:.10}
+.dot-a{width:7px;height:7px;right:119px;top:23px}.dot-b{width:4px;height:4px;right:94px;top:54px;opacity:.18}.dot-c{width:5px;height:5px;right:140px;bottom:20px;opacity:.12}
+
+.home-season-emoji{position:absolute;display:grid;place-items:center;font-size:22px;line-height:1;filter:drop-shadow(0 4px 10px rgba(22,38,74,.18));opacity:.92}
+.home-season-emoji.emoji-a{right:98px;top:14px;transform:rotate(-12deg)}
+.home-season-emoji.emoji-b{right:10px;top:62px;transform:rotate(14deg)}
+.home-season-emoji.emoji-c{right:80px;bottom:4px;transform:rotate(-8deg)}
+.season-winter .home-season-emoji{filter:drop-shadow(0 4px 10px rgba(84,155,255,.18))}
+.season-spring .home-season-emoji{filter:drop-shadow(0 4px 10px rgba(114,176,109,.18))}
+.season-summer .home-season-emoji{filter:drop-shadow(0 4px 10px rgba(210,164,54,.18))}
+.season-autumn .home-season-emoji{filter:drop-shadow(0 4px 10px rgba(166,104,35,.18))}
+
+@media(max-width:430px){
+  .hero-panel-objects{min-height:136px;padding:18px 15px}
+  .hero-panel-objects .hero-copy{max-width:72%}
+  .hero-panel-objects .hero-copy h1{font-size:24px}
+  .home-campus-mark{width:84px;height:60px;right:16px;bottom:14px}
+  .home-campus-roof-left{left:8px;width:34px}
+  .home-campus-roof-right{left:42px;width:34px}
+  .home-campus-window{top:25px;width:12px;height:22px}
+  .home-campus-window.win-left{left:28px}.home-campus-window.win-right{left:44px}
+  .home-season-emoji.emoji-a{right:74px;top:12px}.home-season-emoji.emoji-b{right:4px;top:54px}.home-season-emoji.emoji-c{right:60px;bottom:2px}
+}
+@media(max-width:350px){.hero-panel-objects .hero-copy{max-width:78%}.hero-panel-objects .hero-side{display:none}.home-campus-mark{opacity:.14}}
+/* END_CAMPUS_V14_2_SEASONAL_HERO */

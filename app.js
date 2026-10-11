@@ -841,107 +841,107 @@ async function render(page,opts={}){
 }
 
 /* CAMPUS_V14_1_HOME_OBJECTS */
-function homeHeroObjectsHtml(){
-  const autumn = state.seasonResolved === 'autumn';
-  return `
-    <div class="home-object-scene" aria-hidden="true">
-      <span class="home-orbit home-orbit-a"></span>
-      <span class="home-orbit home-orbit-b"></span>
-
-      <span class="home-campus-mark">
-        <span class="home-campus-roof"></span>
-        <span class="home-campus-building">
-          <i></i><i></i><i></i>
-        </span>
-      </span>
-
-      <span class="home-object-dot dot-a"></span>
-      <span class="home-object-dot dot-b"></span>
-      <span class="home-object-dot dot-c"></span>
-
-      ${autumn ? `
-        <span class="home-object-leaf leaf-a">${autumnLeafSvg(0)}</span>
-        <span class="home-object-leaf leaf-b">${autumnLeafSvg(1)}</span>
-        <span class="home-object-leaf leaf-c">${autumnLeafSvg(2)}</span>
-      ` : ''}
-    </div>`;
+/* CAMPUS_V14_2_SEASONAL_HERO_HELPERS */
+function seasonHeroEmojis(){
+  const season = state.seasonResolved || 'autumn';
+  if(season==='winter') return [
+    {cls:'emoji-a', value:'❄️'},
+    {cls:'emoji-b', value:'☃️'},
+    {cls:'emoji-c', value:'✨'}
+  ];
+  if(season==='spring') return [
+    {cls:'emoji-a', value:'🌸'},
+    {cls:'emoji-b', value:'🌿'},
+    {cls:'emoji-c', value:'🪻'}
+  ];
+  if(season==='summer') return [
+    {cls:'emoji-a', value:'☀️'},
+    {cls:'emoji-b', value:'🍃'},
+    {cls:'emoji-c', value:'🌼'}
+  ];
+  return [
+    {cls:'emoji-a', value:'🍁'},
+    {cls:'emoji-b', value:'🍂'},
+    {cls:'emoji-c', value:'✨'}
+  ];
 }
+
+function homeHeroObjectsHtml(){
+  const season = state.seasonResolved || 'autumn';
+  const emojis = seasonHeroEmojis().map(item => 
+    '<span class="home-season-emoji '+item.cls+'">'+item.value+'</span>'
+  ).join('');
+  return 
+    '<div class="home-object-scene season-'+season+'" aria-hidden="true">' +
+      '<span class="home-orbit home-orbit-a"></span>' +
+      '<span class="home-orbit home-orbit-b"></span>' +
+      '<span class="home-campus-mark">' +
+        '<span class="home-campus-roof-left"></span>' +
+        '<span class="home-campus-roof-right"></span>' +
+        '<span class="home-campus-window win-left"></span>' +
+        '<span class="home-campus-window win-right"></span>' +
+      '</span>' +
+      '<span class="home-object-dot dot-a"></span>' +
+      '<span class="home-object-dot dot-b"></span>' +
+      '<span class="home-object-dot dot-c"></span>' +
+      emojis +
+    '</div>';
+}
+/* END_CAMPUS_V14_2_SEASONAL_HERO_HELPERS */
 
 function renderHome(){
-  const d=state.dashboard||{};
-  const occupancy=d.totalRooms ? Math.round((d.occupiedRooms||0)/d.totalRooms*100) : 0;
-  $('#view').innerHTML=`
-    <section class="hero-panel hero-panel-objects fade-in">
-      ${winterGarlandHtml()}
-      ${homeHeroObjectsHtml()}
-      <div class="hero-copy">
-        <small>Добро пожаловать,</small>
-        <h1>${esc(state.user?.firstName || 'Пользователь')}</h1>
-        <p>Campus №1 · ${esc(roleLabel(state.user))}</p>
-      </div>
-      <div class="hero-side">
-        <span class="role-chip">${esc(roleLabel(state.user))}</span>
-      </div>
-    </section>
+  const d = state.dashboard || {};
+  const occupancy = d.totalRooms ? Math.round((d.occupiedRooms || 0) / d.totalRooms * 100) : 0;
+  const season = state.seasonResolved || 'autumn';
+  $('#view').innerHTML = 
+    '<section class="hero-panel hero-panel-objects season-'+season+' fade-in">' +
+      homeHeroObjectsHtml() +
+      '<div class="hero-copy">' +
+        '<small>Добро пожаловать,</small>' +
+        '<h1>' + esc((state.user && state.user.firstName) || 'Пользователь') + '</h1>' +
+        '<p>Campus №1 · ' + esc(roleLabel(state.user)) + '</p>' +
+      '</div>' +
+      '<div class="hero-side">' +
+        '<span class="role-chip">' + esc(roleLabel(state.user)) + '</span>' +
+      '</div>' +
+    '</section>' +
 
-    <form class="global-search fade-in" onsubmit="homeSearch(event)">
-      <span class="mini-icon">${icon('search')}</span>
-      <input id="homeSearchInput" autocomplete="off" placeholder="Поиск студента, комнаты, ИИН…">
-      <button class="search-action" type="submit">Найти</button>
-    </form>
+    '<form class="global-search fade-in" onsubmit="homeSearch(event)">' +
+      '<span class="mini-icon">' + icon('search') + '</span>' +
+      '<input id="homeSearchInput" autocomplete="off" placeholder="Поиск студента, комнаты, ИИН…">' +
+      '<button class="search-action" type="submit">Найти</button>' +
+    '</form>' +
 
-    <div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render('analytics')">Аналитика</button></div>
-    <div class="stats-grid fade-in">
-      ${statCard('users',d.currentStudents||0,'Заселено сейчас','green','students')}
-      ${statCard('door',d.freeRooms||0,'Свободно комнат','','rooms')}
-      ${statCard('globe',d.foreigners||0,'Иностранные','','foreigners')}
-      ${statCard('council',(d.council||0)+(d.activists||0),'Студсовет и активисты','','council')}
-    </div>
+    '<div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render(\'analytics\')">Аналитика</button></div>' +
+    '<div class="stats-grid fade-in">' +
+      statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students') +
+      statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms') +
+      statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners') +
+      statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council') +
+    '</div>' +
 
-    <div class="section-heading fade-in"><h2>Быстрые действия</h2></div>
-    <div class="action-grid fade-in">
-      ${canManage()?actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
-      ${actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
-      ${canManage()?actionCard('swap','Переселить','Найти студента и сменить комнату',"openQuickMove()"):actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
-      ${actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
-    </div>
+    '<div class="section-heading fade-in"><h2>Быстрые действия</h2></div>' +
+    '<div class="action-grid fade-in">' +
+      (canManage() ? actionCard('plus', 'Заселить', 'Добавить нового студента', "openAddStudent()") : '') +
+      actionCard('search', 'Найти студента', 'ФИО, ИИН или комната', "render('students')") +
+      (canManage() ? actionCard('swap', 'Переселить', 'Найти студента и сменить комнату', "openQuickMove()") : actionCard('grid', 'Комнаты', 'Занятость Campus №1', "render('rooms')")) +
+      actionCard('chart', 'Аналитика', 'Динамика заселения', "render('analytics')") +
+    '</div>' +
 
-    <div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>
-    <div class="capacity-card fade-in" onclick="render('rooms')">
-      <div class="capacity-row"><b>Занято ${d.occupiedRooms||0} из ${d.totalRooms||0} комнат</b><span>${occupancy}%</span></div>
-      <div class="progress"><span style="width:${Math.min(100,occupancy)}%"></span></div>
-      <div class="capacity-meta"><span>${d.currentStudents||0} проживающих</span><span>${d.freeRooms||0} свободно</span></div>
-    </div>
+    '<div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>' +
+    '<div class="capacity-card fade-in" onclick="render(\'rooms\')">' +
+      '<div class="capacity-row"><b>Занято ' + (d.occupiedRooms || 0) + ' из ' + (d.totalRooms || 0) + ' комнат</b><span>' + occupancy + '%</span></div>' +
+      '<div class="progress"><span style="width:' + Math.min(100, occupancy) + '%"></span></div>' +
+      '<div class="capacity-meta"><span>' + (d.currentStudents || 0) + ' проживающих</span><span>' + (d.freeRooms || 0) + ' свободно</span></div>' +
+    '</div>' +
 
-    <button class="task-promo fade-in" type="button" onclick="render('tasks')">
-      <span class="action-icon">${icon('clipboard')}</span>
-      <span class="task-promo-copy"><b>Задачи и проекты</b><small>Поручения, делегирование и сроки</small></span>
-      <span class="arrow">›</span>
-    </button>`;
+    '<button class="task-promo fade-in" type="button" onclick="render(\'tasks\')">' +
+      '<span class="action-icon">' + icon('clipboard') + '</span>' +
+      '<span class="task-promo-copy"><b>Задачи и проекты</b><small>Поручения, делегирование и сроки</small></span>' +
+      '<span class="arrow">›</span>' +
+    '</button>';
 }
 
-function statCard(iconName,value,label,tone,page){ return `<button class="stat-card ${tone||''}" type="button" onclick="render('${page}')"><div class="stat-top"><span class="mini-icon">${icon(iconName)}</span></div><span class="stat-value">${Number(value)||0}</span><span class="stat-label">${esc(label)}</span></button>`; }
-function actionCard(iconName,title,subtitle,onclick){ return `<button class="action-card" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(subtitle)}</small></button>`; }
-function homeSearch(e){ e.preventDefault(); const q=$('#homeSearchInput')?.value.trim()||''; render('students',{mode:'all',query:q}); }
-
-async function renderStudents(mode='active',query='',seq=state.renderSeq){
-  $('#view').innerHTML=`${pageHead('Студенты','home')}
-    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)"><button class="search-action" type="submit">Найти</button></form>
-    <div id="studentSearchHint" class="search-hint"></div>
-    <div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button></div>
-    <div id="studentList" class="list">${studentSkeletons()}</div>`;
-
-  if(query){ return doStudentSearch(query,seq); }
-  const cached=state.studentLists[mode];
-  if(cached){
-    drawStudents(cached);
-    if(!coreIsFresh(state.studentListTime[mode],60000)) refreshStudents(mode,seq,true);
-    return;
-  }
-  const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:60000});
-  if(!pageAlive('students',seq)) return;
-  state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list); drawStudents(list);
-}
 function studentSkeletons(){ return Array.from({length:5},()=>'<div class="row-card"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join(''); }
 async function refreshStudents(mode,seq,silent){
   try{
