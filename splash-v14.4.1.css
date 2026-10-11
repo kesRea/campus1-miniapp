@@ -1,0 +1,140 @@
+/* CAMPUS_V14_4_1_SPLASH_ONLY: all rules scoped to auth splash.
+   Dashboard, navigation, Telegram boot, authorization, seasonal views and backend unchanged. */
+.splash.splash-v144 {
+  box-sizing:border-box;
+  min-height:100vh;
+  min-height:100svh;
+  width:100%;
+  padding:env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px) !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff !important;
+  color:#0b3067 !important;
+  color-scheme:light !important;
+  overflow-y:auto;
+}
+.splash-v144 .splash-card.splash-card-clean {
+  box-sizing:border-box;
+  width:min(100%,430px);
+  min-height:calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin:0 auto;
+  padding:clamp(24px,5vh,50px) 6px 18px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+.splash-v144 .splash-logo-holder {
+  width:94px !important;
+  max-width:none;
+  height:84px;
+  margin:0 0 12px !important;
+  display:grid;
+  place-items:center;
+  overflow:visible;
+}
+.splash-v144 .splash-logo-holder .campus-logo-mini {
+  display:block;
+  width:94px !important;
+  height:80px !important;
+  overflow:visible;
+}
+.splash-v144 .splash-campus-title {
+  color:#0b3291 !important;
+  font-size:clamp(27px,7vw,34px) !important;
+  font-weight:850 !important;
+  line-height:1.1 !important;
+  letter-spacing:-.035em !important;
+  margin:0 0 7px !important;
+}
+.splash-v144 .splash-campus-subtitle {
+  color:#50698e !important;
+  font-size:clamp(13px,3.5vw,16px) !important;
+  font-weight:500;
+  line-height:1.4 !important;
+  margin:0 !important;
+}
+.splash-v144 .splash-dorm-scene {
+  width:100%;
+  flex:1 1 auto;
+  min-height:192px;
+  max-height:325px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:clamp(12px,3vh,22px) 0 clamp(15px,3vh,28px);
+}
+.splash-v144 .splash-dorm-art {
+  display:block;
+  width:100%;
+  max-width:410px;
+  height:auto;
+  max-height:300px;
+  object-fit:contain;
+}
+.splash-v144 .splash-login-prompt {
+  width:100%;
+  color:#193f70 !important;
+  font-weight:750;
+  font-size:clamp(16px,4.1vw,20px) !important;
+  line-height:1.35 !important;
+  min-height:26px;
+  margin:0 0 16px !important;
+}
+.splash-v144 .splash-btn {
+  box-sizing:border-box;
+  flex:0 0 auto;
+  width:100%;
+  min-height:62px;
+  margin:0 !important;
+  padding:13px 16px !important;
+  border-radius:17px !important;
+  border:0 !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:11px;
+  background:linear-gradient(115deg,#086af0,#1789ff) !important;
+  color:#fff !important;
+  box-shadow:0 7px 16px rgba(12,103,235,.15) !important;
+  cursor:pointer;
+}
+.splash-v144 .splash-btn:focus-visible {outline:3px solid #8dbfff;outline-offset:3px}
+.splash-v144 .splash-btn:disabled {opacity:.78;cursor:progress}
+.splash-v144 .splash-button-icon {width:24px;height:24px;display:grid;place-items:center;flex:0 0 auto}
+.splash-v144 .splash-button-icon svg {display:block;width:24px;height:24px;fill:#fff}
+.splash-v144 .splash-button-text-v142 {font-size:20px;font-weight:750;line-height:1.2}
+.splash-v144 .splash-note {
+  margin:15px 0 0 !important;
+  font-size:12px !important;
+  line-height:1.45;
+  color:#7889a4 !important;
+}
+.splash-v144 .splash-release {
+  margin-top:auto;
+  padding-top:clamp(20px,5vh,42px);
+  font-size:11px;
+  line-height:1.6;
+  color:#8799b7;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+@media (max-height:650px) {
+  .splash-v144 .splash-card.splash-card-clean {padding-top:16px !important}
+  .splash-v144 .splash-logo-holder {width:72px !important;height:62px;margin-bottom:5px !important}
+  .splash-v144 .splash-logo-holder .campus-logo-mini {width:72px !important;height:60px !important}
+  .splash-v144 .splash-dorm-scene {min-height:128px;max-height:210px;margin:4px 0 10px}
+  .splash-v144 .splash-btn {min-height:50px}
+  .splash-v144 .splash-release {padding-top:12px}
+}
+@media (max-width:350px) {
+  .splash.splash-v144 {padding-left:12px !important;padding-right:12px !important}
+  .splash-v144 .splash-campus-title {font-size:26px !important}
+  .splash-v144 .splash-btn {min-height:54px}
+}

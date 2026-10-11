@@ -15,16 +15,24 @@
   <link rel="stylesheet" href="styles.css?v=14.3.2">
   <link rel="stylesheet" href="tasks.css?v=14.2.0">
   <link rel="stylesheet" href="management.css?v=14.2.0">
+  <link rel="stylesheet" href="splash-v14.4.1.css?v=14.4.1">
 </head>
 <body>
-  <div id="splash" class="splash">
+  <div id="splash" class="splash splash-v144">
     <div class="splash-card splash-card-clean">
       <div id="splashLogoHolder" class="splash-logo-holder" aria-hidden="true"></div>
-      <div class="splash-eyebrow">Toraighyrov University</div>
-      <h1>База данных Campus №1</h1>
-      <p id="splashText">Подключаем Telegram и загружаем данные…</p>
-      <button id="openStateBtn" class="btn btn-primary btn-wide splash-btn" type="button">Проверяем доступ…</button>
-      <div class="splash-note splash-note-lock">Безопасный вход через Telegram</div>
+      <h1 class="splash-campus-title">Campus №1</h1>
+      <p class="splash-campus-subtitle">База данных общежития</p>
+      <div class="splash-dorm-scene" aria-hidden="true">
+        <img class="splash-dorm-art" src="splash-dorm-v14.4.1.svg" alt="" width="460" height="292" decoding="async">
+      </div>
+      <p id="splashText" class="splash-login-prompt">Войдите через Telegram</p>
+      <button id="openStateBtn" class="btn btn-primary btn-wide splash-btn" type="button">
+        <span class="splash-button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 3 2.3 10.8c-1.3.5-1.2 1.3-.2 1.6l4.8 1.5 1.8 5.3c.2.5.4.7.7.7s.5-.1.8-.4l2.5-2.5 5.1 3.8c.9.5 1.6.2 1.8-.9L23 4.6c.3-1.3-.5-1.9-2-1.6ZM8 13.5l10.5-7.1c.5-.3 1 .1.6.5l-8.7 8.4-.4 3-2-4.8Z"/></svg></span>
+        <span class="splash-button-text-v142">Войти</span>
+      </button>
+      <div class="splash-note">Доступ для студенческого совета.</div>
+      <div class="splash-release"><span>Campus №1</span><span id="splashVersion">Версия 14.4.1</span></div>
     </div>
   </div>
 
@@ -82,6 +90,6 @@
   <script src="tasks.js?v=14.2.0"></script>
   <script src="special.js?v=14.2.0"></script>
   <script src="management.js?v=14.2.0"></script>
-  <script src="app.js?v=14.3.2"></script>
+  <script src="app.js?v=14.4.1"></script>
 </body>
 </html>

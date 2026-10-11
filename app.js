@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.3.2';
+const APP_VERSION = '14.4.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.3.2';
+const UPDATE_CENTER_VERSION = '14.4.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.3.2',date:'11 октября 2026',title:'Восстановление разделов',latest:true,items:[
+{version:'14.4.1',date:'12 октября 2026',title:'Новый экран входа',latest:true,items:[
+  'Экран входа обновлён без изменений авторизации.',
+  'Сверху только знак Campus №1; название отображается отдельно.',
+  'Добавлена иллюстрация общежития и надпись для студенческого совета.',
+  'Версия внизу читается из APP_VERSION при каждом запуске.',
+  'Другие экраны, бот и backend не изменены.'
+]},
+{version:'14.3.2',date:'11 октября 2026',title:'Восстановление разделов',latest:false,items:[
  'Восстановлены отображение студентов и кнопки поиска.',
  'Исправлены карточки статистики: больше нет огромных чёрных иконок.',
  'Устранены дублирующиеся обработчики главного экрана.',
@@ -43,7 +50,7 @@ const CAMPUS_UPDATES = [
  'Telegram-бот, Apps Script backend и Cloudflare не изменялись.'
 ]},
 
-{version:'14.1.2',date:'11 октября 2026',title:'Главная без PNG',latest:true,items:[
+{version:'14.1.2',date:'11 октября 2026',title:'Главная без PNG',latest:false,items:[
  'Главный приветственный блок собран из отдельных HTML/CSS/SVG-объектов.',
  'Осенние листья — отдельные жёлтые и коричневые SVG-объекты.',
  'Убран старый слой emoji-листьев в hero.',
@@ -2324,7 +2331,9 @@ function homeHeroObjectsHtml(){
 
 function applyCampusBrandLogos(){
   const splashHolder = document.getElementById('splashLogoHolder');
-  if(splashHolder) splashHolder.innerHTML = campusLogoSvg('splash');
+  if(splashHolder) splashHolder.innerHTML = campusLogoSvg('mini');
+  const versionHolder = document.getElementById('splashVersion');
+  if(versionHolder) versionHolder.textContent = 'Версия ' + APP_VERSION;
 
   const homeLogoBtn = document.getElementById('homeLogoBtn');
   if(homeLogoBtn){
