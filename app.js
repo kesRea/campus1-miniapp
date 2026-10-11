@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.2.0';
+const APP_VERSION = '14.3.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,19 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.2.0';
+const UPDATE_CENTER_VERSION = '14.3.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.2.0',date:'11 октября 2026',title:'Splash + Topbar Objects',latest:true,items:[
+{version:'14.3.1',date:'11 октября 2026',title:'Visual Polish Recovery',latest:true,items:[
+ 'Исправлена синтаксическая ошибка V14.3.',
+ 'Логотип Campus №1 перерисован с ровной симметричной крышей.',
+ 'В hero используется отдельный декоративный знак без искажённой рамки.',
+ 'Возвращены сезонные emoji для осени, зимы, весны и лета.',
+ 'Исправлен Windows commit и push.'
+]},
+
+{version:'14.2.0',date:'11 октября 2026',title:'Splash + Topbar Objects',latest:false,items:[
  'Стартовый экран больше не использует PNG-логотип: знак Campus №1 собран из HTML/CSS-объектов.',
  'Toraighyrov University на стартовом экране показывается только один раз.',
  'Логотип в верхней панели также заменён на аккуратный объектный знак.',
@@ -867,25 +875,21 @@ function seasonHeroEmojis(){
 }
 
 function homeHeroObjectsHtml(){
-  const season = state.seasonResolved || 'autumn';
-  const emojis = seasonHeroEmojis().map(item => 
-    '<span class="home-season-emoji '+item.cls+'">'+item.value+'</span>'
-  ).join('');
-  return 
-    '<div class="home-object-scene season-'+season+'" aria-hidden="true">' +
-      '<span class="home-orbit home-orbit-a"></span>' +
-      '<span class="home-orbit home-orbit-b"></span>' +
-      '<span class="home-campus-mark">' +
-        '<span class="home-campus-roof-left"></span>' +
-        '<span class="home-campus-roof-right"></span>' +
-        '<span class="home-campus-window win-left"></span>' +
-        '<span class="home-campus-window win-right"></span>' +
-      '</span>' +
-      '<span class="home-object-dot dot-a"></span>' +
-      '<span class="home-object-dot dot-b"></span>' +
-      '<span class="home-object-dot dot-c"></span>' +
-      emojis +
-    '</div>';
+  return `
+    <div class="home-object-scene" aria-hidden="true">
+      <span class="home-orbit home-orbit-a"></span>
+      <span class="home-orbit home-orbit-b"></span>
+
+      <div class="home-campus-mark-svg">
+        ${campusLogoSvg('hero')}
+      </div>
+
+      <span class="home-object-dot dot-a"></span>
+      <span class="home-object-dot dot-b"></span>
+      <span class="home-object-dot dot-c"></span>
+
+      ${seasonDecorHtml()}
+    </div>`;
 }
 /* END_CAMPUS_V14_2_SEASONAL_HERO_HELPERS */
 
@@ -2300,3 +2304,154 @@ initTheme();
 bindGlobalEvents();
 injectIcons();
 boot();
+
+
+/* CAMPUS_V14_2_LOGO_SEASONS_PATCH */
+function campusLogoSvg(mode){
+  if(mode === 'mini'){
+    return `
+      <svg class="campus-logo-svg campus-logo-mini" viewBox="0 0 64 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M7 27 L32 11 L57 27" fill="none" stroke="#4A93FF" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="23" y="25" width="7.5" height="15.5" rx="1.2" fill="#4A93FF"/>
+        <rect x="34" y="25" width="7.5" height="15.5" rx="1.2" fill="#4A93FF"/>
+      </svg>`;
+  }
+
+  if(mode === 'hero'){
+    return `
+      <svg class="campus-logo-svg campus-logo-hero" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M20 58 L80 22 L140 58" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="59" y="52" width="16" height="30" rx="2" fill="currentColor"/>
+        <rect x="85" y="52" width="16" height="30" rx="2" fill="currentColor"/>
+      </svg>`;
+  }
+
+  return `
+    <svg class="campus-logo-svg campus-logo-full" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M38 83 L140 25 L242 83" fill="none" stroke="#1976F3" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="111" y="65" width="23" height="37" rx="2" fill="#1976F3"/>
+      <rect x="146" y="65" width="23" height="37" rx="2" fill="#1976F3"/>
+      <text x="140" y="133" text-anchor="middle" class="campus-logo-word">CAMPUS №1</text>
+      <text x="140" y="157" text-anchor="middle" class="campus-logo-sub">COLLEGE</text>
+    </svg>`;
+}
+
+function seasonDecorHtml(){
+  const season = state && state.seasonResolved ? state.seasonResolved : 'autumn';
+
+  const map = {
+    autumn:[['🍂','e1'],['🍁','e2'],['🍂','e3']],
+    winter:[['❄️','e1'],['✨','e2'],['❄️','e3']],
+    spring:[['🌸','e1'],['🦋','e2'],['🌷','e3']],
+    summer:[['☀️','e1'],['🦋','e2'],['🌿','e3']]
+  };
+
+  const list = map[season] || map.autumn;
+
+  return list.map(([emoji,pos]) =>
+    '<span class="hero-season-emoji hero-season-' + season + ' ' + pos + '">' + emoji + '</span>'
+  ).join('');
+}
+
+function homeHeroObjectsHtml(){
+  return `
+    <div class="home-object-scene" aria-hidden="true">
+      <span class="home-orbit home-orbit-a"></span>
+      <span class="home-orbit home-orbit-b"></span>
+      <div class="home-campus-mark-svg">${campusLogoSvg('hero')}</div>
+      <span class="home-object-dot dot-a"></span>
+      <span class="home-object-dot dot-b"></span>
+      <span class="home-object-dot dot-c"></span>
+      ${seasonDecorHtml()}
+    </div>`;
+}
+
+globalThis.statCard = function(iconName, value, label, tone, page){
+  return `
+    <button class="stat-card ${tone || ''}" type="button" onclick="render('${page || 'home'}')">
+      <span class="stat-icon">${icon(iconName)}</span>
+      <b>${value}</b>
+      <small>${label}</small>
+    </button>`;
+};
+
+if(typeof globalThis.actionCard !== 'function'){
+  globalThis.actionCard = function(iconName, title, desc, action){
+    return `
+      <button class="action-card" type="button" onclick="${action}">
+        <span class="action-icon">${icon(iconName)}</span>
+        <b>${title}</b>
+        <small>${desc}</small>
+      </button>`;
+  };
+}
+
+function applyCampusBrandLogos(){
+  const splashHolder = document.getElementById('splashLogoHolder');
+  if(splashHolder) splashHolder.innerHTML = campusLogoSvg('splash');
+
+  const homeLogoBtn = document.getElementById('homeLogoBtn');
+  if(homeLogoBtn){
+    homeLogoBtn.classList.add('brand-button-svg');
+    homeLogoBtn.innerHTML = campusLogoSvg('mini');
+  }
+}
+
+function renderHome(){
+  applyCampusBrandLogos();
+  const d = state.dashboard || {};
+  const occupancy = d.totalRooms ? Math.round((d.occupiedRooms || 0) / d.totalRooms * 100) : 0;
+
+  $('#view').innerHTML = `
+    <section class="hero-panel hero-panel-objects fade-in">
+      ${typeof winterGarlandHtml === 'function' ? winterGarlandHtml() : ''}
+      ${homeHeroObjectsHtml()}
+      <div class="hero-copy">
+        <small>Добро пожаловать,</small>
+        <h1>${esc(state.user?.firstName || 'Пользователь')}</h1>
+        <p>Campus №1 · ${esc(roleLabel(state.user))}</p>
+      </div>
+      <div class="hero-side">
+        <span class="role-chip">${esc(roleLabel(state.user))}</span>
+      </div>
+    </section>
+
+    <form class="global-search fade-in" onsubmit="homeSearch(event)">
+      <span class="mini-icon">${icon('search')}</span>
+      <input id="homeSearchInput" autocomplete="off" placeholder="Поиск студента, комнаты, ИИН…">
+      <button class="search-action" type="submit">Найти</button>
+    </form>
+
+    <div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render('analytics')">Аналитика</button></div>
+    <div class="stats-grid fade-in">
+      ${globalThis.statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students')}
+      ${globalThis.statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms')}
+      ${globalThis.statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners')}
+      ${globalThis.statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council')}
+    </div>
+
+    <div class="section-heading fade-in"><h2>Быстрые действия</h2></div>
+    <div class="action-grid fade-in">
+      ${canManage() ? globalThis.actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
+      ${globalThis.actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
+      ${canManage() ? globalThis.actionCard('swap','Переселить','Найти студента и сменить комнату',"openQuickMove()") : globalThis.actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
+      ${globalThis.actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
+    </div>
+
+    <div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>
+    <div class="capacity-card fade-in" onclick="render('rooms')">
+      <div class="capacity-row"><b>Занято ${d.occupiedRooms || 0} из ${d.totalRooms || 0} комнат</b><span>${occupancy}%</span></div>
+      <div class="progress"><span style="width:${Math.min(100, occupancy)}%"></span></div>
+      <div class="capacity-meta"><span>${d.currentStudents || 0} проживающих</span><span>${d.freeRooms || 0} свободно</span></div>
+    </div>
+
+    <button class="task-promo fade-in" type="button" onclick="render('tasks')">
+      <span class="action-icon">${icon('clipboard')}</span>
+      <span class="task-promo-copy"><b>Задачи и проекты</b><small>Поручения, делегирование и сроки</small></span>
+      <span class="arrow">›</span>
+    </button>`;
+}
+
+document.addEventListener('DOMContentLoaded', applyCampusBrandLogos);
+setTimeout(applyCampusBrandLogos, 50);
+setTimeout(applyCampusBrandLogos, 300);

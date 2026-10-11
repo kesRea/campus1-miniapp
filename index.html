@@ -12,36 +12,19 @@
   <meta name="description" content="Campus №1 — система управления общежитием">
   <!-- CAMPUS_GITHUB_UI_V14_2_1_EXACT_LOGO_GEOMETRY -->
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <link rel="stylesheet" href="styles.css?v=14.2.1-logo">
+  <link rel="stylesheet" href="styles.css?v=14.3.1">
   <link rel="stylesheet" href="tasks.css?v=14.2.0">
   <link rel="stylesheet" href="management.css?v=14.2.0">
 </head>
 <body>
   <div id="splash" class="splash">
-    <div class="splash-card splash-card-v142">
-
-      <div class="splash-brand-v143" aria-label="Campus №1 College">
-        <svg class="campus-full-logo-v143" viewBox="0 0 520 255" role="img" aria-hidden="true">
-          <path class="campus-logo-roof-v143" d="M116 106 L260 29 L404 106"/>
-          <rect class="campus-logo-window-v143" x="226" y="80" width="27" height="57" rx="2"/>
-          <rect class="campus-logo-window-v143" x="267" y="80" width="27" height="57" rx="2"/>
-          <text class="campus-logo-name-v143" x="260" y="181" text-anchor="middle">CAMPUS №1</text>
-          <text class="campus-logo-college-v143" x="260" y="214" text-anchor="middle">COLLEGE</text>
-          <text class="campus-logo-university-v143" x="260" y="246" text-anchor="middle">TORAIGHYROV UNIVERSITY</text>
-        </svg>
-      </div>
+    <div class="splash-card splash-card-clean">
+      <div id="splashLogoHolder" class="splash-logo-holder" aria-hidden="true"></div>
+      <div class="splash-eyebrow">Toraighyrov University</div>
       <h1>База данных Campus №1</h1>
       <p id="splashText">Подключаем Telegram и загружаем данные…</p>
-
-      <button id="openStateBtn" class="btn btn-primary btn-wide splash-access-v142" type="button">
-        <span class="splash-spinner-v142" aria-hidden="true"></span>
-        <span class="splash-button-text-v142">Проверяем доступ…</span>
-      </button>
-
-      <div class="splash-secure-v142">
-        <span class="splash-lock-v142" aria-hidden="true"></span>
-        <span>Безопасный вход через Telegram</span>
-      </div>
+      <button id="openStateBtn" class="btn btn-primary btn-wide splash-btn" type="button">Проверяем доступ…</button>
+      <div class="splash-note splash-note-lock">Безопасный вход через Telegram</div>
     </div>
   </div>
 
@@ -99,6 +82,6 @@
   <script src="tasks.js?v=14.2.0"></script>
   <script src="special.js?v=14.2.0"></script>
   <script src="management.js?v=14.2.0"></script>
-  <script src="app.js?v=14.2.0"></script>
+  <script src="app.js?v=14.3.1"></script>
 </body>
 </html>
