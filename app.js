@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.0.0';
+const APP_VERSION = '14.1.2';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.0.0';
+const UPDATE_CENTER_VERSION = '14.1.2';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.0.0',date:'9 октября 2026',title:'Telegram Avatars + Foreigners',latest:true,items:[
+{version:'14.1.2',date:'11 октября 2026',title:'Главная без PNG',latest:true,items:[
+ 'Главный приветственный блок собран из отдельных HTML/CSS/SVG-объектов.',
+ 'Осенние листья — отдельные жёлтые и коричневые SVG-объекты.',
+ 'Убран старый слой emoji-листьев в hero.',
+ 'Telegram-бот и Apps Script backend не изменялись.'
+]},
+
+{version:'14.0.0',date:'9 октября 2026',title:'Telegram Avatars + Foreigners',latest:false,items:[
  'Возвращены Telegram-аватарки в профиль, Студсовет, Активисты и управление ролями.',
  'Фото Telegram сохраняется при входе пользователя в Mini App и затем показывается в списках.',
  'Раздел «Иностранцы» автоматически дополняется студентами с зарубежной резиденцией из поля «Прописка».',
@@ -817,12 +824,40 @@ async function render(page,opts={}){
   }catch(e){ if(pageAlive(page,seq)) view.innerHTML=`${pageHead('Ошибка','home')}<div class="empty">${esc(e.message)}</div>`; }
 }
 
+/* CAMPUS_V14_1_HOME_OBJECTS */
+function homeHeroObjectsHtml(){
+  const autumn = state.seasonResolved === 'autumn';
+  return `
+    <div class="home-object-scene" aria-hidden="true">
+      <span class="home-orbit home-orbit-a"></span>
+      <span class="home-orbit home-orbit-b"></span>
+
+      <span class="home-campus-mark">
+        <span class="home-campus-roof"></span>
+        <span class="home-campus-building">
+          <i></i><i></i><i></i>
+        </span>
+      </span>
+
+      <span class="home-object-dot dot-a"></span>
+      <span class="home-object-dot dot-b"></span>
+      <span class="home-object-dot dot-c"></span>
+
+      ${autumn ? `
+        <span class="home-object-leaf leaf-a">${autumnLeafSvg(0)}</span>
+        <span class="home-object-leaf leaf-b">${autumnLeafSvg(1)}</span>
+        <span class="home-object-leaf leaf-c">${autumnLeafSvg(2)}</span>
+      ` : ''}
+    </div>`;
+}
+
 function renderHome(){
   const d=state.dashboard||{};
   const occupancy=d.totalRooms ? Math.round((d.occupiedRooms||0)/d.totalRooms*100) : 0;
   $('#view').innerHTML=`
-    <section class="hero-panel fade-in">
+    <section class="hero-panel hero-panel-objects fade-in">
       ${winterGarlandHtml()}
+      ${homeHeroObjectsHtml()}
       <div class="hero-copy">
         <small>Добро пожаловать,</small>
         <h1>${esc(state.user?.firstName || 'Пользователь')}</h1>
@@ -830,9 +865,6 @@ function renderHome(){
       </div>
       <div class="hero-side">
         <span class="role-chip">${esc(roleLabel(state.user))}</span>
-      </div>
-      <div class="hero-leaves" aria-hidden="true">
-        <span>🍁</span><span>🍂</span><span>🍁</span>
       </div>
     </section>
 
@@ -2252,5 +2284,3 @@ initTheme();
 bindGlobalEvents();
 injectIcons();
 boot();
-
-
