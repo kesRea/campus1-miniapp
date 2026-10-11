@@ -10,31 +10,51 @@
   <meta http-equiv="Expires" content="0">
   <title>Campus №1 — База данных</title>
   <meta name="description" content="Campus №1 — система управления общежитием">
-  <!-- CAMPUS_GITHUB_UI_V14_1_2_HOME_OBJECTS -->
+  <!-- CAMPUS_GITHUB_UI_V14_2_SPLASH_TOPBAR_OBJECTS -->
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <link rel="stylesheet" href="styles.css?v=14.1.2">
-  <link rel="stylesheet" href="tasks.css?v=14.1.2">
-  <link rel="stylesheet" href="management.css?v=14.1.2">
+  <link rel="stylesheet" href="styles.css?v=14.2.0">
+  <link rel="stylesheet" href="tasks.css?v=14.2.0">
+  <link rel="stylesheet" href="management.css?v=14.2.0">
 </head>
 <body>
   <div id="splash" class="splash">
-    <div class="splash-card">
-      <div class="splash-logo-wrap">
-        <img class="brand-logo" src="logo.png" alt="Campus №1">
+    <div class="splash-card splash-card-v142">
+      <div class="splash-brand-v142" aria-hidden="true">
+        <div class="campus-mark-v142 campus-mark-large-v142">
+          <span class="campus-roof-v142"></span>
+          <span class="campus-building-v142">
+            <i></i><i></i>
+          </span>
+        </div>
+
+        <div class="splash-campus-name-v142">CAMPUS №1</div>
+        <div class="splash-campus-college-v142">COLLEGE</div>
       </div>
-      <div class="splash-kicker">Toraighyrov University</div>
+
+      <div class="splash-university-v142">Toraighyrov University</div>
       <h1>База данных Campus №1</h1>
       <p id="splashText">Подключаем Telegram и загружаем данные…</p>
-      <button id="openStateBtn" class="btn btn-primary btn-wide" type="button">Подключение…</button>
-      <div class="splash-note">Безопасный вход через Telegram</div>
+
+      <button id="openStateBtn" class="btn btn-primary btn-wide splash-access-v142" type="button">
+        <span class="splash-spinner-v142" aria-hidden="true"></span>
+        <span class="splash-button-text-v142">Проверяем доступ…</span>
+      </button>
+
+      <div class="splash-secure-v142">
+        <span class="splash-lock-v142" aria-hidden="true"></span>
+        <span>Безопасный вход через Telegram</span>
+      </div>
     </div>
   </div>
 
   <main id="app" class="app hidden">
     <header class="topbar">
       <div class="brand-row">
-        <button id="homeLogoBtn" class="brand-button" type="button" aria-label="На главную">
-          <img src="logo.png" alt="Campus №1">
+        <button id="homeLogoBtn" class="brand-button brand-button-v142" type="button" aria-label="На главную">
+          <span class="campus-mini-mark-v142" aria-hidden="true">
+            <span class="campus-mini-roof-v142"></span>
+            <span class="campus-mini-building-v142"><i></i><i></i></span>
+          </span>
         </button>
         <div class="brand-copy">
           <span>Campus №1</span>
@@ -74,9 +94,9 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="tasks.js?v=14.1.2"></script>
-  <script src="special.js?v=14.1.2"></script>
-  <script src="management.js?v=14.1.2"></script>
-  <script src="app.js?v=14.1.2"></script>
+  <script src="tasks.js?v=14.2.0"></script>
+  <script src="special.js?v=14.2.0"></script>
+  <script src="management.js?v=14.2.0"></script>
+  <script src="app.js?v=14.2.0"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.1.2';
+const APP_VERSION = '14.2.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,10 +17,18 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.1.2';
+const UPDATE_CENTER_VERSION = '14.2.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
+{version:'14.2.0',date:'11 октября 2026',title:'Splash + Topbar Objects',latest:true,items:[
+ 'Стартовый экран больше не использует PNG-логотип: знак Campus №1 собран из HTML/CSS-объектов.',
+ 'Toraighyrov University на стартовом экране показывается только один раз.',
+ 'Логотип в верхней панели также заменён на аккуратный объектный знак.',
+ 'Стартовый экран остаётся светлым независимо от выбранной темы приложения.',
+ 'Telegram-бот, Apps Script backend и Cloudflare не изменялись.'
+]},
+
 {version:'14.1.2',date:'11 октября 2026',title:'Главная без PNG',latest:true,items:[
  'Главный приветственный блок собран из отдельных HTML/CSS/SVG-объектов.',
  'Осенние листья — отдельные жёлтые и коричневые SVG-объекты.',
@@ -279,6 +287,14 @@ function localStudentSearch(q){
   });
 }
 function coreIsFresh(ts,maxAge=60000){ return !!ts && Date.now()-ts<maxAge; }
+
+function setSplashButtonTextV142(text){
+  const btn=$('#openStateBtn');
+  if(!btn)return;
+  const span=$('.splash-button-text-v142',btn);
+  if(span)span.textContent=text;
+  else btn.textContent=text;
+}
 
 function toast(message){
   const el=$('#toast'); if(!el) return;
@@ -645,11 +661,11 @@ async function boot(){
     state.initData=tg?.initData || '';
     btn.onclick=boot;
     if(!state.initData){
-      btn.disabled=false; btn.textContent='Повторить подключение';
+      btn.disabled=false; setSplashButtonTextV142('Повторить подключение');
       $('#splashText').textContent='Откройте Campus №1 кнопкой внутри Telegram-бота.';
       return;
     }
-    btn.disabled=true; btn.textContent='Проверяем доступ…';
+    btn.disabled=true; setSplashButtonTextV142('Проверяем доступ…');
     beginMaintenancePolling();
     maintenanceBlocked=false;
     // CAMPUS_V13_13_SPEED_PLUS
@@ -680,7 +696,7 @@ async function boot(){
     idle(()=>{prefetchCore();checkRemoteUpdate(true);loadSpecialAccess();});
     return true;
   }catch(e){
-    btn.disabled=false; btn.textContent='Повторить вход'; btn.onclick=boot;
+    btn.disabled=false; setSplashButtonTextV142('Повторить вход'); btn.onclick=boot;
     $('#splashText').textContent=e?.message || String(e);
     return false;
   }
