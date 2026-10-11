@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.3.1';
+const APP_VERSION = '14.3.2';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,17 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.3.1';
+const UPDATE_CENTER_VERSION = '14.3.2';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.3.1',date:'11 октября 2026',title:'Visual Polish Recovery',latest:true,items:[
+{version:'14.3.2',date:'11 октября 2026',title:'Восстановление разделов',latest:true,items:[
+ 'Восстановлены отображение студентов и кнопки поиска.',
+ 'Исправлены карточки статистики: больше нет огромных чёрных иконок.',
+ 'Устранены дублирующиеся обработчики главного экрана.',
+ 'Дизайн приветствия, сезоны, бот и backend не затронуты.'
+]},
+{version:'14.3.1',date:'11 октября 2026',title:'Visual Polish Recovery',latest:false,items:[
  'Исправлена синтаксическая ошибка V14.3.',
  'Логотип Campus №1 перерисован с ровной симметричной крышей.',
  'В hero используется отдельный декоративный знак без искажённой рамки.',
@@ -874,78 +880,28 @@ function seasonHeroEmojis(){
   ];
 }
 
-function homeHeroObjectsHtml(){
-  return `
-    <div class="home-object-scene" aria-hidden="true">
-      <span class="home-orbit home-orbit-a"></span>
-      <span class="home-orbit home-orbit-b"></span>
+function statCard(iconName,value,label,tone,page){ return `<button class="stat-card ${tone||''}" type="button" onclick="render('${page}')"><div class="stat-top"><span class="mini-icon">${icon(iconName)}</span></div><span class="stat-value">${Number(value)||0}</span><span class="stat-label">${esc(label)}</span></button>`; }
+function actionCard(iconName,title,subtitle,onclick){ return `<button class="action-card" type="button" onclick="${onclick}"><span class="action-icon">${icon(iconName)}</span><b>${esc(title)}</b><small>${esc(subtitle)}</small></button>`; }
+function homeSearch(e){ e.preventDefault(); const q=$('#homeSearchInput')?.value.trim()||''; render('students',{mode:'all',query:q}); }
 
-      <div class="home-campus-mark-svg">
-        ${campusLogoSvg('hero')}
-      </div>
+async function renderStudents(mode='active',query='',seq=state.renderSeq){
+  $('#view').innerHTML=`${pageHead('Студенты','home')}
+    <form class="global-search" onsubmit="studentSearchSubmit(event)"><span class="mini-icon">${icon('search')}</span><input id="studentSearch" autocomplete="off" value="${esc(query)}" placeholder="ФИО, ИИН, комната, факультет" oninput="studentSearchInput(this.value)"><button class="search-action" type="submit">Найти</button></form>
+    <div id="studentSearchHint" class="search-hint"></div>
+    <div class="tabs"><button class="tab ${mode==='active'?'active':''}" onclick="renderStudents('active','',state.renderSeq)" type="button">Заселены</button><button class="tab ${mode==='all'?'active':''}" onclick="renderStudents('all','',state.renderSeq)" type="button">Все</button><button class="tab ${mode==='evicted'?'active':''}" onclick="renderStudents('evicted','',state.renderSeq)" type="button">Выселены</button></div>
+    <div id="studentList" class="list">${studentSkeletons()}</div>`;
 
-      <span class="home-object-dot dot-a"></span>
-      <span class="home-object-dot dot-b"></span>
-      <span class="home-object-dot dot-c"></span>
-
-      ${seasonDecorHtml()}
-    </div>`;
+  if(query){ return doStudentSearch(query,seq); }
+  const cached=state.studentLists[mode];
+  if(cached){
+    drawStudents(cached);
+    if(!coreIsFresh(state.studentListTime[mode],60000)) refreshStudents(mode,seq,true);
+    return;
+  }
+  const list=await apiRequest('appGetStudents',[state.initData,mode],{ttl:60000});
+  if(!pageAlive('students',seq)) return;
+  state.studentLists[mode]=list; state.studentListTime[mode]=Date.now(); indexStudents(list); drawStudents(list);
 }
-/* END_CAMPUS_V14_2_SEASONAL_HERO_HELPERS */
-
-function renderHome(){
-  const d = state.dashboard || {};
-  const occupancy = d.totalRooms ? Math.round((d.occupiedRooms || 0) / d.totalRooms * 100) : 0;
-  const season = state.seasonResolved || 'autumn';
-  $('#view').innerHTML = 
-    '<section class="hero-panel hero-panel-objects season-'+season+' fade-in">' +
-      homeHeroObjectsHtml() +
-      '<div class="hero-copy">' +
-        '<small>Добро пожаловать,</small>' +
-        '<h1>' + esc((state.user && state.user.firstName) || 'Пользователь') + '</h1>' +
-        '<p>Campus №1 · ' + esc(roleLabel(state.user)) + '</p>' +
-      '</div>' +
-      '<div class="hero-side">' +
-        '<span class="role-chip">' + esc(roleLabel(state.user)) + '</span>' +
-      '</div>' +
-    '</section>' +
-
-    '<form class="global-search fade-in" onsubmit="homeSearch(event)">' +
-      '<span class="mini-icon">' + icon('search') + '</span>' +
-      '<input id="homeSearchInput" autocomplete="off" placeholder="Поиск студента, комнаты, ИИН…">' +
-      '<button class="search-action" type="submit">Найти</button>' +
-    '</form>' +
-
-    '<div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render(\'analytics\')">Аналитика</button></div>' +
-    '<div class="stats-grid fade-in">' +
-      statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students') +
-      statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms') +
-      statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners') +
-      statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council') +
-    '</div>' +
-
-    '<div class="section-heading fade-in"><h2>Быстрые действия</h2></div>' +
-    '<div class="action-grid fade-in">' +
-      (canManage() ? actionCard('plus', 'Заселить', 'Добавить нового студента', "openAddStudent()") : '') +
-      actionCard('search', 'Найти студента', 'ФИО, ИИН или комната', "render('students')") +
-      (canManage() ? actionCard('swap', 'Переселить', 'Найти студента и сменить комнату', "openQuickMove()") : actionCard('grid', 'Комнаты', 'Занятость Campus №1', "render('rooms')")) +
-      actionCard('chart', 'Аналитика', 'Динамика заселения', "render('analytics')") +
-    '</div>' +
-
-    '<div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>' +
-    '<div class="capacity-card fade-in" onclick="render(\'rooms\')">' +
-      '<div class="capacity-row"><b>Занято ' + (d.occupiedRooms || 0) + ' из ' + (d.totalRooms || 0) + ' комнат</b><span>' + occupancy + '%</span></div>' +
-      '<div class="progress"><span style="width:' + Math.min(100, occupancy) + '%"></span></div>' +
-      '<div class="capacity-meta"><span>' + (d.currentStudents || 0) + ' проживающих</span><span>' + (d.freeRooms || 0) + ' свободно</span></div>' +
-    '</div>' +
-
-    '<button class="task-promo fade-in" type="button" onclick="render(\'tasks\')">' +
-      '<span class="action-icon">' + icon('clipboard') + '</span>' +
-      '<span class="task-promo-copy"><b>Задачи и проекты</b><small>Поручения, делегирование и сроки</small></span>' +
-      '<span class="arrow">›</span>' +
-    '</button>';
-}
-
 function studentSkeletons(){ return Array.from({length:5},()=>'<div class="row-card"><div class="avatar skeleton"></div><div class="row-main"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:10px;width:50%;margin-top:7px"></div></div></div>').join(''); }
 async function refreshStudents(mode,seq,silent){
   try{
@@ -2366,26 +2322,6 @@ function homeHeroObjectsHtml(){
     </div>`;
 }
 
-globalThis.statCard = function(iconName, value, label, tone, page){
-  return `
-    <button class="stat-card ${tone || ''}" type="button" onclick="render('${page || 'home'}')">
-      <span class="stat-icon">${icon(iconName)}</span>
-      <b>${value}</b>
-      <small>${label}</small>
-    </button>`;
-};
-
-if(typeof globalThis.actionCard !== 'function'){
-  globalThis.actionCard = function(iconName, title, desc, action){
-    return `
-      <button class="action-card" type="button" onclick="${action}">
-        <span class="action-icon">${icon(iconName)}</span>
-        <b>${title}</b>
-        <small>${desc}</small>
-      </button>`;
-  };
-}
-
 function applyCampusBrandLogos(){
   const splashHolder = document.getElementById('splashLogoHolder');
   if(splashHolder) splashHolder.innerHTML = campusLogoSvg('splash');
@@ -2424,18 +2360,18 @@ function renderHome(){
 
     <div class="section-heading fade-in"><h2>Обзор</h2><button onclick="render('analytics')">Аналитика</button></div>
     <div class="stats-grid fade-in">
-      ${globalThis.statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students')}
-      ${globalThis.statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms')}
-      ${globalThis.statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners')}
-      ${globalThis.statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council')}
+      ${statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students')}
+      ${statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms')}
+      ${statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners')}
+      ${statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council')}
     </div>
 
     <div class="section-heading fade-in"><h2>Быстрые действия</h2></div>
     <div class="action-grid fade-in">
-      ${canManage() ? globalThis.actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
-      ${globalThis.actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
-      ${canManage() ? globalThis.actionCard('swap','Переселить','Найти студента и сменить комнату',"openQuickMove()") : globalThis.actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
-      ${globalThis.actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
+      ${canManage() ? actionCard('plus','Заселить','Добавить нового студента',"openAddStudent()") : ''}
+      ${actionCard('search','Найти студента','ФИО, ИИН или комната',"render('students')")}
+      ${canManage() ? actionCard('swap','Переселить','Найти студента и сменить комнату',"openQuickMove()") : actionCard('grid','Комнаты','Занятость Campus №1',"render('rooms')")}
+      ${actionCard('chart','Аналитика','Динамика заселения',"render('analytics')")}
     </div>
 
     <div class="section-heading fade-in"><h2>Загрузка комнат</h2></div>
