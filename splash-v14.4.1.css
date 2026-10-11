@@ -138,3 +138,7 @@
   .splash-v144 .splash-campus-title {font-size:26px !important}
   .splash-v144 .splash-btn {min-height:54px}
 }
+
+/* CAMPUS_V15_SPLASH_LOGO_POSITION: optical adjustment only. */
+.splash-v144 .splash-logo-holder {transform:translateY(14px);}
+@media (max-height:650px) {.splash-v144 .splash-logo-holder {transform:translateY(8px);}}

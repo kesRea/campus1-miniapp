@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '14.4.1';
+const APP_VERSION = '15';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,17 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '14.4.1';
+const UPDATE_CENTER_VERSION = '15';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'14.4.1',date:'12 октября 2026',title:'Новый экран входа',latest:true,items:[
+{version:'15',date:'12 октября 2026',title:'Campus №1 V15 — обновление экрана входа',latest:true,items:[
+  'Новый экран входа для студенческого совета официально входит в V15.',
+  'Логотип немного опущен для ровного расположения над названием.',
+  'Версии теперь нумеруются V15, V15.1, V15.2 и далее для патчей.',
+  'Сохранены проверка доступа Telegram и все остальные разделы.'
+]},
+{version:'14.4.1',date:'12 октября 2026',title:'Новый экран входа',latest:false,items:[
   'Экран входа обновлён без изменений авторизации.',
   'Сверху только знак Campus №1; название отображается отдельно.',
   'Добавлена иллюстрация общежития и надпись для студенческого совета.',
