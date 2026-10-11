@@ -2006,3 +2006,83 @@ html[data-theme="dark"] .home-campus-mark{opacity:.20}
 @media(prefers-reduced-motion:reduce){
   .splash-spinner-v142{animation:none}
 }
+
+
+/* CAMPUS_V14_2_1_EXACT_LOGO_GEOMETRY */
+.splash-brand-v143{
+  position:relative;
+  z-index:1;
+  width:min(100%,285px);
+  margin:0 auto 23px;
+}
+.campus-full-logo-v143{
+  display:block;
+  width:100%;
+  height:auto;
+  overflow:visible;
+}
+.campus-logo-roof-v143{
+  fill:none;
+  stroke:#1f78f4;
+  stroke-width:18;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.campus-logo-window-v143{
+  fill:#1f78f4;
+}
+.campus-logo-name-v143{
+  fill:#1467dc;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:47px;
+  font-weight:900;
+  letter-spacing:.015em;
+}
+.campus-logo-college-v143{
+  fill:#2c70d7;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:23px;
+  font-weight:800;
+  letter-spacing:.30em;
+}
+.campus-logo-university-v143{
+  fill:#2d72d6;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:.18em;
+}
+.splash-card-v142 h1{
+  margin-top:0 !important;
+}
+.brand-button-v142{
+  overflow:hidden !important;
+}
+.campus-mini-mark-v143{
+  width:34px;
+  height:31px;
+  display:grid;
+  place-items:center;
+}
+.campus-mini-svg-v143{
+  width:34px;
+  height:31px;
+  display:block;
+}
+.campus-mini-svg-v143 path{
+  fill:none;
+  stroke:var(--blue);
+  stroke-width:5.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.campus-mini-svg-v143 rect{
+  fill:var(--blue);
+}
+@media(max-width:430px){
+  .splash-brand-v143{
+    width:min(100%,255px);
+    margin-bottom:20px;
+  }
+  .campus-logo-name-v143{font-size:45px}
+}
