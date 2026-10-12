@@ -32,7 +32,7 @@
         <span class="splash-button-text-v142">Войти</span>
       </button>
       <div class="splash-note">Доступ для студенческого совета.</div>
-      <div class="splash-release"><span>Campus №1</span><span id="splashVersion">Версия 15</span></div>
+      <div class="splash-release"><span>Campus №1</span><span id="splashVersion">Версия 16.4</span></div>
     </div>
   </div>
 
@@ -90,6 +90,33 @@
   <script src="tasks.js?v=14.2.0"></script>
   <script src="special.js?v=14.2.0"></script>
   <script src="management.js?v=14.2.0"></script>
-  <script src="app.js?v=15"></script>
+    <!-- CAMPUS_V164_CACHE_SAFE_LOADER: avoid stale app.js?v=15 after update -->
+  <script>
+  (function () {
+    'use strict';
+    var loaded = false;
+    var fallback = '16.4';
+    function start(version) {
+      if (loaded) return;
+      loaded = true;
+      var script = document.createElement('script');
+      script.src = 'app.js?v=' + encodeURIComponent(version);
+      script.onerror = function () {
+        var el = document.getElementById('splashText');
+        if (el) el.textContent = 'Ошибка загрузки приложения. Закройте и откройте его снова.';
+      };
+      document.body.appendChild(script);
+    }
+    var timeout = setTimeout(function () { start(fallback); }, 3500);
+    fetch('version.json?update=' + Date.now(), {cache:'no-store'})
+      .then(function (response) { if (!response.ok) throw Error('manifest'); return response.json(); })
+      .then(function (manifest) {
+        var version = String(manifest && manifest.version || '');
+        start(/^\d+(?:\.\d+)*$/.test(version) ? version : fallback);
+      })
+      .catch(function () { start(fallback); })
+      .then(function () { clearTimeout(timeout); });
+  }());
+  </script>
 </body>
 </html>
