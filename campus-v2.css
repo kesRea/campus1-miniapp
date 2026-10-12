@@ -14,3 +14,20 @@
 .v201-order-notice{font-size:12px;color:var(--muted,#8390a2);margin:8px 0}
 .v201-nick{font-size:12px;display:block;margin-top:3px;color:var(--muted,#8d9aab)}
 @media(max-width:430px){.v201-row{gap:9px}.v201-order-controls{gap:3px}.v201-order-controls button{width:32px;height:32px}.v201-member-main b{font-size:15px}}
+
+/* Campus №1 V2.0.3 — Home layout, per-user two-card preferences. */
+.v203-heading-tools{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-left:auto}
+.section-heading .v203-heading-tools>button{white-space:nowrap}
+.section-heading .v203-heading-tools .v203-config-button{font-size:12px;font-weight:600;background:var(--surface,#142032);border:1px solid var(--border,#29384c);border-radius:10px;color:var(--text,#ecf1f9);padding:8px 10px;cursor:pointer}
+.v203-modal-header h3{margin:0 0 6px}
+.v203-modal-header p{color:var(--muted,#92a0b2);font-size:13px;line-height:1.5;margin:0 0 10px}
+.v203-modal-header small{display:block;color:var(--muted,#92a0b2);font-size:12px;margin:0 0 12px}
+.v203-choices{display:flex;flex-direction:column;gap:8px;max-height:min(46vh,390px);overflow-y:auto;overscroll-behavior:contain;margin-bottom:18px;padding-right:2px}
+.v203-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;min-height:57px;padding:11px 13px;border:1px solid var(--border,#29384c);background:var(--surface,#142032);color:var(--text,#ecf1f9);border-radius:12px;cursor:pointer}
+.v203-choice[aria-pressed="true"]{border-color:var(--blue,#368af4);background:var(--blue-soft,rgba(50,130,240,.12))}
+.v203-choice-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.v203-choice-text b{font-size:14px;font-weight:600;line-height:1.25}
+.v203-choice-text small{color:var(--muted,#92a0b2);font-size:12px}
+.v203-check{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--surface-secondary,rgba(120,150,180,.13));font-size:16px;font-weight:700;color:var(--muted,#92a0b2)}
+.v203-choice[aria-pressed="true"] .v203-check{background:var(--blue,#368af4);color:#fff}
+@media(max-width:410px){.v203-heading-tools{gap:5px}.section-heading .v203-heading-tools .v203-config-button{padding:7px 8px;font-size:11px}.section-heading .v203-heading-tools>button:not(.v203-config-button){font-size:11px}}

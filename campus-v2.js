@@ -81,7 +81,7 @@ function v201Tone(key){
 function v201DecorateRole(){
   const tag=$v('.hero-side .role-chip');
   if(tag){const t=v201Tone(roleClass(state.user));tag.style.cssText=t.css;tag.style.visibility='visible';}
-  const splash=$v('#splashVersion');if(splash)splash.textContent='Версия 2.0.2 · Глобальное обновление';
+  const splash=$v('#splashVersion');if(splash)splash.textContent='Версия V2.0.3 · Глобальное обновление';
 }
 decorateRole=v201DecorateRole;
 const v201ReloadOriginal=reloadCapabilities;
@@ -230,6 +230,204 @@ renderHome=function(){
   v201HomeOriginal();
   v201DecorateRole();
 };
+
+
+/* CAMPUS_V203_HOME_CHOICES — Personal dashboard: four overview cards and two quick actions.
+ * No backend writes. Never stores students, passport numbers or PII.
+ * This code runs INSIDE the existing Campus V2 addon closure, AFTER V2.0.2.
+ */
+const V203_OVERVIEW=[
+  {id:'residents',label:'Заселено сейчас',icon:'users',page:'students',tone:'green'},
+  {id:'free',label:'Свободно комнат',icon:'door',page:'rooms'},
+  {id:'foreign',label:'Иностранные',icon:'globe',page:'foreigners'},
+  {id:'council',label:'Студсовет и активисты',icon:'council',page:'council'},
+  {id:'occupied',label:'Занято комнат',icon:'grid',page:'rooms'},
+  {id:'totalrooms',label:'Всего комнат',icon:'grid',page:'rooms'},
+  {id:'block1',label:'1 блок · проживающие',icon:'users',page:'analytics'},
+  {id:'block2',label:'2 блок · проживающие',icon:'users',page:'analytics'},
+  {id:'block3',label:'3 блок · проживающие',icon:'users',page:'analytics'},
+  {id:'college',label:'Колледж',icon:'users',page:'analytics'},
+  {id:'foundation',label:'Foundation',icon:'users',page:'analytics'},
+  {id:'turkmen',label:'Туркмения',icon:'globe',page:'analytics'},
+  {id:'mongolian',label:'Монголия',icon:'globe',page:'analytics'}
+];
+const V203_ACTIONS=[
+  {id:'find',label:'Найти студента',description:'ФИО, ИИН или комната',icon:'search'},
+  {id:'analytics',label:'Аналитика',description:'Динамика заселения',icon:'chart'},
+  {id:'rooms',label:'Комнаты',description:'Заселённость по комнатам',icon:'grid'},
+  {id:'tasks',label:'Задачи',description:'Поручения и сроки',icon:'clipboard'},
+  {id:'documents',label:'Документы',description:'Шаблоны и черновики',icon:'book'},
+  {id:'foreigners',label:'Иностранцы',description:'Список по прописке',icon:'globe'},
+  {id:'council',label:'Студсовет',description:'Участники и должности',icon:'council'},
+  {id:'activists',label:'Активисты',description:'Участники по секторам',icon:'users'},
+  {id:'add',label:'Заселить',description:'Добавить студента',icon:'plus',right:'add'},
+  {id:'move',label:'Переселить',description:'Изменить комнату',icon:'swap',right:'move'},
+  {id:'inspections',label:'Проверка комнат',description:'Чистый вторник и четверг',icon:'clipboard',right:'inspection'}
+];
+const V203_DEFAULTS={overview:['residents','free','foreign','council'],actions:['find','analytics']};
+function v203Limit(kind){return kind==='overview'?4:2;}
+let v203Draft=null;
+function v203UserKey(kind){
+  const id=String(state.user?.id||'');
+  return id?'campus-home-v203-'+id+'-'+kind:'';
+}
+function v203ActionsAvailable(){
+  return V203_ACTIONS.filter(item=>!item.right||(V2.ready&&allowed(item.right)));
+}
+function v203Options(kind){return kind==='overview'?V203_OVERVIEW:v203ActionsAvailable();}
+function v203ReadSaved(kind){
+  const key=v203UserKey(kind);if(!key)return null;
+  try{const arr=JSON.parse(localStorage.getItem(key)||'null');return Array.isArray(arr)?arr:null;}catch(_e){return null;}
+}
+function v203Choice(kind){
+  const options=v203Options(kind),valid=new Set(options.map(x=>x.id));
+  const saved=v203ReadSaved(kind),candidates=(Array.isArray(saved)?saved:V203_DEFAULTS[kind]).filter((x,i,a)=>valid.has(x)&&a.indexOf(x)===i);
+  for(const id of [...V203_DEFAULTS[kind],...options.map(o=>o.id)]){
+    if(candidates.length===v203Limit(kind))break;
+    if(valid.has(id)&&!candidates.includes(id))candidates.push(id);
+  }
+  return candidates.slice(0,v203Limit(kind));
+}
+function v203BlockNumber(value){
+  const n=Number(String(value??'').trim());
+  if(!Number.isInteger(n))return 0;
+  if([13,14,23].includes(n)||(n>=30&&n<=73))return 1;
+  if(n>=74&&n<=117)return 2;
+  if((n>=119&&n<=125)||(n>=128&&n<=162))return 3;
+  return 0;
+}
+function v203CountData(){
+  const d=state.dashboard||{};
+  const hasList=Array.isArray(state.studentLists?.active);
+  const rows=hasList?state.studentLists.active.filter(s=>s&&s.active!==false):[];
+  const unknown='—';
+  const val=(key)=>d[key]===null||d[key]===undefined?unknown:(Number.isFinite(Number(d[key]))?Number(d[key]):unknown);
+  const count=(fn)=>hasList?rows.filter(fn).length:unknown;
+  const foreigners=count(s=>!!v201DetectCountry(s.registration));
+  const council=Number(d.council||0)+Number(d.activists||0);
+  return {
+    residents:val('currentStudents')!==unknown?val('currentStudents'):(hasList?rows.length:unknown),
+    free:val('freeRooms'),foreign:foreigners!==unknown?foreigners:(Number(d.foreigners)>0?Number(d.foreigners):unknown),
+    council:(val('council')===unknown&&val('activists')===unknown)?unknown:council,
+    occupied:val('occupiedRooms'),totalrooms:val('totalRooms'),
+    block1:count(s=>v203BlockNumber(s.room)===1),
+    block2:count(s=>v203BlockNumber(s.room)===2),
+    block3:count(s=>v203BlockNumber(s.room)===3),
+    college:count(s=>/колледж|college/i.test(String(s.faculty||''))),
+    foundation:count(s=>/foundation|фоунд|фаунд/i.test(String(s.faculty||''))),
+    turkmen:count(s=>v201DetectCountry(s.registration)==='Туркменистан'),
+    mongolian:count(s=>v201DetectCountry(s.registration)==='Монголия')
+  };
+}
+function v203AddSettingsButton(text,kind){
+  const heading=[...document.querySelectorAll('#view .section-heading')]
+    .find(el=>el.querySelector('h2')?.textContent.trim()===text);
+  if(!heading||heading.querySelector('.v203-config-button'))return;
+  let tools=heading.querySelector('.v203-heading-tools');
+  if(!tools){
+    tools=document.createElement('div');tools.className='v203-heading-tools';
+    const old=[...heading.children].find(el=>el.tagName==='BUTTON');
+    if(old)tools.appendChild(old);
+    heading.appendChild(tools);
+  }
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='v203-config-button';
+  btn.textContent='⚙ Настроить';btn.setAttribute('aria-label','Настроить '+text.toLowerCase());
+  btn.setAttribute('onclick',"v203OpenSettings('"+kind+"')");
+  tools.appendChild(btn);
+}
+function v203ApplyHome(){
+  if(state.currentPage!=='home')return;
+  const overview=document.querySelector('#view .stats-grid');
+  const actions=document.querySelector('#view .action-grid');
+  if(!overview||!actions)return;
+  const values=v203CountData();
+  overview.innerHTML=v203Choice('overview').map(id=>{
+    const item=V203_OVERVIEW.find(x=>x.id===id);
+    return item?statCard(item.icon,values[id],item.label,item.tone||'',item.page):'';
+  }).join('');
+  actions.innerHTML=v203Choice('actions').map(id=>{
+    const item=V203_ACTIONS.find(x=>x.id===id);
+    return item?actionCard(item.icon,item.label,item.description,"v203RunAction('"+item.id+"')") : '';
+  }).join('');
+  v203AddSettingsButton('Обзор','overview');
+  v203AddSettingsButton('Быстрые действия','actions');
+}
+function v203RunAction(id){
+  const item=V203_ACTIONS.find(x=>x.id===id);
+  if(!item)return;
+  if(item.right&&(!V2.ready||!allowed(item.right))){
+    toast('Недостаточно прав для этого действия');v203ApplyHome();return;
+  }
+  switch(id){
+    case 'find':return render('students');
+    case 'analytics':return render('analytics');
+    case 'rooms':return render('rooms');
+    case 'tasks':return render('tasks');
+    case 'documents':return render('documents');
+    case 'foreigners':return render('foreigners');
+    case 'council':return render('council');
+    case 'activists':return render('activists');
+    case 'add':return openAddStudent();
+    case 'move':return openQuickMove();
+    case 'inspections':return v2Go('inspections');
+  }
+}
+function v203PickerHtml(){
+  if(!v203Draft)return '';
+  const {kind,values}=v203Draft;
+  return v203Options(kind).map(item=>{
+    const selected=values.includes(item.id);
+    return `<button class="v203-choice" type="button" aria-pressed="${selected?'true':'false'}" onclick="v203ToggleChoice('${kind}','${item.id}')"><span class="v203-choice-text"><b>${escV(item.label)}</b>${item.description?`<small>${escV(item.description)}</small>`:''}</span><span class="v203-check">${selected?'✓':'+'}</span></button>`;
+  }).join('');
+}
+function v203UpdatePicker(){
+  if(!v203Draft)return;
+  const list=document.querySelector('#v203-choices');if(list)list.innerHTML=v203PickerHtml();
+  const limit=v203Limit(v203Draft.kind);
+  const count=document.querySelector('#v203-count');if(count)count.textContent='Выбрано '+v203Draft.values.length+' из '+limit;
+  const save=document.querySelector('#v203-save');if(save)save.disabled=v203Draft.values.length!==limit;
+}
+function v203OpenSettings(kind){
+  if(!['overview','actions'].includes(kind)||!state.user?.id)return;
+  v203Draft={kind,values:v203Choice(kind).slice()};
+  const limit=v203Limit(kind);
+  showModal(`<div class="sheet-handle"></div><div class="v203-modal-header"><h3>${kind==='overview'?'Карточки обзора':'Быстрые действия'}</h3><p>Выберите ровно ${kind==='overview'?'четыре':'две'} карточки для своей главной страницы. У каждого пользователя выбор свой.</p><small id="v203-count">Выбрано ${v203Draft.values.length} из ${limit}</small></div><div id="v203-choices" class="v203-choices">${v203PickerHtml()}</div><button class="btn btn-primary btn-wide" id="v203-save" onclick="v203SaveSettings()">Сохранить</button><button class="btn btn-secondary btn-wide" onclick="v203Draft=null;closeModal()">Отмена</button>`);
+}
+function v203ToggleChoice(kind,id){
+  if(!v203Draft||v203Draft.kind!==kind)return;
+  if(!v203Options(kind).some(x=>x.id===id))return;
+  const values=v203Draft.values;
+  if(values.includes(id))values.splice(values.indexOf(id),1);
+  else if(values.length>=v203Limit(kind)){toast(kind==='overview'?'В обзоре можно выбрать только четыре карточки. Сначала снимите одну.':'В быстрых действиях можно выбрать только две карточки. Сначала снимите одну.');return;}
+  else values.push(id);
+  v203UpdatePicker();
+}
+function v203SaveSettings(){
+  const draft=v203Draft;if(!draft||draft.values.length!==v203Limit(draft.kind)||new Set(draft.values).size!==v203Limit(draft.kind))return;
+  const valid=new Set(v203Options(draft.kind).map(x=>x.id));
+  if(!draft.values.every(id=>valid.has(id)))return toast('Один из вариантов сейчас недоступен');
+  const key=v203UserKey(draft.kind);if(!key)return;
+  try{localStorage.setItem(key,JSON.stringify(draft.values));}
+  catch(_e){toast('Не удалось сохранить настройки на этом устройстве');return;}
+  v203Draft=null;closeModal();v203ApplyHome();toast(draft.kind==='overview'?'Обзор: сохранены четыре карточки':'Быстрые действия: сохранены две кнопки');
+}
+window.v203RunAction=v203RunAction;
+window.v203OpenSettings=v203OpenSettings;
+window.v203ToggleChoice=v203ToggleChoice;
+window.v203SaveSettings=v203SaveSettings;
+const v203OldRenderHome=renderHome;
+renderHome=function(){
+  v203OldRenderHome.apply(this,arguments);
+  v203ApplyHome();
+};
+const v203OldReload=reloadCapabilities;
+reloadCapabilities=async function(){
+  const result=await v203OldReload.apply(this,arguments);
+  if(state.currentPage==='home')v203ApplyHome();
+  return result;
+};
+setTimeout(()=>{if(state.currentPage==='home')v203ApplyHome();},1600);
 
 
 })();
