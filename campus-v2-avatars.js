@@ -102,7 +102,9 @@
   const splashVersion=document.querySelector('#splashVersion');
   if(splashVersion){
     const updateVersion=()=>{
-      if(splashVersion.textContent!=='Версия V2.0.1')splashVersion.textContent='Версия V2.0.1';
+      const v=typeof APP_VERSION!=='undefined'?String(APP_VERSION):'20.0.2';
+      const label='Версия V'+(v.startsWith('20.')?'2.'+v.slice(3):v);
+      if(splashVersion.textContent!==label)splashVersion.textContent=label;
     };
     updateVersion();
     if(typeof MutationObserver==='function'){

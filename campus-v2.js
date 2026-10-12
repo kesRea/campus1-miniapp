@@ -62,4 +62,174 @@ const oldSpecial=renderSpecial;renderSpecial=async function(){await oldSpecial()
 window.v2Go=v2Page;window.v2DeveloperChange=v2DeveloperChange;window.v2SetRoleColor=v2SetRoleColor;window.v2RosterLink=v2RosterLink;window.v2SaveProfile=v2SaveProfile;window.v2Comment=v2Comment;window.v2CheckLoad=v2CheckLoad;window.v2CheckSave=v2CheckSave;window.v2ReadDocument=v2ReadDocument;window.v2CommitImport=v2CommitImport;window.v2DeleteTask=v2DeleteTask;
 function v2Refresh(){if(state.user&&!V2.ready)reloadCapabilities();else if(state.user){decorateRole();if(state.currentPage==='more')v2More();if(state.currentPage==='home'){if(!allowed('add'))document.querySelectorAll('.action-grid button[onclick*=\"openAddStudent\"]').forEach(x=>x.remove());if(!allowed('move'))document.querySelectorAll('.action-grid button[onclick*=\"openQuickMove\"]').forEach(x=>x.remove());}}}
 setTimeout(v2Refresh,1000);setInterval(v2Refresh,12000);setTimeout(tick,5000);setInterval(tick,45000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();v2Refresh();}});
+/* CAMPUS_V201_UI_HOTFIX — inside Campus V2 closure, after avatar extension. */
+const V201_DEFAULT_COLORS={owner:'#D93B48',developer:'#C18B18',chair:'#26935E',vice_chair:'#26935E',sector_head:'#D39D13',sector_deputy:'#D39D13',member:'#2877D7',activist:'#2877D7'};
+const V201_CACHE_KEY='campus-v2-palette-cache-v1';
+let v201RosterState=null;
+function v201Palette(){
+  let cache={};try{const x=JSON.parse(localStorage.getItem(V201_CACHE_KEY)||'{}');if(x&&typeof x==='object')cache=x;}catch(_e){}
+  return Object.assign({},V201_DEFAULT_COLORS,cache,V2.palette||{});
+}
+function v201Tone(key){
+  const color=String(v201Palette()[key]||V201_DEFAULT_COLORS.member);
+  const hex=/^#[0-9a-f]{6}$/i.test(color)?color:V201_DEFAULT_COLORS.member;
+  const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  const brightness=.2126*r+.7152*g+.0722*b;
+  const ink=brightness>211?`rgb(${Math.round(r*.62)},${Math.round(g*.62)},${Math.round(b*.62)})`:hex;
+  return {ink,css:`color:${ink};background-color:rgba(${r},${g},${b},.16);border-color:rgba(${r},${g},${b},.32);`};
+}
+function v201DecorateRole(){
+  const tag=$v('.hero-side .role-chip');
+  if(tag){const t=v201Tone(roleClass(state.user));tag.style.cssText=t.css;tag.style.visibility='visible';}
+  const splash=$v('#splashVersion');if(splash)splash.textContent='Версия 2.0.2 · Глобальное обновление';
+}
+decorateRole=v201DecorateRole;
+const v201ReloadOriginal=reloadCapabilities;
+reloadCapabilities=async function(){
+  await v201ReloadOriginal();
+  if(V2.ready&&V2.palette&&Object.keys(V2.palette).length){
+    try{localStorage.setItem(V201_CACHE_KEY,JSON.stringify(V2.palette));}catch(_e){}
+  }
+  v201DecorateRole();
+};
+const v201SetColorOriginal=v2SetRoleColor;
+v2SetRoleColor=async function(key,hex){
+  await v201SetColorOriginal(key,hex);
+  if(V2.palette&&Object.keys(V2.palette).length){try{localStorage.setItem(V201_CACHE_KEY,JSON.stringify(V2.palette));}catch(_e){}}
+  v201DecorateRole();
+};
+window.v2SetRoleColor=v2SetRoleColor;
+function v201Norm(s){return String(s||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();}
+function v201CouncilKey(role,row){
+  const id=String(row['Telegram ID']||row['TelegramID']||'').trim();
+  if(state.user?.isOwner&&id&&id===String(state.user.id))return 'owner';
+  if(id==='7272434463'||/разработчик/i.test(role))return 'developer';
+  const t=v201Norm(role);
+  if(/заместител.*председат|зам председ/.test(t))return 'vice_chair';
+  if(/председател/.test(t))return 'chair';
+  if(/заместител.*глав|зам глав/.test(t))return 'sector_deputy';
+  if(/глава|руководител.*сектор/.test(t))return 'sector_head';
+  return t.includes('активист')?'activist':'member';
+}
+function v201Priority(row){
+  const role=v201Norm(row['Должность']||row['Роль']||row['Позиция']||'');
+  if(/председател/.test(role))return /зам/.test(role)?2:1;
+  if(/глав|руководител.*сектор/.test(role))return /зам/.test(role)?4:3;
+  return 10;
+}
+function v201MemberName(row){return String(row['ФИО']||row['Имя']||row['Аты-жөні']||'Участник').trim();}
+function v201PhotoUrl(url){const str=String(url||'').trim();return /^https:\/\//i.test(str)?str:'';}
+function v201RosterCard(item,i,total,canOrder){
+  const row=item.row,name=v201MemberName(row),role=String(row['Должность']||row['Роль']||row['Позиция']||row['Сектор']||'').trim();
+  const k=v201CouncilKey(role,row),tone=v201Tone(k);
+  const photo=v201PhotoUrl(item.photoUrl||row['Фото']||row.photoUrl||'');
+  const nick=String(item.username||row['Telegram']||'').trim().replace(/^@/,'');
+  const room=String(row['Комната']||'').trim();
+  const n=`<small class="v201-order-number">№ ${i+1}</small>`;
+  const controls=canOrder?`<div class="v201-order-controls"><button type="button" aria-label="Поднять ${escV(name)} выше" onclick="v201MoveRoster(${i},-1)" ${i===0?'disabled':''}>↑</button><button type="button" aria-label="Опустить ${escV(name)} ниже" onclick="v201MoveRoster(${i},1)" ${i===total-1?'disabled':''}>↓</button></div>`:'';
+  return `<article class="row-card v201-row">${avatarHtml(name,photo)}<span class="row-main v201-member-main">${n}<b>${escV(name)}</b>${nick?`<small class="v201-nick">@${escV(nick)}</small>`:''}${role?`<span class="v2-tag" style="${tone.css}">${escV(role)}</span>`:''}${room?`<small>Комната ${escV(room)}</small>`:''}</span>${controls}</article>`;
+}
+function v201DrawRoster(){
+  const context=v201RosterState,node=$v('#generic');if(!context||!node||state.currentPage!==context.kind)return;
+  const canOrder=privileged()&&context.canOrder;
+  node.innerHTML=context.rows.map((x,i)=>v201RosterCard(x,i,context.rows.length,canOrder)).join('')||'<div class="empty">Список пока пустой.</div>';
+}
+async function v201MoveRoster(index,direction){
+  const ctx=v201RosterState;
+  if(!ctx||!privileged()||!ctx.canOrder||ctx.saving||state.currentPage!==ctx.kind)return;
+  const other=index+direction;if(other<0||other>=ctx.rows.length)return;
+  ctx.saving=true;
+  const changed=ctx.rows.slice();[changed[index],changed[other]]=[changed[other],changed[index]];
+  const keys=changed.map(x=>x.key);
+  const buttons=document.querySelectorAll('.v201-order-controls button');buttons.forEach(b=>b.disabled=true);
+  try{
+    const answer=await call('appV2SetRosterOrder',ctx.kind,keys);
+    if(!answer?.ok)throw new Error('Сервер не подтвердил сохранение порядка.');
+    ctx.rows=changed;v201DrawRoster();notice('Порядок сохранён для всех пользователей');
+  }catch(e){notice('Не удалось сохранить порядок: '+(e?.message||e));v201DrawRoster();}
+  finally{ctx.saving=false;}
+}
+window.v201MoveRoster=v201MoveRoster;
+renderCouncil=async function(kind,seq){
+  kind=kind==='activists'?'activists':'council';
+  const title=kind==='activists'?'Активисты':'Студенческий совет';
+  $v('#view').innerHTML=pageHead(title,'more')+'<div id="generic" class="list">'+studentSkeletons()+'</div>';
+  const entries=await Promise.allSettled([
+    apiRequest('appGetCouncil',[state.initData,kind],{ttl:25000}),
+    call('appV2GetRosterOrder',kind),
+    call('appV2AvatarDirectory',kind)
+  ]);
+  if(!pageAlive(kind,seq))return;
+  if(entries[0].status!=='fulfilled'){$v('#generic').innerHTML=`<div class="empty">${safeErr(entries[0].reason)}</div>`;return;}
+  const rows=Array.isArray(entries[0].value?.rows)?entries[0].value.rows:[];
+  const order=entries[1].status==='fulfilled'?entries[1].value:null;
+  const avatars=entries[2].status==='fulfilled'?entries[2].value?.rows:[];
+  const canOrder=!!(order&&Array.isArray(order.items)&&order.items.length===rows.length&&order.items.every((x,i)=>v201Norm(x.name)===v201Norm(v201MemberName(rows[i]))));
+  const cnt=new Map();
+  (Array.isArray(avatars)?avatars:[]).forEach(a=>{const k=v201Norm(a.name);cnt.set(k,(cnt.get(k)||0)+1);});
+  const byName=new Map((Array.isArray(avatars)?avatars:[]).filter(a=>cnt.get(v201Norm(a.name))===1).map(a=>[v201Norm(a.name),a]));
+  const list=rows.map((row,i)=>{
+    const extra=byName.get(v201Norm(v201MemberName(row)))||{};
+    return {row,key:canOrder?order.items[i].key:'',photoUrl:extra.photoUrl||'',username:extra.username||''};
+  });
+  if(order?.saved&&canOrder){
+    const ranks=new Map(order.order.map((k,i)=>[k,i]));
+    list.sort((a,b)=>(ranks.get(a.key)??1e6)-(ranks.get(b.key)??1e6));
+  }else if(kind==='council'){
+    list.sort((a,b)=>v201Priority(a.row)-v201Priority(b.row)||v201MemberName(a.row).localeCompare(v201MemberName(b.row),'ru'));
+  }
+  v201RosterState={kind,rows:list,canOrder,saving:false};
+  if(!canOrder&&privileged())$v('#view').insertAdjacentHTML('beforeend','<p class="v201-order-notice">Для сохранения порядка установите серверное дополнение V2.0.1.</p>');
+  if(privileged())$v('#view').insertAdjacentHTML('beforeend',`<button class="btn btn-secondary btn-wide" onclick="v2Go('${kind==='council'?'roster':'activist-roster'}')">Выбрать Telegram-пользователя и аватар</button>`);
+  v201DrawRoster();
+};
+function v201DetectCountry(s){
+  const v=v201Norm(s);
+  if(!v||/казахстан|қазақстан|kazakhstan|\bрк\b/.test(v))return '';
+  const countries=[
+    ['Туркменистан',/туркмен|түрікмен|turkmen|ашхабад|ashgabat/],
+    ['Монголия',/монгол|моңғол|монғол|mongol|улан.?батор|ulaanbaatar/],
+    ['Нигерия',/нигерия|nigeria/],
+    ['Египет',/египет|egypt/],
+    ['Китай',/китай|қытай|china|пекин|beijing/],
+    ['Индонезия',/индонез|indones/],
+    ['Афганистан',/афган|afghan/],
+    ['Пакистан',/пакистан|pakistan/],
+    ['Узбекистан',/узбек|өзбек|uzbek/],
+    ['Бангладеш',/бангладеш|bangladesh/],
+    ['Танзания',/танзания|tanzania/],
+    ['Сомали',/сомали|somalia/],
+    ['Россия',/росси|россия|russia/],
+    ['Кыргызстан',/кыргыз|киргиз|kyrgyz/],
+    ['Таджикистан',/таджик|tajik/],
+    ['Индия',/индия|india/],
+    ['Турция',/турция|türkiye|turkey|türkiye/],
+    ['Иран',/иран|iran/]
+  ];
+  return countries.find(([_,re])=>re.test(v))?.[0]||'';
+}
+function v201ForeignersFromStudents(){
+  const arr=state.studentLists?.active;
+  if(!Array.isArray(arr))return null;
+  return arr.filter(s=>s&&s.active!==false&&v201DetectCountry(s.registration)).map(s=>({...s,country:v201DetectCountry(s.registration)}));
+}
+const v201RenderForeignOriginal=renderGenericTable;
+renderGenericTable=async function(title,fn,back,seq){
+  if(fn!=='appGetForeigners')return v201RenderForeignOriginal(title,fn,back,seq);
+  const local=v201ForeignersFromStudents();
+  const remote=await apiRequest('appGetForeigners',[state.initData],{ttl:15000}).catch(()=>null);
+  if(!pageAlive('foreigners',seq))return;
+  if(Array.isArray(remote?.rows)&&remote.rows.length)return v201RenderForeignOriginal(title,fn,back,seq);
+  if(!local||!local.length)return v201RenderForeignOriginal(title,fn,back,seq);
+  $v('#view').innerHTML=`${pageHead('Иностранные студенты','more')}<div class="v2-panel"><b>По прописке: ${local.length} студентов</b><p class="v2-note">Автоматическая выборка из актуальных заселённых студентов. Не является подтверждением гражданства.</p></div><div class="list">${local.map(s=>`<div class="row-card">${avatarHtml(s.fio,'')}<span class="row-main"><b>${escV(s.fio)}</b><small>${escV(s.country)} · комната ${escV(s.room||'—')}</small>${s.faculty?`<small>${escV(s.faculty)}</small>`:''}</span></div>`).join('')}</div>`;
+};
+const v201HomeOriginal=renderHome;
+renderHome=function(){
+  const local=v201ForeignersFromStudents();
+  if(local&&state.dashboard)state.dashboard.foreigners=local.length;
+  v201HomeOriginal();
+  v201DecorateRole();
+};
+
+
 })();

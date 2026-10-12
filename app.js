@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '20.0.1';
+const APP_VERSION = '20.0.2';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '20.0.1';
+const UPDATE_CENTER_VERSION = '20.0.2';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'2.0.1',date:'12 октября 2026',title:'Аватарки и @ники Telegram',latest:true,items:['Появились фото и @ники в назначении должностей.','Предпросмотр Telegram-пользователя в студсовете и активистах.','Исправлена загрузка дополнительного модуля аватарок.']},
+{version:'2.0.2',date:'12 октября 2026',title:'Роли, иностранцы, проверки и порядок',latest:true,items:['Убраны повторяющиеся подписи ролей; одинаковые роли сохраняют одинаковый цвет.','Исправлены первичная окраска и подсчёт иностранцев по прописке.','Порядок Студсовета и Активистов сохраняется на сервере.','Поля замечаний больше не растягиваются.']},
+{version:'2.0.1',date:'12 октября 2026',title:'Аватарки и @ники Telegram',latest:false,items:['Появились фото и @ники в назначении должностей.','Предпросмотр Telegram-пользователя в студсовете и активистах.','Исправлена загрузка дополнительного модуля аватарок.']},
 {version:'2.0',date:'12 октября 2026',title:'Глобальное обновление Campus №1',latest:false,items:['Новые права и роли.','Онлайн, профили и управление разработчиками.','Сверка документов и проверки комнат.','Аналитика по блокам и архив задач.']},
 {version:'16.4.1',date:'12 октября 2026',title:'Исправлено автоматическое обновление',latest:false,items:[
  'После каждого обновления приложение заново загружает актуальные JS и CSS из GitHub Pages.',
@@ -299,6 +300,36 @@ function syncProfileAvatar(){
       : '');
 }
 function roleLabel(u){ return u?.role || 'Пользователь'; }
+
+/* CAMPUS_V201_INITIAL_ROLE_AND_FOREIGNERS */
+function campusV201InitialRoleStyle(u){
+  const defaults={owner:'#D93B48',developer:'#C18B18',chair:'#26935E',vice_chair:'#26935E',sector_head:'#D39D13',sector_deputy:'#D39D13',member:'#2877D7',activist:'#2877D7'};
+  const roleText=String(u?.role||'').toLocaleLowerCase('ru');
+  let key=u?.isOwner?'owner':u?.isDeveloper?'developer':u?.position?.roleId||'';
+  if(!defaults[key]){
+    if(roleText.includes('зам')&&roleText.includes('председ'))key='vice_chair';
+    else if(roleText.includes('председ'))key='chair';
+    else if(roleText.includes('глава')||roleText.includes('руководитель сектора'))key=roleText.includes('зам')?'sector_deputy':'sector_head';
+    else if(roleText.includes('активист'))key='activist';
+    else key='member';
+  }
+  let palette={};
+  try{palette=JSON.parse(localStorage.getItem('campus-v2-palette-cache-v1')||'{}')||{};}catch(_e){}
+  let c=String(palette[key]||defaults[key]||defaults.member);
+  if(!/^#[0-9a-fA-F]{6}$/.test(c))c=defaults[key]||defaults.member;
+  const num=parseInt(c.slice(1),16),r=(num>>16)&255,g=(num>>8)&255,b=num&255;
+  const brightness=.2126*r+.7152*g+.0722*b;
+  const ink=brightness>211?'rgb('+Math.round(r*.62)+','+Math.round(g*.62)+','+Math.round(b*.62)+')':c;
+  return 'background:rgba('+r+','+g+','+b+',.16);color:'+ink+';border:1px solid rgba('+r+','+g+','+b+',.32);';
+}
+function campusV201ForeignCount(serverCount){
+  const students=state.studentLists?.active;
+  if(!Array.isArray(students))return Number(serverCount)||0;
+  const foreign=/туркмен|түрікмен|turkmen|ашхабад|монгол|моңғол|mongol|улан.?батор|нигерия|nigeria|египет|egypt|китай|қытай|china|индонез|indones|афган|afghan|пакистан|pakistan|узбек|өзбек|uzbek|бангладеш|bangladesh|танзания|tanzania|сомали|somalia|росси|russia|кыргыз|киргиз|kyrgyz|таджик|tajik|индия|india|турция|turkey|türkiye|иран|iran/i;
+  const kz=/казахстан|қазақстан|kazakhstan|\bрк\b/i;
+  return students.filter(s=>s&&s.active!==false&&foreign.test(String(s.registration||''))&&!kz.test(String(s.registration||''))).length;
+}
+
 function canManage(){ return !!state.user?.canManage; }
 function formatCount(n,one,few,many){ n=Math.abs(Number(n)||0); const n10=n%10,n100=n%100; const word=(n10===1&&n100!==11)?one:(n10>=2&&n10<=4&&(n100<12||n100>14))?few:many; return `${n} ${word}`; }
 
@@ -2421,7 +2452,7 @@ function renderHome(){
         <p>Campus №1 · ${esc(roleLabel(state.user))}</p>
       </div>
       <div class="hero-side">
-        <span class="role-chip">${esc(roleLabel(state.user))}</span>
+        <span class="role-chip" style="${campusV201InitialRoleStyle(state.user)}">${esc(roleLabel(state.user))}</span>
       </div>
     </section>
 
@@ -2435,7 +2466,7 @@ function renderHome(){
     <div class="stats-grid fade-in">
       ${statCard('users', d.currentStudents || 0, 'Заселено сейчас', 'green', 'students')}
       ${statCard('door', d.freeRooms || 0, 'Свободно комнат', '', 'rooms')}
-      ${statCard('globe', d.foreigners || 0, 'Иностранные', '', 'foreigners')}
+      ${statCard('globe', campusV201ForeignCount(d.foreigners), 'Иностранные', '', 'foreigners')}
       ${statCard('council', (d.council || 0) + (d.activists || 0), 'Студсовет и активисты', '', 'council')}
     </div>
 
