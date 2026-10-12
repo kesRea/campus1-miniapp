@@ -17,7 +17,7 @@ function applyPalette(){Object.entries(V2.palette).forEach(([k,hex])=>{if(/^#[\d
 function roleClass(u){if(u?.isOwner)return 'owner';if(u?.isDeveloper)return 'developer';return u?.position?.roleId||'member'}
 function decorateRole(){const c=roleClass(state.user),tag=$v('.hero-side .role-chip');if(tag){tag.style.background=`color-mix(in srgb,var(--v2-${c},#2677d8) 15%,transparent)`;tag.style.color=`var(--v2-${c},#2677d8)`;}const splash=$v('#splashVersion');if(splash)splash.textContent='Версия 2.0 · Глобальное обновление';}
 async function tick(){if(document.hidden||!state.user||!V2.ready)return;try{await call('appV2Heartbeat')}catch(_){} }
-function v2More(){if(!V2.ready)return;const grid=$v('.more-grid');if(!grid||grid.querySelector('[data-v2extra]'))return;const add=document.createElement('div');add.dataset.v2extra='1';add.style.display='contents';add.innerHTML=[allowed('inspection')?moreCard('clipboard','Чистый вторник / четверг','Оценки комнат сразу по блокам',"v2Go('inspections')"):'',privileged()?moreCard('shield','V2.0 Центр управления','Онлайн, разработчики, профили, роли',"v2Go('admin')"):'',privileged()?moreCard('book','Загрузка документов','Сверка и безопасное применение',"v2Go('import')"):''].join('');grid.appendChild(add);}
+function v2More(){if(!V2.ready)return;const grid=$v('.more-grid');if(!grid||grid.querySelector('[data-v2extra]'))return;const add=document.createElement('div');add.dataset.v2extra='1';add.style.display='contents';add.innerHTML=[allowed('inspection')?moreCard('clipboard','Проверка комнат','Оценки за вторник или четверг',"v2Go('inspections')"):'',privileged()?moreCard('shield','V2.0 Центр управления','Онлайн, разработчики, профили, роли',"v2Go('admin')"):'',privileged()?moreCard('book','Загрузка документов','Сверка и безопасное применение',"v2Go('import')"):''].join('');grid.appendChild(add);}
 async function v2Analytics(){const mount=$v('#view');if(!mount||mount.querySelector('#v2-analytics'))return;const panel=document.createElement('div');panel.id='v2-analytics';panel.innerHTML='<div class="v2-panel">Аналитика по блокам загружается…</div>';mount.appendChild(panel);try{const data=await call('appV2Analytics');if(state.currentPage!=='analytics')return;const summ=(k)=>data.blocks.reduce((s,b)=>s+b[k],0);panel.innerHTML=`<div class="section-heading"><h2>Проживающие по блокам и категориям</h2></div><div class="v2-grid"><div class="v2-stat"><b>${data.total}</b><small>Всего проживает</small></div><div class="v2-stat"><b>${summ('college')}</b><small>Колледж</small></div><div class="v2-stat"><b>${summ('foundation')}</b><small>Foundation</small></div><div class="v2-stat"><b>${summ('turkmen')}</b><small>Туркмения</small></div><div class="v2-stat"><b>${summ('mongolian')}</b><small>Монголия</small></div><div class="v2-stat"><b>${data.unassigned}</b><small>Без блока</small></div></div>${data.blocks.map(b=>`<div class="v2-panel"><h3>${b.block} блок — ${b.total} проживающих</h3>${[['college','Колледж'],['foundation','Foundation'],['turkmen','Туркмения'],['mongolian','Монголия']].map(([k,n])=>`<div class="v2-line"><span>${n}</span><b>${b[k]}</b></div><div class="v2-bar"><span style="width:${b.total?Math.min(100,Math.round(b[k]/b.total*100)):0}%"></span></div>`).join('')}</div>`).join('')}<p class="v2-note">${escV(data.note)} Счёт ведётся по живой базе, а не по старому Excel.</p>`;}catch(e){panel.innerHTML=`<div class="v2-panel">${safeErr(e)}</div>`;}}
 async function v2Page(which){if(!V2.ready){notice('Сначала установите серверный модуль V2.0');return;}state.currentPage='v2-'+which;state.renderSeq++;setNav('more');switch(which){case 'admin':return v2Admin();case 'online':return v2Online();case 'developers':return v2Developers();case 'palette':return v2Palette();case 'profiles':return v2Profiles();case 'roster':return v2Roster();case 'activist-roster':return v2Roster('activists');case 'inspections':return v2Inspect();case 'import':return v2Import();default:return;}}
 async function v2Admin(){if(!privileged())return notice('Доступ запрещён');show(`${heading('Центр V2.0','more')}<div class="v2-panel"><h3>Глобальное обновление V2.0</h3><p class="v2-note">Доступ владельца и разработчика подтверждается сервером. Панель не видна обычным участникам.</p></div>${elAction('Пользователи онлайн','Кто сейчас в Mini App',"v2Go('online')")}${elAction('Разработчики','Список и управление доступом',"v2Go('developers')")}${elAction('Цвета ролей','Сменить цвета в настройках',"v2Go('palette')")}${elAction('Тестовые профили','Аватары и комментарии',"v2Go('profiles')")}${elAction('Привязка студсовета','Выбрать пользователя Telegram для ФИО',"v2Go('roster')")}${elAction('Привязка активистов','Связать активистов с Telegram для редактирования',"v2Go('activist-roster')")}${elAction('Загрузка документов','Excel, CSV и Word-таблицы',"v2Go('import')")}`);}
@@ -81,7 +81,7 @@ function v201Tone(key){
 function v201DecorateRole(){
   const tag=$v('.hero-side .role-chip');
   if(tag){const t=v201Tone(roleClass(state.user));tag.style.cssText=t.css;tag.style.visibility='visible';}
-  const splash=$v('#splashVersion');if(splash)splash.textContent='Версия V2.0.3 · Глобальное обновление';
+  const splash=$v('#splashVersion');if(splash)splash.textContent='Версия V2.0.4 · Глобальное обновление';
 }
 decorateRole=v201DecorateRole;
 const v201ReloadOriginal=reloadCapabilities;
@@ -428,6 +428,222 @@ reloadCapabilities=async function(){
   return result;
 };
 setTimeout(()=>{if(state.currentPage==='home')v203ApplyHome();},1600);
+
+
+/* CAMPUS_V204_INSPECTIONS — verified floor grouping and persistent Tuesday/Thursday marks.
+ * Loads and saves only through authenticated Apps Script V204 routes.
+ * Adds no new authorization or student-data access on the frontend.
+ */
+const V204={request:0,busy:false,selected:null,floorBlock:1};
+function v204FmtLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function v204DateFor(day,fromDate){
+  const base=fromDate?new Date(String(fromDate)+'T12:00:00'):new Date();
+  if(Number.isNaN(+base))return v204FmtLocal(new Date());
+  const offset=(Number(day)-base.getDay()+7)%7;
+  // nearest eligible day: allow Tuesday tomorrow on Monday, last Thursday on Friday
+  base.setDate(base.getDate()+(offset>3?offset-7:offset));
+  return v204FmtLocal(base);
+}
+function v204Weekday(iso){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))return 0;
+  const d=new Date(String(iso)+'T12:00:00');
+  return Number.isNaN(+d)?0:d.getDay();
+}
+function v204Selection(){
+  return {date:$v('#v204-check-date')?.value||'',day:Number($v('#v204-check-day')?.value||2),block:Number($v('#v204-check-block')?.value||1),band:$v('#v204-check-band')?.value||'2–3'};
+}
+function v204Dirty(){return [...document.querySelectorAll('#v204-check-rooms .v204-room[data-dirty="1"]')];}
+function v204DirtyNotice(){
+  const n=v204Dirty().length,b=$v('#v204-check-save'),status=$v('#v204-dirty-count');
+  if(b){b.disabled=!n||V204.busy;b.textContent=V204.busy?'Сохраняем…':`Сохранить изменения${n?' ('+n+')':''}`;}
+  if(status)status.textContent=n?`${n} ${n===1?'комната изменена':'комнат изменено'}. После сохранения оценки останутся в Google Таблице.`:'Измените оценку или замечание в комнате, затем нажмите «Сохранить изменения».';
+}
+function v204MarkDirty(node){
+  const room=node?.closest('.v204-room');
+  if(room){room.dataset.dirty='1';room.classList.add('v204-dirty');v204DirtyNotice();}
+}
+function v204SetStatus(value,error=false){
+  const el=$v('#v204-check-status');
+  if(el){el.textContent=value;el.classList.toggle('v204-error',!!error);}
+}
+function v204ConfirmDiscard(){
+  return !v204Dirty().length||confirm('Есть несохранённые оценки. Перейти без сохранения?');
+}
+function v204SelectDay(){
+  if(!v204ConfirmDiscard()){
+    if(V204.selected){$v('#v204-check-day').value=String(V204.selected.day);}return;
+  }
+  const day=$v('#v204-check-day').value,date=$v('#v204-check-date');
+  if(date)date.value=v204DateFor(day,date.value);
+  v2CheckLoad();
+}
+function v204ChangeSelection(){
+  if(!v204ConfirmDiscard()){
+    if(V204.selected){
+      $v('#v204-check-date').value=V204.selected.date;
+      $v('#v204-check-day').value=String(V204.selected.day);
+      $v('#v204-check-block').value=String(V204.selected.block);
+      $v('#v204-check-band').value=V204.selected.band;
+    }
+    return;
+  }
+  v2CheckLoad();
+}
+function v204RoomMarkup(item){
+  const score=item.rating===null||item.rating===undefined?'':String(item.rating);
+  const options=[5,4,3,2,1].map(v=>`<option value="${v}" ${score===String(v)?'selected':''}>${v} / 5</option>`).join('');
+  const saved=item.saved?'<span class="v204-saved-mark">Есть запись</span>':'';
+  const legacy=item.legacy?'<small class="v204-legacy">Прежняя группа этажей — при сохранении обновится</small>':'';
+  return `<article class="v2-room v204-room" data-room="${Number(item.room)}" data-dirty="0">
+    <div class="v204-room-head"><b>Комната ${Number(item.room)}</b><span>${Number(item.floor)} этаж</span></div>
+    ${saved}
+    <select class="v2-score v204-score" aria-label="Оценка комнаты ${Number(item.room)}" onchange="v204MarkDirty(this)">
+      <option value="" ${!score?'selected':''}>Не проверена</option>${options}
+    </select>
+    <textarea class="v2-room-note v204-room-note" maxlength="350" rows="2" placeholder="Замечание" oninput="v204MarkDirty(this)">${escV(item.note||'')}</textarea>
+    ${legacy}
+  </article>`;
+}
+function v204ShowValidDate(){
+  const {day,date}=v204Selection();
+  if(!date||v204Weekday(date)!==day){
+    v204SetStatus(`Выберите дату, которая приходится на ${day===2?'вторник':'четверг'}.`,true);
+    $v('#v204-check-rooms').innerHTML='<div class="v2-note">Дата и выбранный день должны совпадать.</div>';
+    return false;
+  }
+  return true;
+}
+// Replace the pre-existing V2 inspection screen, leaving the rest of V2 unmodified.
+v2Inspect=function(){
+  if(!allowed('inspection'))return notice('Доступ к проверкам закрыт');
+  V204.request++;V204.busy=false;V204.selected=null;
+  const now=new Date(),firstDay=now.getDay()===4?4:2;
+  show(`${heading('Проверка комнат','more')}
+    <section class="v2-panel v204-inspection-controls">
+      <p class="v2-note">Выберите день проверки, блок и этажи. Оценки сохраняются отдельно для каждой даты и комнаты.</p>
+      <label for="v204-check-day">Проверка за</label>
+      <select class="v2-select" id="v204-check-day" onchange="v204SelectDay()">
+        <option value="2" ${firstDay===2?'selected':''}>Вторник</option>
+        <option value="4" ${firstDay===4?'selected':''}>Четверг</option>
+      </select>
+      <label for="v204-check-date">Дата проверки</label>
+      <input type="date" class="v2-input" id="v204-check-date" value="${v204DateFor(firstDay)}" onchange="v204ChangeSelection()">
+      <label for="v204-check-block">Блок</label>
+      <select class="v2-select" id="v204-check-block" onchange="v204ChangeSelection()">
+        <option value="1">1 блок</option><option value="2">2 блок</option><option value="3">3 блок</option>
+      </select>
+      <label for="v204-check-band">Этажи</label>
+      <select class="v2-select" id="v204-check-band" onchange="v204ChangeSelection()">
+        <option value="2–3">2–3 этажи</option><option value="4–5">4–5 этажи</option>
+      </select>
+      <small class="v2-note">Во 1-м блоке комнаты 30–40 относятся ко 2-му этажу. Комнат 126 и 127 в проверках нет.</small>
+      ${privileged()?'<button class="btn btn-secondary v204-floor-settings" type="button" onclick="v204OpenFloorMap()">⚙ Настроить расположение комнат по этажам</button>':''}
+    </section>
+    <section class="v2-panel">
+      <h3>Оценки комнат</h3>
+      <div class="v2-note" id="v204-check-status" role="status" aria-live="polite">Загружаем предыдущие оценки…</div>
+      <div id="v204-check-rooms" class="v2-rooms v204-room-grid"></div>
+      <div class="v2-note" id="v204-dirty-count"></div>
+      <button id="v204-check-save" class="btn btn-primary btn-wide" type="button" onclick="v2CheckSave()" disabled>Сохранить изменения</button>
+    </section>`);
+  v2CheckLoad();
+};
+v2CheckLoad=async function(){
+  const roomEl=$v('#v204-check-rooms');if(!roomEl)return;
+  const info=v204Selection();
+  const ticket=++V204.request;
+  if(!v204ShowValidDate())return;
+  V204.busy=true;V204.selected={...info};
+  roomEl.innerHTML='<div class="v2-note">Загрузка комнат и сохранённых оценок…</div>';
+  v204SetStatus('Загружаем…');v204DirtyNotice();
+  try{
+    const data=await call('appV204GetInspections',info.date,info.block,info.band,info.day);
+    if(ticket!==V204.request||!$v('#v204-check-rooms'))return;
+    if(!Array.isArray(data?.rooms))throw new Error('Сервер вернул некорректный список комнат.');
+    // Defense in depth, absent rooms are never rendered.
+    const rooms=data.rooms.filter(r=>Number(r.room)!==126&&Number(r.room)!==127);
+    V2.inspections=rooms;
+    roomEl.innerHTML=rooms.length?rooms.map(v204RoomMarkup).join(''):'<div class="v2-note">В выбранной группе нет комнат.</div>';
+    const floorCounts={2:0,3:0,4:0,5:0};rooms.forEach(x=>{if(x.floor in floorCounts)floorCounts[x.floor]++;});
+    const parts=(info.band==='2–3'?[2,3]:[4,5]).map(f=>`${f}-й этаж: ${floorCounts[f]||0}`).join(' · ');
+    v204SetStatus(`Комнат: ${rooms.length} · сохранённых оценок: ${Number(data.saved)||0} · ${parts}.`);
+  }catch(e){
+    if(ticket!==V204.request||!$v('#v204-check-rooms'))return;
+    roomEl.innerHTML='<div class="v2-note v204-error">Не удалось получить оценки. Проверьте развёртывание серверного модуля V2.0.4.</div>';
+    v204SetStatus(String(e?.message||e),true);
+  }finally{
+    if(ticket===V204.request){V204.busy=false;v204DirtyNotice();}
+  }
+};
+v2CheckSave=async function(){
+  if(V204.busy)return;
+  const info=v204Selection();
+  if(!v204ShowValidDate())return;
+  if(!V204.selected||Object.keys(info).some(k=>String(info[k])!==String(V204.selected[k])))return notice('Параметры проверки изменились. Повторно загрузите комнаты.');
+  const dirty=v204Dirty();
+  if(!dirty.length)return notice('Нет изменений для сохранения.');
+  const items=dirty.map(card=>({
+    room:Number(card.dataset.room),
+    rating:card.querySelector('.v204-score')?.value||'',
+    note:card.querySelector('.v204-room-note')?.value||''
+  }));
+  if(!confirm(`Сохранить изменения для ${items.length} комнат?\n${info.date} · ${info.block} блок · этажи ${info.band}`))return;
+  V204.busy=true;v204DirtyNotice();
+  try{
+    const result=await call('appV204SaveInspections',{...info,items});
+    notice(`Сохранено: ${Number(result.saved)||0} комнат.`);
+    V204.busy=false;
+    await v2CheckLoad();
+  }catch(e){
+    V204.busy=false;v204DirtyNotice();
+    v204SetStatus('Ошибка сохранения: '+String(e?.message||e),true);
+    notice(String(e?.message||e));
+  }
+};
+async function v204OpenFloorMap(){
+  if(!privileged())return notice('Настройка этажей доступна только владельцу и разработчику.');
+  if(!v204ConfirmDiscard())return;
+  V204.floorBlock=Number($v('#v204-check-block')?.value||1);
+  showModal(`<div class="sheet-handle"></div><h3>Этажи и комнаты</h3>
+    <p class="v2-note">Менять расположение комнат вправе только владелец и разработчик. После сохранения фильтрация обновится для всех.</p>
+    <label for="v204-floor-block">Блок</label>
+    <select id="v204-floor-block" class="v2-select" onchange="v204LoadFloorMap()">
+      <option value="1" ${V204.floorBlock===1?'selected':''}>1 блок</option>
+      <option value="2" ${V204.floorBlock===2?'selected':''}>2 блок</option>
+      <option value="3" ${V204.floorBlock===3?'selected':''}>3 блок</option>
+    </select>
+    <div id="v204-floor-rows" class="v204-floor-list"><div class="v2-note">Загрузка…</div></div>
+    <button type="button" id="v204-floor-save" class="btn btn-primary btn-wide" onclick="v204SaveFloorMap()">Сохранить этажи</button>
+    <button type="button" class="btn btn-secondary btn-wide" onclick="closeModal();v2CheckLoad()">Закрыть</button>`);
+  await v204LoadFloorMap();
+}
+async function v204LoadFloorMap(){
+  const el=$v('#v204-floor-rows');if(!el)return;
+  const block=Number($v('#v204-floor-block')?.value||1),ticket=++V204.request;
+  V204.floorBlock=block;el.innerHTML='<div class="v2-note">Получаем настройки этажей…</div>';
+  try{
+    const data=await call('appV204FloorMap',block);
+    if(ticket!==V204.request||!el.isConnected)return;
+    el.innerHTML=(data.rooms||[]).map(r=>`<label class="v204-floor-item"><span>Комната ${Number(r.room)}</span>
+      <select class="v2-select v204-room-floor" data-room="${Number(r.room)}" aria-label="Этаж комнаты ${Number(r.room)}">
+      ${[1,2,3,4,5].map(f=>`<option value="${f}" ${Number(r.floor)===f?'selected':''}>${f} этаж</option>`).join('')}</select></label>`).join('');
+    if(!data.rooms?.length)el.innerHTML='<div class="v2-note">Комнаты не найдены.</div>';
+  }catch(e){if(el.isConnected)el.textContent=String(e?.message||e);}
+}
+async function v204SaveFloorMap(){
+  if(!privileged())return notice('Недостаточно прав.');
+  const block=Number($v('#v204-floor-block')?.value||1);
+  const changes=[...document.querySelectorAll('#v204-floor-rows .v204-room-floor')].map(x=>({room:Number(x.dataset.room),floor:Number(x.value)}));
+  if(!changes.length)return notice('Сначала загрузите комнаты.');
+  if(!confirm(`Обновить расположение ${changes.length} комнат ${block}-го блока? Это изменит их группировку при проверках для всех пользователей.`))return;
+  const btn=$v('#v204-floor-save');if(btn)btn.disabled=true;
+  try{
+    await call('appV204SetFloorMap',block,changes);
+    notice('Этажи сохранены.');closeModal();
+    const chosen=$v('#v204-check-block');if(chosen)chosen.value=String(block);
+    v2CheckLoad();
+  }catch(e){notice(String(e?.message||e));if(btn)btn.disabled=false;}
+}
 
 
 })();

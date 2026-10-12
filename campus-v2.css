@@ -31,3 +31,21 @@
 .v203-check{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--surface-secondary,rgba(120,150,180,.13));font-size:16px;font-weight:700;color:var(--muted,#92a0b2)}
 .v203-choice[aria-pressed="true"] .v203-check{background:var(--blue,#368af4);color:#fff}
 @media(max-width:410px){.v203-heading-tools{gap:5px}.section-heading .v203-heading-tools .v203-config-button{padding:7px 8px;font-size:11px}.section-heading .v203-heading-tools>button:not(.v203-config-button){font-size:11px}}
+/* Campus №1 V2.0.4 — clean room checks; no layout overflow on mobile. */
+.v204-inspection-controls .v204-floor-settings{margin-top:12px;width:100%;white-space:normal;text-align:center}
+.v204-room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+.v204-room-grid>.v2-note{grid-column:1/-1}
+.v204-room{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.v204-room-head{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.v204-room-head b{font-size:14px;line-height:1.3}
+.v204-room-head span{font-size:11px;color:var(--muted,#8e9bae)}
+.v204-room-note{width:100%;height:68px!important;min-height:68px!important;max-height:68px!important;resize:none!important;overflow-y:auto!important;box-sizing:border-box;font-size:13px;line-height:1.4}
+.v204-score{max-width:100%;width:100%;box-sizing:border-box;font-size:14px}
+.v204-saved-mark{font-size:10px;color:#33b98b}
+.v204-legacy{font-size:10px;color:#c9a23a}
+.v204-dirty{border-color:#317ad6!important}
+.v204-error{color:#e37575!important}
+.v204-floor-list{max-height:48vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 1px}
+.v204-floor-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:10px}
+.v204-floor-item .v2-select{margin:0!important;font-size:13px;padding:10px}
+@media(max-width:360px){.v204-room-grid{grid-template-columns:1fr}.v204-room{gap:10px}}
