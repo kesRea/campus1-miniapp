@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '16.4.1';
+const APP_VERSION = '20.0.0';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '16.4.1';
+const UPDATE_CENTER_VERSION = '20.0.0';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'16.4.1',date:'12 октября 2026',title:'Исправлено автоматическое обновление',latest:true,items:[
+{version:'2.0',date:'12 октября 2026',title:'Глобальное обновление Campus №1',latest:true,items:['Новые права и роли.','Онлайн, профили и управление разработчиками.','Сверка документов и проверки комнат.','Аналитика по блокам и архив задач.']},
+{version:'16.4.1',date:'12 октября 2026',title:'Исправлено автоматическое обновление',latest:false,items:[
  'После каждого обновления приложение заново загружает актуальные JS и CSS из GitHub Pages.',
  'Исправлено застревание старой версии в кэше Telegram.',
  'Функции бота, заселение и документы не изменены.'
@@ -589,7 +590,8 @@ function ownerSeasonChoice(mode,glyph,title,sub){
 
 async function apiRequest(method,args=[],options={}){
   if(maintenanceBlocked && method!=='appGetMaintenanceStatus')throw new Error('Происходят технические работы.');
-  const readOnly = method !== 'appV161CreateDocument' && !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method);
+  /* CAMPUS_V2_MUTATION_NO_RETRY */
+  const readOnly = (method !== 'appV161CreateDocument' && !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method)) && !/^appV2(?:Bind|Save|Set|ProfileComment|Apply|Delete|Heartbeat)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
   const key = method+'|'+JSON.stringify(args);
   const now=Date.now();
@@ -2461,3 +2463,34 @@ function renderHome(){
 document.addEventListener('DOMContentLoaded', applyCampusBrandLogos);
 setTimeout(applyCampusBrandLogos, 50);
 setTimeout(applyCampusBrandLogos, 300);
+
+/* CAMPUS_V2_ADDON_LOADER_V3 */
+(function(){
+  'use strict';
+  if(typeof document==='undefined')return;
+  var current=document.currentScript;
+  var parentUrl=current&&current.src?current.src:location.href;
+  var params='';
+  try{params=new URL(parentUrl).search;}catch(_e){}
+  function asset(name){
+    try{return new URL(name+params,parentUrl).href;}
+    catch(_e){return name+params;}
+  }
+  if(!document.querySelector('link[data-campus-v2-addon]') &&
+     !document.querySelector('link[href*="campus-v2.css"]')){
+    var style=document.createElement('link');
+    style.rel='stylesheet';style.href=asset('campus-v2.css');
+    style.setAttribute('data-campus-v2-addon','');
+    document.head.appendChild(style);
+  }
+  if(!document.querySelector('script[data-campus-v2-addon]') &&
+     !document.querySelector('script[src*="campus-v2.js"]')){
+    var js=document.createElement('script');
+    js.src=asset('campus-v2.js');
+    js.setAttribute('data-campus-v2-addon','');
+    js.onerror=function(){
+      console.error('Campus V2.0 failed to load. Previous Mini App remains operational.');
+    };
+    document.body.appendChild(js);
+  }
+})();
