@@ -12,10 +12,24 @@
   <meta name="description" content="Campus №1 — система управления общежитием">
   <!-- CAMPUS_GITHUB_UI_V14_2_1_EXACT_LOGO_GEOMETRY -->
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <link rel="stylesheet" href="styles.css?v=14.3.2">
-  <link rel="stylesheet" href="tasks.css?v=14.2.0">
-  <link rel="stylesheet" href="management.css?v=14.2.0">
-  <link rel="stylesheet" href="splash-v14.4.1.css?v=15">
+
+
+
+  <!-- CAMPUS_AUTOASSET_V1641: fresh assets on every open; no manual cache-version edits on next release -->
+  <script>
+  (function(){
+    'use strict';
+    // HTTPS Github Pages assets are public; NO student data is fetched here.
+    var tag=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+    var files=["styles.css","tasks.css","management.css","splash-v14.4.1.css"];
+    for(var i=0;i<files.length;i++){
+      var link=document.createElement('link');
+      link.rel='stylesheet';link.href=files[i]+'?campus='+tag;
+      document.head.appendChild(link);
+    }
+    window.__campusAssetTag=tag;
+  }());
+  </script>
 </head>
 <body>
   <div id="splash" class="splash splash-v144">
@@ -32,7 +46,7 @@
         <span class="splash-button-text-v142">Войти</span>
       </button>
       <div class="splash-note">Доступ для студенческого совета.</div>
-      <div class="splash-release"><span>Campus №1</span><span id="splashVersion">Версия 16.4</span></div>
+      <div class="splash-release"><span>Campus №1</span><span id="splashVersion">Версия 16.4.1</span></div>
     </div>
   </div>
 
@@ -87,35 +101,29 @@
   </div>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="tasks.js?v=14.2.0"></script>
-  <script src="special.js?v=14.2.0"></script>
-  <script src="management.js?v=14.2.0"></script>
-    <!-- CAMPUS_V164_CACHE_SAFE_LOADER: avoid stale app.js?v=15 after update -->
+  <!-- CAMPUS_AUTOASSET_SCRIPTS_V1641: keep JS order, no stale static app version -->
   <script>
-  (function () {
+  (function(){
     'use strict';
-    var loaded = false;
-    var fallback = '16.4';
-    function start(version) {
-      if (loaded) return;
-      loaded = true;
-      var script = document.createElement('script');
-      script.src = 'app.js?v=' + encodeURIComponent(version);
-      script.onerror = function () {
-        var el = document.getElementById('splashText');
-        if (el) el.textContent = 'Ошибка загрузки приложения. Закройте и откройте его снова.';
+    var files=["tasks.js","special.js","management.js","app.js"],index=0;
+    var tag=window.__campusAssetTag||Date.now().toString(36);
+    function next(){
+      if(index>=files.length){
+        try{var label=document.getElementById('splashVersion');
+          if(label&&typeof APP_VERSION!=='undefined')label.textContent='Версия '+APP_VERSION;}catch(e){}
+        return;
+      }
+      var current=files[index++];
+      var script=document.createElement('script');
+      script.src=current+'?campus='+encodeURIComponent(tag);
+      script.onload=next;
+      script.onerror=function(){
+        var msg=document.getElementById('splashText');
+        if(msg)msg.textContent='Не удалось загрузить '+current+'. Повторно откройте приложение.';
       };
       document.body.appendChild(script);
     }
-    var timeout = setTimeout(function () { start(fallback); }, 3500);
-    fetch('version.json?update=' + Date.now(), {cache:'no-store'})
-      .then(function (response) { if (!response.ok) throw Error('manifest'); return response.json(); })
-      .then(function (manifest) {
-        var version = String(manifest && manifest.version || '');
-        start(/^\d+(?:\.\d+)*$/.test(version) ? version : fallback);
-      })
-      .catch(function () { start(fallback); })
-      .then(function () { clearTimeout(timeout); });
+    next();
   }());
   </script>
 </body>

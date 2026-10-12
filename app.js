@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '16.4';
+const APP_VERSION = '16.4.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,16 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '16.4';
+const UPDATE_CENTER_VERSION = '16.4.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'16.4',date:'12 октября 2026',title:'Campus №1 V16.4 — черновики облачных документов',latest:true,items:[
+{version:'16.4.1',date:'12 октября 2026',title:'Исправлено автоматическое обновление',latest:true,items:[
+ 'После каждого обновления приложение заново загружает актуальные JS и CSS из GitHub Pages.',
+ 'Исправлено застревание старой версии в кэше Telegram.',
+ 'Функции бота, заселение и документы не изменены.'
+]},
+{version:'16.4',date:'12 октября 2026',title:'Campus №1 V16.4 — черновики облачных документов',latest:false,items:[
  'Генерация защищённых Google Документов из утверждённой базы 337 студентов.',
  '20 активистов и 11 членов студенческого совета, без выгрузки персональных данных на GitHub.',
  '32 расхождения остаются на проверке, документы помечены как черновики.',
@@ -1372,7 +1377,7 @@ function renderDocuments(){
 
     ${state.user?.canManage ? `<section class="documents-hero" style="margin-top:12px">
       <div><small>Закрытый Google Drive</small><h2>Черновики из базы V16</h2>
-      <p>337 студентов · 20 активистов · 11 студсовет. Расхождения ещё на сверке. Не для подписи.</p></div>
+      <p>337 в V16 + отдельная подтверждённая проживающая · 20 активистов · 11 студсовет. Черновики не для подписи.</p></div>
     </section>
     <div class="document-template-list">
       <button class="document-template-card" onclick="v164CloudDoc('students')"><b>Общий список V16 — черновик</b></button>
