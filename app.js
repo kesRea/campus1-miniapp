@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '20.0.0';
+const APP_VERSION = '20.0.1';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '20.0.0';
+const UPDATE_CENTER_VERSION = '20.0.1';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'2.0',date:'12 октября 2026',title:'Глобальное обновление Campus №1',latest:true,items:['Новые права и роли.','Онлайн, профили и управление разработчиками.','Сверка документов и проверки комнат.','Аналитика по блокам и архив задач.']},
+{version:'2.0.1',date:'12 октября 2026',title:'Аватарки и @ники Telegram',latest:true,items:['Появились фото и @ники в назначении должностей.','Предпросмотр Telegram-пользователя в студсовете и активистах.','Исправлена загрузка дополнительного модуля аватарок.']},
+{version:'2.0',date:'12 октября 2026',title:'Глобальное обновление Campus №1',latest:false,items:['Новые права и роли.','Онлайн, профили и управление разработчиками.','Сверка документов и проверки комнат.','Аналитика по блокам и архив задач.']},
 {version:'16.4.1',date:'12 октября 2026',title:'Исправлено автоматическое обновление',latest:false,items:[
  'После каждого обновления приложение заново загружает актуальные JS и CSS из GitHub Pages.',
  'Исправлено застревание старой версии в кэше Telegram.',
@@ -2488,6 +2489,23 @@ setTimeout(applyCampusBrandLogos, 300);
     var js=document.createElement('script');
     js.src=asset('campus-v2.js');
     js.setAttribute('data-campus-v2-addon','');
+    /* CAMPUS_V2_0_1_AVATAR_LOAD — addon depends on campus-v2.js */
+    js.onload=function(){
+      if(!document.querySelector('link[data-campus-v2-avatar-css]')){
+        var avatarStyle=document.createElement('link');
+        avatarStyle.rel='stylesheet';
+        avatarStyle.href=asset('campus-v2-avatars.css');
+        avatarStyle.setAttribute('data-campus-v2-avatar-css','');
+        document.head.appendChild(avatarStyle);
+      }
+      if(!document.querySelector('script[data-campus-v2-avatar-js]')){
+        var avatarScript=document.createElement('script');
+        avatarScript.src=asset('campus-v2-avatars.js');
+        avatarScript.setAttribute('data-campus-v2-avatar-js','');
+        avatarScript.onerror=function(){console.warn('Campus V2.0.1: аватарки недоступны; приложение продолжает работать.');};
+        document.body.appendChild(avatarScript);
+      }
+    };
     js.onerror=function(){
       console.error('Campus V2.0 failed to load. Previous Mini App remains operational.');
     };

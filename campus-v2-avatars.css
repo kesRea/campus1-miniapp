@@ -1,0 +1,9 @@
+/* V2 Telegram profile photos — stable sizing in roles and roster. */
+.v2-telegram-avatar.avatar{width:44px;height:44px;min-width:44px;display:inline-flex;overflow:hidden;border-radius:50%;align-items:center;justify-content:center}
+.v2-telegram-avatar .avatar-photo{width:100%;height:100%;object-fit:cover}
+.v2-telegram-tag{display:block;margin-top:3px;color:var(--muted,#667085);font-size:12px}
+.v2-role-identity,.v2-roster-photo-preview{display:flex;align-items:center;gap:12px;margin:9px 0 15px}
+.v2-role-identity-copy,.v2-roster-photo-preview>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.v2-role-identity-copy b,.v2-roster-photo-preview b{overflow-wrap:anywhere}
+.v2-role-identity-copy small,.v2-roster-photo-preview small{color:var(--muted,#667085);font-size:12px}
+.v2-roster-photo-preview{padding:9px 10px;border-radius:11px;background:var(--surface-secondary,#f0f4f8)}
