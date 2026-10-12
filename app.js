@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '15';
+const APP_VERSION = '16.4';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,17 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '15';
+const UPDATE_CENTER_VERSION = '16.4';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'15',date:'12 октября 2026',title:'Campus №1 V15 — обновление экрана входа',latest:true,items:[
+{version:'16.4',date:'12 октября 2026',title:'Campus №1 V16.4 — черновики облачных документов',latest:true,items:[
+ 'Генерация защищённых Google Документов из утверждённой базы 337 студентов.',
+ '20 активистов и 11 членов студенческого совета, без выгрузки персональных данных на GitHub.',
+ '32 расхождения остаются на проверке, документы помечены как черновики.',
+ 'Рабочие комнаты, заселения, webhook и существующие функции не меняются.'
+]},
+{version:'15',date:'12 октября 2026',title:'Campus №1 V15 — обновление экрана входа',latest:false,items:[
   'Новый экран входа для студенческого совета официально входит в V15.',
   'Логотип немного опущен для ровного расположения над названием.',
   'Версии теперь нумеруются V15, V15.1, V15.2 и далее для патчей.',
@@ -578,7 +584,7 @@ function ownerSeasonChoice(mode,glyph,title,sub){
 
 async function apiRequest(method,args=[],options={}){
   if(maintenanceBlocked && method!=='appGetMaintenanceStatus')throw new Error('Происходят технические работы.');
-  const readOnly = !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method);
+  const readOnly = method !== 'appV161CreateDocument' && !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
   const key = method+'|'+JSON.stringify(args);
   const now=Date.now();
@@ -1321,6 +1327,36 @@ function documentTemplateCard(key,t){
   </button>`;
 }
 
+/* CAMPUS_V164_DRAFT_DOCS_UI — закрытые черновики, старые шаблоны не затронуты. */
+let v164UiBusy=false;
+async function v164CloudDoc(kind,options={}){
+  if(v164UiBusy)return;
+  v164UiBusy=true;
+  try{
+    if(!state.user?.canManage)throw new Error('Нет прав на создание документов.');
+    const status=await apiRequest('appV161Status',[state.initData],{ttl:0,force:true});
+    if(!status?.enabled || !status?.draftOnly)throw new Error('Черновики V16.4 пока не включены на сервере.');
+    const result=await apiRequest('appV161CreateDocument',[state.initData,kind,options],{ttl:0,force:true});
+    if(!result.draft || !result.url)throw new Error('Сервер не подтвердил документ.');
+    const html='<h3>Черновик создан</h3><p>Открытые расхождения: '+Number(result.remainingReviews||0)+'. Документ пока не для подписи.</p>'+
+      '<a target="_blank" rel="noopener noreferrer" href="'+esc(result.url)+'">Открыть Google Документ</a>'+
+      '<button class="btn btn-secondary btn-wide" onclick="closeModal()">Закрыть</button>';
+    showModal(html);
+  }catch(e){toast(e.message||String(e));}
+  finally{v164UiBusy=false;}
+}
+function v164ChooseRoom(){
+  showModal('<h3>Черновик списка комнаты</h3><p>Номер комнаты Campus №1</p>'+
+   '<div class="field"><input id="v164_room" type="number" min="13" max="162" placeholder="Например, 88"></div>'+
+   '<button class="btn btn-primary btn-wide" onclick="v164RoomSubmit()">Создать</button>'+
+   '<button class="btn btn-secondary btn-wide" onclick="closeModal()">Отмена</button>');
+}
+function v164RoomSubmit(){
+  const room=Number(document.querySelector('#v164_room')?.value);
+  const valid=[13,14,23].includes(room)||(room>=30&&room<=162&&![118,126,127].includes(room));
+  if(!Number.isInteger(room)||!valid){toast('Недопустимый номер комнаты');return;}
+  closeModal();v164CloudDoc('room',{room});
+}
 function renderDocuments(){
   const history=getDocumentHistory();
 
@@ -1334,6 +1370,20 @@ function renderDocuments(){
       </div>
     </section>
 
+    ${state.user?.canManage ? `<section class="documents-hero" style="margin-top:12px">
+      <div><small>Закрытый Google Drive</small><h2>Черновики из базы V16</h2>
+      <p>337 студентов · 20 активистов · 11 студсовет. Расхождения ещё на сверке. Не для подписи.</p></div>
+    </section>
+    <div class="document-template-list">
+      <button class="document-template-card" onclick="v164CloudDoc('students')"><b>Общий список V16 — черновик</b></button>
+      <button class="document-template-card" onclick="v164ChooseRoom()"><b>Список комнаты — черновик</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('block',{block:1})"><b>1 блок</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('block',{block:2})"><b>2 блок</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('block',{block:3})"><b>3 блок</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('college')"><b>Колледж</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('activists')"><b>Активисты колледжа</b></button>
+      <button class="document-template-card" onclick="v164CloudDoc('council')"><b>Студенческий совет</b></button>
+    </div>` : ''}
     <div class="section-heading"><h2>Создать документ</h2></div>
     <div class="document-template-list">
       ${Object.entries(DOC_TEMPLATES_V138).map(([key,t])=>documentTemplateCard(key,t)).join('')}
