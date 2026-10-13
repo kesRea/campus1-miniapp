@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '20.0.7';
+const APP_VERSION = '20.0.8';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '20.0.7';
+const UPDATE_CENTER_VERSION = '20.0.8';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'2.0.7',date:'13 октября 2026',title:'Активисты, быстрые действия и Telegram-аватары',latest:true,items:['Закрытый список активистов колледжа: 20 человек, 4 сектора.','По умолчанию: переселение и проверки комнат для пользователей с соответствующими правами.','Telegram-фото: привязанный ID и резервное фото публичного @ника.','Сохранённые настройки и прежние функции не сбрасываются.']},
+{version:'2.0.8',date:'13 октября 2026',title:'Журнал: архив и безопасный откат',latest:true,items:['Владелец может архивировать и очищать журнал.','Новые изменения студентов сохраняются со снимками до и после.','Автоматический откат допускается только при отсутствии последующих изменений.','Ранние записи без снимков не откатываются автоматически.']},
+{version:'2.0.7',date:'13 октября 2026',title:'Активисты, быстрые действия и Telegram-аватары',latest:false,items:['Закрытый список активистов колледжа: 20 человек, 4 сектора.','По умолчанию: переселение и проверки комнат для пользователей с соответствующими правами.','Telegram-фото: привязанный ID и резервное фото публичного @ника.','Сохранённые настройки и прежние функции не сбрасываются.']},
 {version:'2.0.6',date:'13 октября 2026',title:'Рабочие настройки, Telegram-профили и списки',latest:false,items:['Настройка этажей и сохранение оценок работают сразу.','Списки Студсовета и активистов показаны вместе, с точным подсчётом.','Привязанные Telegram-аватары ищутся по ID и номеру записи.','Главная загружается с настройками без поздней перерисовки.']},
 {version:'2.0.5',date:'13 октября 2026',title:'Восстановление серверной публикации проверок',latest:false,items:['Повторная публикация существующего серверного модуля проверки комнат.','Сохранены вторник и четверг, оценка 1–5 и замечания.','Фронтенд и серверная версия синхронизированы; бот и webhook не менялись.']},
 {version:'2.0.4',date:'12 октября 2026',title:'Проверка комнат по этажам',latest:false,items:['Выбор проверки за вторник или четверг и даты.','Этажи 2–3 и 4–5 показывают разные комнаты.','Комнаты 126 и 127 исключены; второй этаж первого блока начинается с 30–40.','Оценки и замечания сохраняются на сервере, несохранённые изменения не сбрасываются молча.','Настройка этажей доступна владельцу и разработчику.']},
@@ -628,7 +629,7 @@ function ownerSeasonChoice(mode,glyph,title,sub){
 async function apiRequest(method,args=[],options={}){
   if(maintenanceBlocked && method!=='appGetMaintenanceStatus')throw new Error('Происходят технические работы.');
   /* CAMPUS_V2_MUTATION_NO_RETRY */
-  const readOnly = (method !== 'appV161CreateDocument' && !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method)) && !/^appV2(?:Bind|Save|Set|ProfileComment|Apply|Delete|Heartbeat)/.test(method) && !/^appV204(?:SaveInspections|SetFloorMap)$/.test(method);
+  const readOnly = (method !== 'appV161CreateDocument' && !/^app(Add|Update|Move|Evict|Create|Delegate|Set|Comment)/.test(method)) && !/^appV2(?:Bind|Save|Set|ProfileComment|Apply|Delete|Heartbeat)/.test(method) && !/^appV204(?:SaveInspections|SetFloorMap)$/.test(method) && !/^appV208(?:ClearJournal|UndoChange)$/.test(method);
   const ttl = options.ttl ?? (readOnly ? 15000 : 0);
   const key = method+'|'+JSON.stringify(args);
   const now=Date.now();
@@ -913,7 +914,7 @@ async function render(page,opts={}){
     if(page==='council') return renderCouncil('council',seq);
     if(page==='activists') return renderCouncil('activists',seq);
     if(page==='control') return renderGenericTable('Контроль общежития','appGetControl','more',seq);
-    if(page==='journal') return renderGenericTable('Журнал действий','appGetJournal','more',seq);
+    if(page==='journal') return state.user?.isOwner ? renderJournalV208(seq) : renderGenericTable('Журнал действий','appGetJournal','more',seq);
     if(page==='documents') return renderDocuments();
   }catch(e){ if(pageAlive(page,seq)) view.innerHTML=`${pageHead('Ошибка','home')}<div class="empty">${esc(e.message)}</div>`; }
 }
@@ -2552,3 +2553,33 @@ setTimeout(applyCampusBrandLogos, 300);
     document.body.appendChild(js);
   }else { boot(); }
 })();
+
+/* CAMPUS_V208_JOURNAL_UI */
+async function renderJournalV208(seq){
+ const view=$('#view');
+ if(!state.user?.isOwner)return renderGenericTable('Журнал действий','appGetJournal','more',seq);
+ view.innerHTML=`${pageHead('Журнал действий','more')}<section class="v2-panel"><h3>Управление журналом</h3><p class="v2-note">При очистке записи переносятся в архив Google Таблицы, а не уничтожаются. Откат доступен только для новых изменений с сохранённым состоянием «до» и «после».</p><button type="button" class="btn btn-secondary btn-wide" onclick="v208AskClear()">Архивировать и очистить журнал</button></section><div class="v2-panel" id="v208-undo">Загружаем историю откатов…</div><div class="v2-panel" id="v208-journal">Загружаем журнал…</div>`;
+ try{
+  const data=await apiRequest('appV208JournalList',[state.initData],{ttl:0,force:true});
+  if(state.currentPage!=='journal'||seq!==state.renderSeq)return;
+  const undos=(data.undos||[]),rows=(data.rows||[]);
+  $('#v208-undo').innerHTML='<h3>Доступные откаты</h3>'+ (undos.length?undos.map(u=>`<article class="row-card"><span class="row-main"><b>${esc(u.description||u.type)}</b><small>${esc(u.date)} · ${u.status==='READY'?'Можно откатить':'Уже отменено'}</small></span>${u.status==='READY'?`<button type="button" class="btn btn-secondary" data-undo="${esc(u.id)}" onclick="v208AskUndo(this.dataset.undo)">Откатить</button>`:''}</article>`).join(''):'<p class="v2-note">Пока нет операций со снимками. Старые действия автоматически не откатываются.</p>');
+  $('#v208-journal').innerHTML='<h3>Последние записи</h3>'+(rows.length?rows.map(r=>`<article class="row-card"><span class="row-main"><b>${esc(r.action)}</b><small>${esc(r.date)} · ${esc(r.name)}</small><small>${esc(r.details)}</small></span></article>`).join(''):'<p class="v2-note">Журнал пуст.</p>');
+ }catch(e){if(state.currentPage==='journal'){$('#v208-undo').textContent='Ошибка загрузки: '+(e?.message||e);}}
+}
+function v208AskClear(){
+ if(!state.user?.isOwner)return;
+ showModal('<div class="sheet-handle"></div><h3>Очистить журнал?</h3><p>Все текущие записи сначала будут сохранены в закрытом архивном листе. Снимки для отката останутся.</p><p>Для подтверждения введите <b>ОЧИСТИТЬ</b></p><input id="v208-verify-clear" class="v2-input" autocomplete="off" placeholder="ОЧИСТИТЬ"><button class="btn btn-primary btn-wide" type="button" onclick="v208DoClear()">Архивировать и очистить</button><button class="btn btn-secondary btn-wide" type="button" onclick="closeModal()">Отмена</button>');
+}
+async function v208DoClear(){
+ if($('#v208-verify-clear')?.value.trim()!=='ОЧИСТИТЬ')return toast('Введите ОЧИСТИТЬ для подтверждения.');
+ try{const r=await apiRequest('appV208ClearJournal',[state.initData,'ОЧИСТИТЬ'],{ttl:0,force:true});closeModal();toast('В архив перенесено '+Number(r.archived||0)+' записей');render('journal');}
+ catch(e){toast(String(e?.message||e));}
+}
+async function v208AskUndo(id){
+ if(!state.user?.isOwner||!id)return;
+ if(!confirm('Отменить это изменение? Campus проверит, что запись студента с тех пор не менялась.'))return;
+ try{await apiRequest('appV208UndoChange',[state.initData,id,'ОТКАТ'],{ttl:0,force:true});invalidateData();toast('Изменение отменено');render('journal');}
+ catch(e){toast(String(e?.message||e));}
+}
+
