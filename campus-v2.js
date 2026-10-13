@@ -770,4 +770,87 @@ renderCouncil=async function(kind,seq){
   }catch(e){if(panel.isConnected)panel.innerHTML='<div class="section-heading"><h2>Активисты</h2></div><div class="empty">'+safeErr(e)+'</div>';}
 };
 
+
+/* CAMPUS_V207_PRIVATE_ROSTER_UI: authenticated staff roster, safe defaults, telegram avatars */
+V203_DEFAULTS.actions=['move','inspections'];
+// Explicit user selections remain untouched in localStorage.
+function v207Rows(data){return Array.isArray(data&&data.rows)?data.rows:[];}
+async function v207GetActivists(){return await call('appV207GetActivists');}
+const v207OrigCount=v206UpdateCounts;
+v206UpdateCounts=async function(){
+  if(!state.user||!state.initData)return null;
+  if(V206.countsPromise)return V206.countsPromise;
+  V206.countsPromise=Promise.all([
+    apiRequest('appGetCouncil',[state.initData,'council'],{ttl:30000}),
+    v207GetActivists()
+  ]).then(([c,a])=>{
+    V206.counts={council:v207Rows(c).length,activists:v207Rows(a).length};
+    if(state.currentPage==='home')v203ApplyHome();
+    return V206.counts;
+  }).catch(e=>{console.warn('Campus V207 counts unavailable:',e);return null;})
+    .finally(()=>{V206.countsPromise=null;});
+  return V206.countsPromise;
+};
+function v207ImageFor(item){
+  const nick=String(item.username||'').trim().replace(/^@/,'');
+  const photo=String(item.photoUrl||'').trim();
+  if(/^https:\/\//i.test(photo))return photo;
+  // Telegram's public userpic is a best-effort fallback for public usernames.
+  return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(nick)
+    ? 'https://t.me/i/userpic/320/'+encodeURIComponent(nick)+'.jpg' : '';
+}
+async function v207AvatarItems(rows,kind){
+  const entries=await Promise.allSettled([
+    call('appV2AvatarDirectory',kind),v206RosterFor(kind)
+  ]);
+  const dir=entries[0].status==='fulfilled'?v207Rows(entries[0].value):[];
+  const counter=new Map();
+  dir.forEach(a=>{const k=v206Norm(a.name);counter.set(k,(counter.get(k)||0)+1);});
+  const byName=new Map(dir.filter(a=>counter.get(v206Norm(a.name))===1).map(a=>[v206Norm(a.name),a]));
+  const items=rows.map(row=>{
+    const extra=byName.get(v206Norm(v201MemberName(row)))||{};
+    return {row,key:'',photoUrl:extra.photoUrl||extra.photo||'',username:extra.username||''};
+  });
+  v206Hydrate(items,entries[1].status==='fulfilled'?entries[1].value:null);
+  items.forEach(item=>{item.photoUrl=v207ImageFor(item);});
+  return items;
+}
+async function v207RenderList(kind,seq){
+  $v('#view').innerHTML=pageHead('Активисты','more')+
+    '<div class="v2-panel"><h3>Активисты колледжа · 2026–2027</h3><div id="v207-people" class="list">Загружаем…</div></div>';
+  try{
+    const data=await v207GetActivists();
+    if(!pageAlive(kind,seq))return;
+    const items=await v207AvatarItems(v207Rows(data),'activists');
+    if(!pageAlive(kind,seq))return;
+    const holder=$v('#v207-people');if(holder)holder.innerHTML=items.length
+      ?items.map((item,i)=>v201RosterCard(item,i,items.length,false)).join('')
+      :'<div class="empty">Список активистов пока пуст.</div>';
+  }catch(e){const holder=$v('#v207-people');if(holder&&pageAlive(kind,seq))holder.textContent=String(e?.message||e);}
+}
+const v207OldCouncil=renderCouncil;
+renderCouncil=async function(kind,seq){
+  if(kind==='activists')return v207RenderList('activists',seq);
+  await v207OldCouncil.call(this,kind,seq);
+  if(!pageAlive('council',seq))return;
+  try{
+    const data=await v207GetActivists();
+    if(!pageAlive('council',seq))return;
+    const items=await v207AvatarItems(v207Rows(data),'activists');
+    if(!pageAlive('council',seq))return;
+    const panel=$v('#v206-activists');
+    if(panel)panel.innerHTML='<div class="section-heading"><h2>Активисты · '+items.length+'</h2></div><div class="list">'+
+      (items.map((item,i)=>v201RosterCard(item,i,items.length,false)).join('')||'<div class="empty">Список пуст.</div>')+'</div>';
+    if(V206.counts){V206.counts.activists=items.length;}
+  }catch(e){const panel=$v('#v206-activists');if(panel)panel.innerHTML='<div class="empty">Не удалось получить список активистов: '+safeErr(e)+'</div>';}
+};
+// Improve council portrait fallback after existing Telegram-ID hydration completes.
+const v207OldDrawRoster=v201DrawRoster;
+v201DrawRoster=function(){
+  if(v201RosterState&&Array.isArray(v201RosterState.rows)){
+    v201RosterState.rows.forEach(item=>{item.photoUrl=v207ImageFor(item);});
+  }
+  return v207OldDrawRoster.apply(this,arguments);
+};
+
 })();
