@@ -646,4 +646,128 @@ async function v204SaveFloorMap(){
 }
 
 
+
+/* CAMPUS_V206_REAL_FIX: frontend-only handlers, identity hydration, consolidated council */
+// All V204 inspection controls use inline event handlers; expose the NEW implementations.
+window.v204OpenFloorMap=v204OpenFloorMap;
+window.v204LoadFloorMap=v204LoadFloorMap;
+window.v204SaveFloorMap=v204SaveFloorMap;
+window.v204SelectDay=v204SelectDay;
+window.v204ChangeSelection=v204ChangeSelection;
+window.v204MarkDirty=v204MarkDirty;
+window.v2CheckLoad=v2CheckLoad;
+window.v2CheckSave=v2CheckSave;
+
+const V206={counts:null,countsPromise:null};
+const v206CountOriginal=v203CountData;
+v203CountData=function(){
+  const values=v206CountOriginal.apply(this,arguments);
+  // Never label council-only dashboard numbers as council + activists.
+  values.council=V206.counts?V206.counts.council+V206.counts.activists:'—';
+  return values;
+};
+const v206ApplyHomeOriginal=v203ApplyHome;
+v203ApplyHome=function(){
+  v206ApplyHomeOriginal.apply(this,arguments);
+  if(!V206.counts&&state.currentPage==='home'){
+    const value=document.querySelector('#view .stats-grid button[onclick*=\"council\"] .stat-value');
+    if(value)value.textContent='…';
+  }
+};
+function v206Norm(name){return String(name||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();}
+function v206Rows(data){return Array.isArray(data?.rows)?data.rows:[];}
+function v206Hydrate(items,roster){
+  if(!roster||!Array.isArray(roster.roster)||!Array.isArray(roster.users))return items;
+  const directory=new Map(roster.users.map(u=>[String(u.id),u]));
+  const countByName=new Map();
+  for(const r of roster.roster){const key=v206Norm(r.name);countByName.set(key,(countByName.get(key)||0)+1);}
+  const byName=new Map(roster.roster.filter(r=>countByName.get(v206Norm(r.name))===1).map(r=>[v206Norm(r.name),r]));
+  const byRow=new Map(roster.roster.filter(r=>Number.isFinite(Number(r.row))).map(r=>[Number(r.row),r]));
+  for(const item of items){
+    const row=item.row||{};
+    const rowNo=Number(row._rowNumber||row.rowNumber||row['Номер строки']);
+    const record=byRow.get(rowNo)||byName.get(v206Norm(v201MemberName(row)))||{};
+    const boundId=String(row['Telegram ID']||row['TelegramID']||row.telegramId||record.telegramId||'');
+    const user=directory.get(boundId)||{};
+    // A linked Telegram ID is authoritative; names can differ or be duplicated.
+    item.photoUrl=v201PhotoUrl(user.photoUrl||user.photo||record.photoUrl||record.photo||item.photoUrl||row['Фото']);
+    item.username=String(user.username||record.username||item.username||'').replace(/^@/,'');
+  }
+  return items;
+}
+async function v206RosterFor(kind){
+  // This sensitive endpoint is only requested for authorized owner/developer accounts.
+  if(!privileged())return null;
+  try{return await call('appV2Roster',kind)}catch(e){console.warn('Campus roster avatar lookup:',e);return null;}
+}
+async function v206UpdateCounts(){
+  if(!state.user||!state.initData)return;
+  if(V206.countsPromise)return V206.countsPromise;
+  V206.countsPromise=Promise.all([
+    apiRequest('appGetCouncil',[state.initData,'council'],{ttl:30000}),
+    apiRequest('appGetCouncil',[state.initData,'activists'],{ttl:30000})
+  ]).then(([c,a])=>{
+    V206.counts={council:v206Rows(c).length,activists:v206Rows(a).length};
+    if(state.currentPage==='home')v203ApplyHome();
+    return V206.counts;
+  }).catch(e=>{console.warn('Campus combined membership count:',e);return null;})
+    .finally(()=>{V206.countsPromise=null;});
+  return V206.countsPromise;
+}
+const v206ReloadOriginal=reloadCapabilities;
+let v206ReloadInFlight=null;
+reloadCapabilities=function(){
+  if(v206ReloadInFlight)return v206ReloadInFlight;
+  v206ReloadInFlight=Promise.resolve().then(()=>v206ReloadOriginal.apply(this,arguments))
+    .finally(()=>{v206ReloadInFlight=null;});
+  return v206ReloadInFlight;
+};
+window.campusV206OnLogin=function(){
+  // Bootstrap has already verified the Telegram session. Do not block first paint.
+  void reloadCapabilities();
+  void v206UpdateCounts();
+};
+const v206OldCouncil=renderCouncil;
+renderCouncil=async function(kind,seq){
+  const group=kind==='activists'?'activists':'council';
+  await v206OldCouncil.call(this,group,seq);
+  if(!pageAlive(group,seq))return;
+  const rosterState=v201RosterState;
+  if(rosterState?.kind===group){
+    const roster=await v206RosterFor(group);
+    if(!pageAlive(group,seq))return;
+    if(roster){v206Hydrate(rosterState.rows,roster);v201DrawRoster();}
+  }
+  if(group!=='council')return;
+  const root=$v('#generic');if(!root)return;
+  const councilCount=rosterState?.rows?.length||root.querySelectorAll('.v201-row').length;
+  root.insertAdjacentHTML('beforebegin',
+    '<div class="section-heading v206-members-heading"><h2>Студсовет · '+councilCount+'</h2></div>');
+  const panel=document.createElement('section');
+  panel.id='v206-activists';panel.className='v206-members';
+  panel.innerHTML='<div class="section-heading"><h2>Активисты</h2></div><div class="v2-note">Загружаем список активистов…</div>';
+  root.insertAdjacentElement('afterend',panel);
+  try{
+    const entries=await Promise.allSettled([
+      apiRequest('appGetCouncil',[state.initData,'activists'],{ttl:30000}),
+      call('appV2AvatarDirectory','activists'),
+      v206RosterFor('activists')
+    ]);
+    if(!pageAlive(group,seq)||!panel.isConnected)return;
+    if(entries[0].status!=='fulfilled')throw entries[0].reason;
+    const rows=v206Rows(entries[0].value);
+    const avatars=entries[1].status==='fulfilled'?v206Rows(entries[1].value):[];
+    const unique=new Map();
+    for(const a of avatars){const key=v206Norm(a.name);unique.set(key,unique.has(key)?null:a);}
+    const items=rows.map(row=>{
+      const d=unique.get(v206Norm(v201MemberName(row)))||{};
+      return {row,key:'',photoUrl:d.photoUrl||d.photo||'',username:d.username||''};
+    });
+    v206Hydrate(items,entries[2].status==='fulfilled'?entries[2].value:null);
+    panel.innerHTML='<div class="section-heading"><h2>Активисты · '+items.length+'</h2></div>'+
+      '<div class="list">'+(items.map((x,i)=>v201RosterCard(x,i,items.length,false)).join('')||'<div class="empty">Список пока пустой.</div>')+'</div>';
+    V206.counts={council:councilCount,activists:items.length};
+  }catch(e){if(panel.isConnected)panel.innerHTML='<div class="section-heading"><h2>Активисты</h2></div><div class="empty">'+safeErr(e)+'</div>';}
+};
+
 })();

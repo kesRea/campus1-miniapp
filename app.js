@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '20.0.5';
+const APP_VERSION = '20.0.6';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '20.0.5';
+const UPDATE_CENTER_VERSION = '20.0.6';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'2.0.5',date:'13 октября 2026',title:'Восстановление серверной публикации проверок',latest:true,items:['Повторная публикация существующего серверного модуля проверки комнат.','Сохранены вторник и четверг, оценка 1–5 и замечания.','Фронтенд и серверная версия синхронизированы; бот и webhook не менялись.']},
+{version:'2.0.6',date:'13 октября 2026',title:'Рабочие настройки, Telegram-профили и списки',latest:true,items:['Настройка этажей и сохранение оценок работают сразу.','Списки Студсовета и активистов показаны вместе, с точным подсчётом.','Привязанные Telegram-аватары ищутся по ID и номеру записи.','Главная загружается с настройками без поздней перерисовки.']},
+{version:'2.0.5',date:'13 октября 2026',title:'Восстановление серверной публикации проверок',latest:false,items:['Повторная публикация существующего серверного модуля проверки комнат.','Сохранены вторник и четверг, оценка 1–5 и замечания.','Фронтенд и серверная версия синхронизированы; бот и webhook не менялись.']},
 {version:'2.0.4',date:'12 октября 2026',title:'Проверка комнат по этажам',latest:false,items:['Выбор проверки за вторник или четверг и даты.','Этажи 2–3 и 4–5 показывают разные комнаты.','Комнаты 126 и 127 исключены; второй этаж первого блока начинается с 30–40.','Оценки и замечания сохраняются на сервере, несохранённые изменения не сбрасываются молча.','Настройка этажей доступна владельцу и разработчику.']},
 {version:'2.0.3',date:'12 октября 2026',title:'Настройка главной страницы',latest:false,items:['У каждого пользователя свой выбор двух быстрых действий.','В обзоре можно выбрать четыре карточки из статистики и показателей блоков.','Выбор сохраняется между запусками Telegram Mini App на устройстве.','Права на заселение и переселение по-прежнему проверяет сервер.']},
 {version:'2.0.2',date:'12 октября 2026',title:'Роли, иностранцы, проверки и порядок',latest:false,items:['Убраны повторяющиеся подписи ролей; одинаковые роли сохраняют одинаковый цвет.','Исправлены первичная окраска и подсчёт иностранцев по прописке.','Порядок Студсовета и Активистов сохраняется на сервере.','Поля замечаний больше не растягиваются.']},
@@ -760,6 +761,7 @@ async function boot(){
     }
 
     state.lastCoreSync=Date.now();
+    if(typeof window.campusV206OnLogin==='function')window.campusV206OnLogin();
     syncProfileAvatar();
     $('#splash').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#bottomNav').classList.remove('hidden');
     injectIcons(); applyTheme(state.theme,false); initSeasonTheme(); updateOwnerSeasonButton(); updateUpdatesBadge(); render('home');
@@ -2364,7 +2366,8 @@ function bindGlobalEvents(){
 initTheme();
 bindGlobalEvents();
 injectIcons();
-boot();
+/* CAMPUS_V206_BOOT_READY */
+// Wait until the V2 addon has installed the current handlers before bootstrapping.
 
 
 /* CAMPUS_V14_2_LOGO_SEASONS_PATCH */
@@ -2525,6 +2528,7 @@ setTimeout(applyCampusBrandLogos, 300);
     js.setAttribute('data-campus-v2-addon','');
     /* CAMPUS_V2_0_1_AVATAR_LOAD — addon depends on campus-v2.js */
     js.onload=function(){
+      boot();
       if(!document.querySelector('link[data-campus-v2-avatar-css]')){
         var avatarStyle=document.createElement('link');
         avatarStyle.rel='stylesheet';
@@ -2542,7 +2546,8 @@ setTimeout(applyCampusBrandLogos, 300);
     };
     js.onerror=function(){
       console.error('Campus V2.0 failed to load. Previous Mini App remains operational.');
+      boot();
     };
     document.body.appendChild(js);
-  }
+  }else { boot(); }
 })();
