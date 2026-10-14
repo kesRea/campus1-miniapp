@@ -1,0 +1,143 @@
+/* Campus №1 V2.0.13 — single small UI layer. V2010/V2011/V212 CSS is NOT loaded.
+   Restore old compact gradient greeting + colorful garland; minimalist Telegram login. */
+html.premium-ready{--campus-213-mark:#1559aa}
+html.premium-ready[data-theme="dark"]{--campus-213-mark:#dfb067}
+html.premium-ready #homeLogoBtn.campus-v213-logo-button{
+ width:35px!important;flex:0 0 35px!important;min-width:35px!important;height:43px!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ padding:2px!important;box-shadow:none!important;display:grid!important;place-items:center!important;
+}
+html.premium-ready .campus-v213-mark,
+html #splash.campus-v213-splash .campus-v213-mark{
+ display:block!important;width:27px!important;height:38px!important;flex-shrink:0!important;
+ background:var(--campus-213-mark,#1559aa)!important;
+ -webkit-mask:url('tou-symbol-v212.png') center /contain no-repeat;
+ mask:url('tou-symbol-v212.png') center /contain no-repeat;
+}
+html.premium-ready .brand-copy span{color:var(--campus-213-mark)!important}
+/* CLASSIC: no photographic background, no forced aspect ratio, no added anniversary. */
+html.premium-ready #view .hero-panel.campus-v213-classic{
+ position:relative!important;box-sizing:border-box!important;overflow:hidden!important;
+ width:100%!important;height:158px!important;min-height:158px!important;max-height:158px!important;
+ aspect-ratio:auto!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
+ border:0!important;border-radius:22px!important;padding:31px 20px 18px!important;
+ background:#154e9b!important;
+ background-image:linear-gradient(112deg,#0d3476 0%,#12539e 62%,#2877bd 100%)!important;
+ background-size:cover!important;background-position:center!important;
+ box-shadow:0 10px 23px rgba(22,70,133,.13)!important;color:#fff!important;
+}
+html.premium-ready[data-theme="dark"] #view .hero-panel.campus-v213-classic{
+ background:#0d2c57!important;
+ background-image:linear-gradient(112deg,#0b2348 0%,#123a70 65%,#1a497a 100%)!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic::before{opacity:.19!important;pointer-events:none}
+html.premium-ready #view .hero-panel.campus-v213-classic .home-object-scene{opacity:.11!important;pointer-events:none}
+html.premium-ready #view .hero-panel.campus-v213-classic .premium-anniversary,
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-season-emoji,
+html.premium-ready #view .hero-panel.campus-v213-classic .home-season-emoji{display:none!important}
+html.premium-ready #view .hero-panel.campus-v213-classic .winter-garland-v137{
+ display:block!important;position:absolute!important;inset:0 0 auto!important;height:55px!important;
+ z-index:5!important;opacity:.93!important;pointer-events:none!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-copy{
+ z-index:7!important;position:relative!important;max-width:85%!important;margin:0!important;padding:0!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-copy small{
+ display:block!important;color:#dfeaf9!important;font-size:11px!important;font-weight:700!important;margin-bottom:5px!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-copy h1{
+ color:#fff!important;font-size:clamp(23px,6.2vw,30px)!important;line-height:1.06!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-copy p{
+ color:#d9e9fa!important;font-size:11px!important;line-height:1.4!important;margin-top:8px!important;
+}
+html.premium-ready #view .hero-panel.campus-v213-classic .hero-side{display:none!important}
+/* LOGIN: not a full screen photograph. Real Campus in a small, separate card. */
+html body #splash.splash-v144.campus-v213-splash{
+ box-sizing:border-box!important;display:flex!important;justify-content:center!important;align-items:center!important;
+ min-height:100svh!important;width:100%!important;padding:env(safe-area-inset-top,0px) 18px env(safe-area-inset-bottom,0px)!important;
+ background:#f6f9fe!important;color:#0e2b57!important;color-scheme:light!important;
+}
+html body #splash.splash-v144.campus-v213-splash.hidden{display:none!important}
+html body #splash.campus-v213-splash .splash-card.splash-card-clean{
+ width:min(100%,420px)!important;min-height:0!important;max-width:100%!important;
+ box-sizing:border-box!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;
+ padding:18px 0 14px!important;margin:0 auto!important;background:transparent!important;border:0!important;box-shadow:none!important;
+}
+html body #splash.campus-v213-splash .splash-logo-holder{
+ width:auto!important;height:48px!important;max-width:100%!important;margin:0 0 14px!important;
+ transform:none!important;display:flex!important;align-items:center!important;justify-content:center!important;
+}
+html body #splash.campus-v213-splash .campus-v213-wordmark{
+ display:flex;align-items:center;justify-content:center;gap:10px;color:#144889;
+}
+html body #splash.campus-v213-splash .campus-v213-mark{width:30px!important;height:44px!important}
+html body #splash.campus-v213-splash .campus-v213-wordmark-copy{
+ display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-family:system-ui,sans-serif;
+ font-size:13px;font-weight:850;letter-spacing:.04em;line-height:1.03;
+}
+html body #splash.campus-v213-splash .splash-campus-title{
+ margin:0 0 5px!important;font-size:clamp(27px,7.3vw,34px)!important;color:#153e82!important;
+ line-height:1.14!important;letter-spacing:-.035em!important;font-weight:850!important;
+}
+html body #splash.campus-v213-splash .splash-campus-subtitle{
+ font-size:13px!important;font-weight:520!important;color:#647997!important;line-height:1.35!important;
+ margin:0 0 14px!important;
+}
+html body #splash.campus-v213-splash .splash-dorm-scene{
+ display:block!important;width:100%!important;height:clamp(160px,27svh,220px)!important;
+ flex:none!important;min-height:0!important;max-height:220px!important;
+ margin:0 0 19px!important;padding:0!important;border-radius:20px!important;
+ overflow:hidden!important;position:relative!important;box-shadow:0 12px 27px rgba(23,52,99,.13)!important;
+ background:#132f51!important;
+}
+html body #splash.campus-v213-splash .splash-dorm-scene::before,
+html body #splash.campus-v213-splash .splash-dorm-scene::after{content:none!important;display:none!important}
+html body #splash.campus-v213-splash .splash-dorm-art{
+ display:block!important;position:static!important;width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;opacity:1!important;
+ object-fit:cover!important;object-position:50% 40%!important;border:0!important;
+}
+html body #splash.campus-v213-splash .splash-login-prompt{
+ margin:0 0 12px!important;min-height:0!important;font-size:16px!important;
+ line-height:1.35!important;color:#1e427b!important;font-weight:760!important;
+}
+html body #splash.campus-v213-splash #openStateBtn{
+ min-height:55px!important;width:100%!important;flex:0 0 auto!important;
+ border-radius:15px!important;background:linear-gradient(110deg,#1366d9,#348fea)!important;
+ box-shadow:0 7px 18px rgba(14,98,215,.16)!important;padding:11px 14px!important;
+}
+html body #splash.campus-v213-splash .splash-button-text-v142{font-size:17px!important}
+html body #splash.campus-v213-splash .splash-note{
+ font-size:11px!important;color:#7a8a9e!important;line-height:1.5!important;
+ margin:14px 0 0!important;
+}
+html body #splash.campus-v213-splash .splash-release{
+ margin:18px 0 0!important;padding:0!important;font-size:10px!important;
+ color:#92a0b2!important;line-height:1.45!important;
+}
+/* Follow the existing theme setting; splash stays small in either palette. */
+html[data-theme="dark"] body #splash.splash-v144.campus-v213-splash{
+ background:#091525!important;color:#f4f7ff!important;color-scheme:dark!important;
+}
+html[data-theme="dark"] body #splash.campus-v213-splash .campus-v213-wordmark,
+html[data-theme="dark"] body #splash.campus-v213-splash .splash-campus-title{color:#e4b670!important}
+html[data-theme="dark"] body #splash.campus-v213-splash .splash-campus-subtitle,
+html[data-theme="dark"] body #splash.campus-v213-splash .splash-note,
+html[data-theme="dark"] body #splash.campus-v213-splash .splash-release{color:#a4b2c9!important}
+html[data-theme="dark"] body #splash.campus-v213-splash .splash-login-prompt{color:#eef3fc!important}
+@media(max-width:365px){
+ html.premium-ready #view .hero-panel.campus-v213-classic{height:148px!important;min-height:148px!important;max-height:148px!important;padding:29px 16px 15px!important;border-radius:19px!important}
+ html.premium-ready #view .hero-panel.campus-v213-classic .hero-copy{max-width:92%!important}
+ html body #splash.campus-v213-splash .splash-dorm-scene{height:165px!important}
+ html body #splash.campus-v213-splash .splash-note{font-size:10px!important}
+}
+@media(max-height:650px){
+ html body #splash.campus-v213-splash .splash-card.splash-card-clean{padding:8px 0!important}
+ html body #splash.campus-v213-splash .splash-logo-holder{margin-bottom:7px!important}
+ html body #splash.campus-v213-splash .splash-dorm-scene{height:155px!important;margin-bottom:12px!important}
+ html body #splash.campus-v213-splash .splash-release{margin-top:10px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html.premium-ready #view .hero-panel.campus-v213-classic .winter-bulb-v137{animation:none!important}
+}
