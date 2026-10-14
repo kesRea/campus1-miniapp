@@ -88,7 +88,7 @@
     const description=cache.testProfile?.about;
     const tone=u.isOwner?' premium-role-owner':u.isDeveloper?' premium-role-developer':/председател/i.test(String(role))?' premium-role-chair':'';
     showModal('<div class="sheet-handle"></div><section class="premium-profile-sheet">'+
-      '<div class="premium-profile-hero"><span class="premium-profile-emblem">CAMPUS №1</span><span class="premium-profile-65">65 <small>ЛЕТ</small></span></div>'+
+      '<div class="premium-profile-hero"><span class="premium-profile-emblem">CAMPUS №1</span></div>'+
       '<div class="premium-profile-person">'+avatarMarkup(u,true)+'<div><small class="premium-sheet-eyebrow">МОЙ ПРОФИЛЬ</small><h3>'+safe(name)+'</h3><span class="premium-role-chip'+tone+'">'+safe(role)+'</span></div></div>'+
       '<div class="premium-profile-info"><div><small>TELEGRAM</small><strong>'+safe(handle)+'</strong></div><div><small>ДОСТУП</small><strong>'+safe(right)+'</strong></div></div>'+
       (description?'<p class="premium-profile-about">'+safe(description)+'</p>':'')+
@@ -115,11 +115,9 @@
   function decorateHome(){
     if(typeof state==='undefined'||state.currentPage!=='home')return;
     const hero=q('#view .hero-panel'),view=q('#view');
-    if(!hero||!view||hero.querySelector('.premium-anniversary'))return;
+    if(!hero||!view||hero.classList.contains('premium-hero'))return;
     hero.classList.add('premium-hero');
-    const emblem=document.createElement('div');emblem.className='premium-anniversary';emblem.innerHTML='<strong>65</strong><span>ЛЕТ</span>';
-    emblem.setAttribute('aria-label','65 лет Торайгыров университету');hero.appendChild(emblem);
-    const desc=q('.hero-copy p',hero);if(desc)desc.textContent='Твой кампус. Твои возможности.';
+    const desc=q('.hero-copy p',hero);if(desc)desc.textContent='Управление общежитием';
     for(const h of view.querySelectorAll('.section-heading h2')){
       if(h.textContent.trim()==='Быстрые действия')h.closest('.section-heading')?.classList.add('premium-section-actions');
     }

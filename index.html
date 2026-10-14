@@ -21,7 +21,7 @@
     'use strict';
     // HTTPS Github Pages assets are public; NO student data is fetched here.
     var tag=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
-    var files=["styles.css","tasks.css","management.css","splash-v14.4.1.css","premium-campus.css"];
+    var files=["styles.css","tasks.css","management.css","splash-v14.4.1.css","premium-campus.css","campus-seasons-v2010.css"];
     for(var i=0;i<files.length;i++){
       var link=document.createElement('link');
       link.rel='stylesheet';link.href=files[i]+'?campus='+tag;
@@ -38,7 +38,7 @@
       <h1 class="splash-campus-title">Campus №1</h1>
       <p class="splash-campus-subtitle">База данных общежития</p>
       <div class="splash-dorm-scene" aria-hidden="true">
-        <img class="splash-dorm-art" src="splash-dorm-v14.4.1.svg" alt="" width="460" height="292" decoding="async">
+        <img class="splash-dorm-art" src="campus-autumn-login.webp" alt="" width="460" height="292" decoding="async">
       </div>
       <p id="splashText" class="splash-login-prompt">Войдите через Telegram</p>
       <button id="openStateBtn" class="btn btn-primary btn-wide splash-btn" type="button">
@@ -105,7 +105,7 @@
   <script>
   (function(){
     'use strict';
-    var files=["tasks.js","special.js","management.js","app.js","premium-campus.js"],index=0;
+    var files=["tasks.js","special.js","management.js","app.js","premium-campus.js","campus-seasons-v2010.js"],index=0;
     var tag=window.__campusAssetTag||Date.now().toString(36);
     function next(){
       if(index>=files.length){
