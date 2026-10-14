@@ -52,14 +52,12 @@
    const intro=find('.hero-copy p',hero);
    if(intro&&intro.textContent.trim()==='Твой кампус. Твои возможности.')
       intro.textContent='Управление общежитием';
-   // The original winter decorations are retained in winter. For the familiar
-   // card appearance, present the SAME original garland in other seasons too.
-   if(!hero.querySelector('.winter-garland-v137')){
-      const bulbs=typeof winterGarlandBulbs==='function'?winterGarlandBulbs():fallbackBulbs();
-      hero.insertAdjacentHTML('afterbegin','<div class="winter-garland-v137" aria-hidden="true">'+
-       '<svg class="winter-wire-v137" viewBox="0 0 1000 90" preserveAspectRatio="none">'+
-       '<path d="M-30 5 C220 72 390 58 520 40 C690 16 810 73 1030 9"/></svg>'+
-       '<div class="winter-bulbs-v137">'+bulbs+'</div></div>');
+   // The ORIGINAL app.js already renders winterGarlandHtml() only during winter.
+   // Never synthesize a garland for spring, summer or autumn.
+   const currentSeason=document.documentElement.dataset.season ||
+     (typeof state!=='undefined'?state.seasonResolved:'');
+   if(currentSeason!=='winter'){
+     hero.querySelectorAll('.winter-garland-v137,.winter-garland-v136').forEach(node=>node.remove());
    }
  }
  function init(){

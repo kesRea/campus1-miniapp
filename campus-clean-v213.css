@@ -11,8 +11,8 @@ html.premium-ready .campus-v213-mark,
 html #splash.campus-v213-splash .campus-v213-mark{
  display:block!important;width:27px!important;height:38px!important;flex-shrink:0!important;
  background:var(--campus-213-mark,#1559aa)!important;
- -webkit-mask:url('tou-symbol-v212.png') center /contain no-repeat;
- mask:url('tou-symbol-v212.png') center /contain no-repeat;
+ -webkit-mask:url('tou-monogram-v214.svg') center /contain no-repeat;
+ mask:url('tou-monogram-v214.svg') center /contain no-repeat;
 }
 html.premium-ready .brand-copy span{color:var(--campus-213-mark)!important}
 /* CLASSIC: no photographic background, no forced aspect ratio, no added anniversary. */
@@ -35,7 +35,8 @@ html.premium-ready #view .hero-panel.campus-v213-classic .home-object-scene{opac
 html.premium-ready #view .hero-panel.campus-v213-classic .premium-anniversary,
 html.premium-ready #view .hero-panel.campus-v213-classic .hero-season-emoji,
 html.premium-ready #view .hero-panel.campus-v213-classic .home-season-emoji{display:none!important}
-html.premium-ready #view .hero-panel.campus-v213-classic .winter-garland-v137{
+html.premium-ready #view .hero-panel.campus-v213-classic .winter-garland-v137{display:none!important}
+html.premium-ready[data-season="winter"] #view .hero-panel.campus-v213-classic .winter-garland-v137{
  display:block!important;position:absolute!important;inset:0 0 auto!important;height:55px!important;
  z-index:5!important;opacity:.93!important;pointer-events:none!important;
 }
