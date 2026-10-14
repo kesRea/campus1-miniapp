@@ -63,7 +63,7 @@
  function init(){
    refreshHeaderMark();refreshSplash();refreshClassicHome();
    const header=find('#homeLogoBtn');
-   if(header)new MutationObserver(refreshHeaderMark).observe(header,{childList:true});
+   // Core applyCampusBrandLogos() now renders the correct symbol directly; no flickering observer.
    const view=find('#view');
    if(view)new MutationObserver(()=>{refreshHeaderMark();refreshClassicHome();}).observe(view,{childList:true});
    // No timers or forced season/theme changes. The existing owner's season

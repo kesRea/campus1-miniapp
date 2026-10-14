@@ -29,17 +29,6 @@ html.premium-ready .premium-tools-item .icon-button{width:32px;height:32px;flex:
 html.premium-ready .premium-tools-item .icon-button svg{width:17px;height:17px}
 /* The existing home structure and its onclick handlers are intentionally preserved. */
 html.premium-ready .content{max-width:820px;margin:0 auto;padding-top:18px}
-html.premium-ready .hero-panel.premium-hero{position:relative;overflow:hidden;isolation:isolate;border:0;border-radius:25px;background-image:linear-gradient(108deg,#0d387a 0%,#1765b2 63%,rgba(23,105,181,.65) 100%),url('premium-campus-architecture.svg');background-size:cover,auto 100%;background-repeat:no-repeat;background-position:center,right center;min-height:168px;box-shadow:0 16px 31px rgba(17,75,148,.17);color:white}
-html.premium-ready[data-theme="dark"] .hero-panel.premium-hero{background-image:linear-gradient(108deg,#0c254c 0%,#134780 70%,rgba(25,81,143,.70) 100%),url('premium-campus-architecture.svg')}
-html.premium-ready .premium-hero .hero-copy{position:relative;z-index:3;max-width:69%}
-html.premium-ready .premium-hero .hero-copy small{color:#dbeaff;font-size:11px;font-weight:700}
-html.premium-ready .premium-hero .hero-copy h1{color:#fff;font-size:clamp(23px,5vw,31px);letter-spacing:-.04em}
-html.premium-ready .premium-hero .hero-copy p{color:#dceaff;font-size:12px;font-weight:500;line-height:1.5;max-width:220px}
-html.premium-ready .premium-hero .hero-side{display:none}
-html.premium-ready .premium-hero .premium-anniversary{position:absolute;top:15px;right:18px;z-index:6;display:flex;align-items:flex-end;gap:4px;flex-direction:column;color:#f1d38d;text-shadow:0 1px 4px rgba(0,0,0,.10)}
-html.premium-ready .premium-hero .premium-anniversary strong{font-family:Georgia,serif;font-weight:600;font-style:italic;font-size:46px;letter-spacing:-.065em;line-height:1}
-html.premium-ready .premium-hero .premium-anniversary span{font-size:10px;letter-spacing:.24em;font-weight:850}
-html.premium-ready .premium-hero .home-object-scene{opacity:.12;z-index:0}
 html.premium-ready .global-search{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 7px 22px rgba(19,72,130,.055)}
 html.premium-ready .section-heading{margin-top:23px;margin-bottom:12px}
 html.premium-ready .section-heading h2{font-weight:820;font-size:19px;letter-spacing:-.035em}
@@ -84,7 +73,7 @@ html.premium-ready .premium-profile-info small{display:block;color:var(--muted);
 html.premium-ready .premium-profile-info strong{display:block;margin-top:5px;word-break:break-word;font-size:12px}
 html.premium-ready .premium-profile-about{font-size:13px;line-height:1.55;margin:14px 3px 2px}
 html.premium-ready .premium-profile-foot{color:var(--muted);font-size:11px;line-height:1.55;margin:18px 2px 5px}
-@media(max-width:430px){html.premium-ready .topbar{padding:10px 11px}html.premium-ready .brand-row{gap:8px}html.premium-ready .brand-button{width:38px;height:38px;flex-basis:38px;border-radius:12px}html.premium-ready .brand-copy span{font-size:11px}html.premium-ready .brand-copy small{font-size:7.5px;letter-spacing:.04em}html.premium-ready .top-actions{gap:2px}html.premium-ready .top-actions .icon-button{width:32px;height:36px;flex-basis:32px}html.premium-ready .top-actions .profile-button{width:37px;height:37px;flex-basis:37px}html.premium-ready .hero-panel.premium-hero{min-height:158px}html.premium-ready .premium-hero .premium-anniversary strong{font-size:40px}html.premium-ready .premium-hero .premium-anniversary{right:14px}html.premium-ready .stat-card,html.premium-ready .action-card{border-radius:19px}}
+@media(max-width:430px){html.premium-ready .topbar{padding:10px 11px}html.premium-ready .brand-row{gap:8px}html.premium-ready .brand-button{width:38px;height:38px;flex-basis:38px;border-radius:12px}html.premium-ready .brand-copy span{font-size:11px}html.premium-ready .brand-copy small{font-size:7.5px;letter-spacing:.04em}html.premium-ready .top-actions{gap:2px}html.premium-ready .top-actions .icon-button{width:32px;height:36px;flex-basis:32px}html.premium-ready .top-actions .profile-button{width:37px;height:37px;flex-basis:37px}html.premium-ready .stat-card,html.premium-ready .action-card{border-radius:19px}}
 @media(max-width:350px){html.premium-ready .brand-copy span{font-size:10px}html.premium-ready .brand-copy small{font-size:7px}html.premium-ready .top-actions .icon-button{width:29px;flex-basis:29px}html.premium-ready .top-actions .profile-button{width:34px;flex-basis:34px}}
 @media(prefers-reduced-motion:reduce){html.premium-ready *,html.premium-ready *::before,html.premium-ready *::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 

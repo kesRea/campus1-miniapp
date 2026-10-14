@@ -2,7 +2,7 @@
 /* CAMPUS_GITHUB_UI_V13_9_TASKS_SPECIAL */
 /* V13.9.1 developer access visibility fix */
 const CAMPUS_API_URL = 'https://campus1-db-47a56e67.pages.dev/api';
-const APP_VERSION = '20.0.14';
+const APP_VERSION = '20.0.15';
 const tg = window.Telegram?.WebApp || null;
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
@@ -17,11 +17,12 @@ const state = {
   roomFilterMode:'all', seasonMode:'auto', seasonResolved:'autumn', remoteManifest:null, updateCheckTime:0
 };
 
-const UPDATE_CENTER_VERSION = '20.0.14';
+const UPDATE_CENTER_VERSION = '20.0.15';
 const CLOUD_APP_URL = 'https://kesrea.github.io/campus1-miniapp/';
 const UPDATE_MANIFEST_URL = CLOUD_APP_URL + 'version.json';
 const CAMPUS_UPDATES = [
-{version:'2.0.14',date:'14 октября 2026',title:'Чёткий знак ToU и гирлянда только зимой',latest:true,items:['Штатная компактная карточка сохранена; цветная гирлянда отображается только зимой.','Низкокачественный PNG логотипа заменён векторной SVG-формой с оригинальной монограммой университета.','Компактный экран входа, Telegram-авторизация, поиск, переселение, проверки комнат и остальные функции не изменены.']},
+{version:'2.0.15',date:'14 октября 2026',title:'Стабилизация оформления без наложений',latest:true,items:['Убран конфликт: при обновлении главной старый домик больше не заменяет знак университета.','Конфликтующие стили Premium-баннера отключены; компактная карточка сохранена.','Зимняя гирлянда по-прежнему только зимой, без изменения настроек сезона.','Вход, профиль, навигация, переселение, проверка комнат и сервер не изменены.']},
+{version:'2.0.14',date:'14 октября 2026',title:'Чёткий знак ToU и гирлянда только зимой',latest:false,items:['Штатная компактная карточка сохранена; цветная гирлянда отображается только зимой.','Низкокачественный PNG логотипа заменён векторной SVG-формой с оригинальной монограммой университета.','Компактный экран входа, Telegram-авторизация, поиск, переселение, проверки комнат и остальные функции не изменены.']},
 {version:'2.0.13',date:'14 октября 2026',title:'Классическая карточка и компактный вход',latest:false,items:['Возвращена компактная синяя приветственная карточка с цветной гирляндой.','Удалены конфликтующие фотослои V2.0.10–V2.0.12 из загрузки.','Экран входа стал светлым и компактным, с небольшой осенней фотографией Campus №1.','Профили, поиск, переселение, проверки комнат и API не изменены.']},
 {version:'2.0.12',date:'14 октября 2026',title:'Восстановление сезонного дизайна и знака ToU',latest:false,items:['Логотип ToU восстановлен по присланному образцу; синий на светлой и золотой на тёмной теме.','Четыре сезонных изображения действительно различаются и точно помещаются в горизонтальную карточку.','Осенний экран входа сохраняется при смене сезонов в основном приложении.','Рабочие действия, доступы и данные общежития не изменены.']},
 {version:'2.0.11',date:'14 октября 2026',title:'Исправление дизайна входа и главной карточки',latest:false,items:['Осенний вход полностью переработан; размер и расположение фотографии адаптированы для телефона.','Главная карточка показывает сезонную фотографию в горизонтальном формате без старой гирлянды.','Светлая тема сохраняет синий логотип; тёмная — золотой.','Функции, права и база студентов остаются без изменений.']},
@@ -2445,9 +2446,10 @@ function applyCampusBrandLogos(){
   if(versionHolder) versionHolder.textContent = 'Версия ' + APP_VERSION;
 
   const homeLogoBtn = document.getElementById('homeLogoBtn');
-  if(homeLogoBtn){
-    homeLogoBtn.classList.add('brand-button-svg');
-    homeLogoBtn.innerHTML = campusLogoSvg('mini');
+  if(homeLogoBtn && !homeLogoBtn.querySelector('.campus-v213-mark')){
+    // Keep the already connected home button; never restore the old house SVG.
+    homeLogoBtn.classList.add('brand-button-svg','campus-v213-logo-button');
+    homeLogoBtn.innerHTML = '<span class="campus-v213-mark" aria-hidden="true"></span>';
   }
 }
 
