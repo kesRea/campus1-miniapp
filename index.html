@@ -21,7 +21,7 @@
     'use strict';
     // HTTPS Github Pages assets are public; NO student data is fetched here.
     var tag=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
-    var files=["styles.css","tasks.css","management.css","splash-v14.4.1.css"];
+    var files=["styles.css","tasks.css","management.css","splash-v14.4.1.css","premium-campus.css"];
     for(var i=0;i<files.length;i++){
       var link=document.createElement('link');
       link.rel='stylesheet';link.href=files[i]+'?campus='+tag;
@@ -105,7 +105,7 @@
   <script>
   (function(){
     'use strict';
-    var files=["tasks.js","special.js","management.js","app.js"],index=0;
+    var files=["tasks.js","special.js","management.js","app.js","premium-campus.js"],index=0;
     var tag=window.__campusAssetTag||Date.now().toString(36);
     function next(){
       if(index>=files.length){
