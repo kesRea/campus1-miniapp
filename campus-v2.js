@@ -853,4 +853,156 @@ v201DrawRoster=function(){
   return v207OldDrawRoster.apply(this,arguments);
 };
 
+/* Campus №1 V2.0.16 roster editor + real V2 private profiles inside existing Profile modal.
+ * Insert inside campus-v2.js IIFE before its final })();; relies on V2's private call(), privileged(), show().
+ * UI is a shell: mutations always enforced and recorded on server.
+ */
+var V216={kind:'council',rows:[],busy:false};
+// Preserve user-supplied photo and @username when original Telegram directory has no photo.
+const v216OldImageFor=v207ImageFor;
+v207ImageFor=function(item){
+  if(item&&item.row){
+    if(!item.photoUrl)item.photoUrl=item.row.photoUrl||item.row['Фото']||'';
+    if(!item.username)item.username=item.row.username||String(item.row['Telegram']||'').replace(/^@/,'');
+  }
+  return v216OldImageFor(item);
+};
+function v216E(v){return escV(String(v===undefined||v===null?'':v));}
+function v216Photo(url){url=String(url||'');return /^https:\/\//i.test(url)||(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(url)&&url.length<52000)?url:'';}
+function v216Person(row){
+  var name=v216E(row.fio),note=v216E(row.role||row.sector||'Участник'),photo=v216Photo(row.photoUrl);
+  return '<div class="v216-person'+(row.active?'':' v216-archived')+'">'+
+   '<div class="v216-ident">'+(photo?'<img class="v216-avatar" src="'+v216E(photo)+'" alt="" loading="lazy">':'<span class="v216-avatar v216-fallback">'+name.slice(0,1)+'</span>')+
+   '<div><strong>'+name+'</strong><small>'+note+' · '+v216E(row.room?'комн. '+row.room:'без комнаты')+'</small></div></div>'+
+   '<div class="v216-actions"><button class="v216-small" type="button" onclick="v216Edit(\''+v216E(row.id)+'\')">Изменить</button>'+
+   (row.active?'<button class="v216-small danger" type="button" onclick="v216Change(\'delete\',\''+v216E(row.id)+'\')">Удалить</button>':'<button class="v216-small" type="button" onclick="v216Change(\'restore\',\''+v216E(row.id)+'\')">Восстановить</button>')+
+   '</div></div>';
+}
+async function v216Load(){
+  var mount=$v('#v216-people');if(!mount)return;
+  mount.textContent='Загружаем состав…';
+  try{
+    var r=await call('appV216GetRoster',V216.kind);
+    if(!mount.isConnected||state.currentPage!=='v216-editor')return;
+    V216.rows=Array.isArray(r.rows)?r.rows:[];
+    var active=V216.rows.filter(function(x){return x.active;});
+    var archived=V216.rows.filter(function(x){return !x.active;});
+    mount.innerHTML='<div class="v216-count">Участников: '+active.length+'</div>'+
+      (active.map(v216Person).join('')||'<div class="empty">Список пуст.</div>')+
+      (archived.length?'<details class="v216-archive"><summary>Архивные записи · '+archived.length+'</summary>'+archived.map(v216Person).join('')+'</details>':'');
+  }catch(e){mount.innerHTML='<div class="empty">'+safeErr(e)+'</div>';}
+}
+function v216Manager(kind){
+  if(!privileged()){notice('Редактор доступен только владельцу или разработчику.');return;}
+  V216.kind=kind==='activists'?'activists':'council';V216.rows=[];
+  state.currentPage='v216-editor';state.renderSeq++;setNav('more');
+  show(heading('Управление составом','more')+
+    '<div class="v216-manager"><p class="v2-note">Изменения сохраняются в отдельном реестре. Права доступа Telegram не изменяются.</p>'+
+    '<div class="v216-tabs"><button class="'+(V216.kind==='council'?'current':'')+'" onclick="v216Manager(\'council\')">Студсовет</button><button class="'+(V216.kind==='activists'?'current':'')+'" onclick="v216Manager(\'activists\')">Активисты</button></div>'+
+    '<button class="btn btn-primary btn-wide" type="button" onclick="v216Edit(\'\')">+ Добавить участника</button>'+
+    '<div id="v216-people" class="v216-people"></div>'+
+    '<button class="btn btn-secondary btn-wide" type="button" onclick="render(\'council\')">К списку Студсовета и активистов</button></div>');
+  v216Load();
+}
+function v216Edit(id){
+  if(!privileged())return;
+  var row=V216.rows.find(function(x){return x.id===id;})||{},isEdit=!!id;
+  if(isEdit&&!row.id){notice('Карточка устарела. Обновите список.');return;}
+  if(row.active===false){notice('Сначала восстановите удалённого участника.');return;}
+  var fields=[['fio','ФИО *',140],['role','Должность',110],['sector','Сектор',85],['room','Комната',8],['group','Группа',65],['telegramId','Telegram ID (не выдаёт доступ)',20],['username','Telegram @username',40],['photoUrl','Ссылка на фото https://',550]];
+  var html='<div class="sheet-handle"></div><h3>'+(isEdit?'Редактирование':'Новый участник')+'</h3>'+
+   '<p class="v2-note">Группа: '+(V216.kind==='council'?'Студенческий совет':'Активисты')+'. Добавление в список не предоставляет права управления.</p>'+
+   fields.map(function(f){return '<div class="field"><label for="v216-'+f[0]+'">'+f[1]+'</label><input id="v216-'+f[0]+'" class="v2-input" type="text" maxlength="'+f[2]+'" autocomplete="off" value="'+v216E(row[f[0]]||'')+'"></div>';}).join('')+
+   '<button class="btn btn-primary btn-wide" type="button" onclick="v216Save(\''+v216E(id)+'\')">Сохранить</button>'+
+   '<button class="btn btn-secondary btn-wide" type="button" onclick="closeModal()">Отмена</button>';
+  showModal(html);
+}
+async function v216Save(id){
+  if(V216.busy)return;
+  var original=V216.rows.find(function(x){return x.id===id;});
+  if(id&&!original){notice('Участник не найден.');return;}
+  var fields=['fio','role','sector','room','group','telegramId','username','photoUrl'],input={};
+  fields.forEach(function(f){input[f]=String($v('#v216-'+f)?.value||'').trim();});
+  if(input.fio.length<3){notice('Укажите ФИО (не менее 3 символов).');return;}
+  if(original){input.id=original.id;input.version=original.version;}
+  V216.busy=true;
+  try{await call('appV216Mutate',V216.kind,id?'edit':'add',input);closeModal();
+      if(typeof invalidateData==='function')invalidateData();
+      notice(id?'Участник обновлён':'Участник добавлен');await v216Load();}
+  catch(e){notice(e.message||String(e));}
+  finally{V216.busy=false;}
+}
+async function v216Change(action,id){
+  if(V216.busy)return;
+  var row=V216.rows.find(function(x){return x.id===id;});if(!row)return;
+  if(!confirm(action==='delete'?'Убрать '+row.fio+' из списка? Запись можно восстановить.':'Вернуть '+row.fio+' в список?'))return;
+  V216.busy=true;
+  try{await call('appV216Mutate',V216.kind,action,{id:row.id,version:row.version});
+      if(typeof invalidateData==='function')invalidateData();notice('Сохранено');await v216Load();}
+  catch(e){notice(e.message||String(e));}
+  finally{V216.busy=false;}
+}
+const v216OldCouncil=renderCouncil;
+renderCouncil=async function(kind,seq){
+  var result=await v216OldCouncil.call(this,kind,seq);
+  if(privileged()&&(kind==='council'||kind==='activists')&&state.currentPage===kind){
+    var view=$v('#view');if(view&&!view.querySelector('#v216-manager-entry')){
+      var btn=document.createElement('button');
+      btn.id='v216-manager-entry';btn.type='button';btn.className='btn btn-secondary btn-wide v216-open';
+      btn.textContent='Управление составом · добавить / изменить / удалить';
+      btn.addEventListener('click',function(){v216Manager(kind);});
+      var top=view.querySelector('.page-head');
+      if(top)top.insertAdjacentElement('afterend',btn);else view.insertAdjacentElement('afterbegin',btn);
+    }
+  }
+  return result;
+};
+// Attach *existing* test-profile features to Profile modal instead of another page.
+const v216OldProfile=showProfile;
+showProfile=function(){
+  v216OldProfile.apply(this,arguments);
+  var sheet=$v('#modalSheet');if(!sheet)return;
+  var legacy=[...sheet.querySelectorAll('button')].find(function(b){return /Тестовые профили V2\.0/.test(b.textContent||'');});
+  if(legacy)legacy.remove();
+  if(!privileged())return;
+  var target=document.createElement('section');target.id='v216-profile';target.className='v216-profile';
+  target.innerHTML='<h3>Профили команды</h3><p class="v2-note">Закрытые тестовые профили — только владелец и разработчики. Данные загружаются из существующей системы.</p><div id="v216-profile-list">Загружаем профили…</div>';
+  sheet.appendChild(target);
+  v216ProfileRefresh();
+};
+async function v216ProfileRefresh(){
+  var root=$v('#v216-profile-list');if(!root)return;
+  try{
+    var people=await call('appV2Profiles');if(!root.isConnected)return;
+    if(!Array.isArray(people))throw Error('Не удалось прочитать профили.');
+    root.innerHTML=people.map(function(p){
+      var url=v216Photo(p.photoUrl),id=v216E(p.id),name=v216E(p.name||'Профиль');
+      return '<article class="v216-profile-card"><div class="v216-ident">'+
+         (url?'<img class="v216-avatar" src="'+v216E(url)+'" alt="" loading="lazy">':'<span class="v216-avatar v216-fallback">'+name.slice(0,1)+'</span>')+
+         '<div><strong>'+name+'</strong><small>'+v216E(p.role||'')+'</small></div></div>'+
+         '<p>'+v216E(p.about||'Нет описания')+'</p>'+
+         (p.mine?'<label for="v216-bio">О себе</label><textarea id="v216-bio" class="v2-textarea" maxlength="360">'+v216E(p.about||'')+'</textarea>'+ 
+           '<label for="v216-myphoto">Новая аватарка JPG/PNG/WebP</label><input id="v216-myphoto" type="file" accept="image/jpeg,image/png,image/webp" class="v2-input">'+
+           '<button class="btn btn-primary btn-wide" type="button" onclick="v216SaveMine()">Сохранить профиль</button>':'')+
+         '<details><summary>Комментарии · '+(p.comments||[]).length+'</summary><div class="v216-comments">'+
+         (p.comments||[]).map(function(c){return '<p>'+v216E(c.text)+' <small>— '+v216E(c.author)+'</small></p>';}).join('')+
+         '<textarea class="v2-textarea" id="v216-comment-'+id+'" maxlength="500" placeholder="Написать комментарий"></textarea><button class="v216-small" type="button" onclick="v216Comment(\''+id+'\')">Отправить</button></div></details></article>';
+    }).join('')||'<p>Профили отсутствуют.</p>';
+  }catch(e){if(root.isConnected)root.innerHTML='<p class="empty">'+safeErr(e)+'</p>';}
+}
+async function v216SaveMine(){
+  try{
+    var avatar=await v2AvatarToData($v('#v216-myphoto')?.files?.[0]);
+    await call('appV2SaveMyProfile',$v('#v216-bio')?.value||'',avatar);
+    notice('Профиль сохранён');v216ProfileRefresh();
+  }catch(e){notice(e.message||String(e));}
+}
+async function v216Comment(id){
+  var el=$v('#v216-comment-'+id),msg=String(el?.value||'').trim();if(!msg)return;
+  try{await call('appV2ProfileComment',id,msg);notice('Комментарий сохранён');v216ProfileRefresh();}
+  catch(e){notice(e.message||String(e));}
+}
+window.v216Manager=v216Manager;window.v216Edit=v216Edit;window.v216Save=v216Save;
+window.v216Change=v216Change;window.v216SaveMine=v216SaveMine;window.v216Comment=v216Comment;
+
 })();

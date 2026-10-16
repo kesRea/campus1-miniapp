@@ -1,0 +1,27 @@
+/* Campus №1 V2.0.16 — isolated management forms; no existing core redesign. */
+.v216-manager{display:grid;gap:14px;padding-bottom:28px}
+.v216-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.v216-tabs button{border:1px solid var(--border,#dbe4f1);border-radius:13px;background:var(--card,#fff);color:var(--text,#152f55);padding:12px;font:inherit;font-weight:650}
+.v216-tabs button.current{background:var(--primary,#277ce7);color:white}
+.v216-people{display:grid;gap:10px}
+.v216-count{color:var(--muted,#687991);font-size:13px;padding:5px}
+.v216-person,.v216-profile-card{border-radius:16px;border:1px solid var(--border,#dce4ee);padding:12px;background:var(--card,#fff);color:var(--text,#1c3152)}
+.v216-person{display:grid;gap:11px}
+.v216-ident{display:flex;gap:12px;align-items:center;min-width:0}
+.v216-ident>div{min-width:0;overflow:hidden}
+.v216-ident strong{display:block;overflow-wrap:anywhere;font-size:14px}
+.v216-ident small{display:block;margin-top:5px;color:var(--muted,#69788b);font-size:12px}
+.v216-avatar{width:46px;height:46px;border-radius:50%;object-fit:cover;flex:0 0 46px;border:1px solid var(--border,#dce4ee)}
+.v216-fallback{display:grid;place-items:center;background:var(--primary-soft,#e4efff);color:var(--primary,#2468c6);font-weight:800}
+.v216-actions{display:flex;gap:8px;flex-wrap:wrap}
+.v216-small{font:inherit;font-size:13px;font-weight:650;border:1px solid var(--border,#dce4ee);background:var(--card,#fff);color:var(--text,#1c3152);padding:9px 12px;border-radius:10px;cursor:pointer}
+.v216-small.danger{color:#bd3447}
+.v216-archived{opacity:.67}
+.v216-archive{border:1px dashed var(--border,#dce4ee);padding:10px;border-radius:12px}
+.v216-archive summary{font-weight:700;cursor:pointer;margin-bottom:10px}
+.v216-profile{display:grid;gap:10px;margin-top:22px;border-top:1px solid var(--border,#dce4ee);padding-top:14px}
+.v216-profile-card{display:grid;gap:9px}
+.v216-profile-card p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.v216-profile-card details summary{cursor:pointer;font-size:13px}
+.v216-comments{display:grid;gap:8px;margin-top:8px}
+.v216-open{margin-top:16px}
